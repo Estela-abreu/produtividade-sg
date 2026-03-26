@@ -3640,18 +3640,19 @@
     showCopyToast('🗑 Registro excluído com sucesso.');
   }
 
-  // Listener Firebase — única fonte de verdade quando online
+  // Listener Firebase — fonte de verdade para todos os usuários
   function _attachListener() {
+    db.ref('produtividade/records').off('value'); // garante sem duplicata
     db.ref('produtividade/records').on('value', snap => {
-      if (_deleting) return; // ignora durante exclusão
+      if (_deleting) return;
 
       const data = snap.val();
       const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
 
-      // Se Firebase retornou vazio MAS temos dados no cache/local,
-      // não apaga — pode ser latência da rede
+      // Se Firebase retornou vazio E temos dados locais → protege contra latência
       if (records.length === 0 && _dbCache.length > 0) return;
 
+      // Firebase tem dados — SEMPRE aceita (inclui registros de outros usuários)
       _dbCache = records;
       _firebaseReady = true;
       try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
@@ -3715,7 +3716,15 @@
     } catch(e) {}
 
     try {
-      db.ref('.info/connected').on('value', snap => setFbStatus(snap.val() === true));
+      // Monitor de conexão — reanexa listener ao reconectar
+      db.ref('.info/connected').on('value', snap => {
+        const online = snap.val() === true;
+        setFbStatus(online);
+        if (online) {
+          // Reconectou — reanexa listener para garantir dados atualizados
+          _attachListener();
+        }
+      });
 
       // Liga listener principal
       _attachListener();
@@ -3736,16 +3745,16 @@
       setFbStatus(false);
     }
 
-    // Polling a cada 8s — sincroniza mudanças de outros usuários
+    // Polling a cada 5s — garante sincronização entre usuários diferentes
     setInterval(() => {
       if (_deleting) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
-        if (!data) return; // Firebase vazio — preserva cache
+        if (!data) return; // Firebase vazio — preserva cache local
 
         const records = Object.values(data).sort((a, b) => b.id - a.id);
 
-        // Só atualiza se houver diferença real
+        // Atualiza se Firebase tem mais registros OU registros diferentes
         const changed =
           records.length !== _dbCache.length ||
           records.some(fr => {
@@ -3759,7 +3768,7 @@
           refreshAllUI(records);
         }
       }).catch(() => {});
-    }, 8000);
+    }, 5000);
   }
 
   function collectFormData() {
