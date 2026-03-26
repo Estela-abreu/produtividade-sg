@@ -3600,23 +3600,54 @@
   function loadDB() { return [..._dbCache]; }
 
   // Salva um único registro no Firebase + localStorage
-  function saveRecordToFirebase(record, onConfirmed) {
+  // Usa SDK primeiro, REST API como fallback
+  function saveRecordToFirebase(record) {
     // 1. Atualiza cache e localStorage imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
     _dbCache.sort((a, b) => b.id - a.id);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    // 2. Grava no Firebase e confirma
+    // 2. Tenta SDK do Firebase
     db.ref('produtividade/records/r_' + record.id).set(record)
       .then(() => {
         setFbStatus(true);
-        if (onConfirmed) onConfirmed(true);
+        console.log('[FB] Registro salvo via SDK:', record.id);
       })
       .catch(e => {
-        console.warn('Save error:', e);
-        showFirebaseRulesWarning();
-        if (onConfirmed) onConfirmed(false);
+        console.warn('[FB] SDK falhou, tentando REST API:', e.message);
+        // 3. Fallback: REST API do Firebase
+        _saveViaREST(record);
+      });
+  }
+
+  // Fallback REST API — funciona mesmo quando WebSocket falha
+  function _saveViaREST(record) {
+    const url = `https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${record.id}.json`;
+    fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    })
+    .then(r => r.json())
+    .then(() => {
+      setFbStatus(true);
+      console.log('[FB] Registro salvo via REST API:', record.id);
+    })
+    .catch(e => {
+      console.error('[FB] REST API também falhou:', e.message);
+      showFirebaseRulesWarning();
+    });
+  }
+
+  // Busca todos os registros via REST API (fallback para quando listener não funciona)
+  function _fetchViaREST() {
+    const url = `https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json`;
+    return fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return [];
+        return Object.values(data).sort((a, b) => b.id - a.id);
       });
   }
 
@@ -3779,28 +3810,35 @@
       setFbStatus(false);
     }
 
-    // Polling a cada 5s — garante sincronização entre usuários
+    // Polling a cada 4s — usa REST API como fallback se SDK falhar
     setInterval(() => {
       if (_deleting) return;
-      db.ref('produtividade/records').once('value').then(snap => {
-        const data = snap.val();
-        if (!data) return;
 
-        const records = Object.values(data).sort((a, b) => b.id - a.id);
+      // Tenta SDK primeiro, depois REST
+      const tryFetch = db.ref('produtividade/records').once('value')
+        .then(snap => {
+          const data = snap.val();
+          if (!data) return null;
+          return Object.values(data).sort((a, b) => b.id - a.id);
+        })
+        .catch(() => _fetchViaREST()); // fallback REST
+
+      tryFetch.then(records => {
+        if (!records || records.length === 0) return;
         const changed =
           records.length !== _dbCache.length ||
           records.some(fr => {
             const cached = _dbCache.find(r => String(r.id) === String(fr.id));
             return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
           });
-
         if (changed) {
+          console.log('[FB] Polling detectou mudança —', records.length, 'registros');
           _dbCache = records;
           try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
           refreshAllUI(records);
         }
       }).catch(() => {});
-    }, 5000);
+    }, 4000);
   }
 
   function collectFormData() {
@@ -3886,22 +3924,13 @@
     const toastEl = document.getElementById('saveToast');
     const toastMsg = document.getElementById('saveToastMsg');
 
-    // Fase 1 — salvando (amarelo)
-    toastMsg.textContent = `⏳ Salvando ${registroId}...`;
-    toastEl.style.background = '#D97706';
+    // Mostra confirmação imediatamente — não espera Firebase
+    toastMsg.textContent = `✅ ${registroId} salvo! ${d}/${m}/${y} · Turno ${turno} · ${equipe}`;
+    toastEl.style.background = 'var(--green-dark)';
     toastEl.classList.add('show');
+    setTimeout(() => { toastEl.classList.remove('show'); toastEl.style.background = ''; }, 3500);
 
-    saveRecordToFirebase(record, (ok) => {
-      // Fase 2 — confirmado (verde) ou erro (vermelho)
-      if (ok) {
-        toastMsg.textContent = `✅ ${registroId} gravado com sucesso! ${d}/${m}/${y} · Turno ${turno} · ${equipe}`;
-        toastEl.style.background = 'var(--green-dark)';
-      } else {
-        toastMsg.textContent = `⚠️ Erro ao gravar ${registroId} no servidor. Verifique a conexão.`;
-        toastEl.style.background = '#DC2626';
-      }
-      setTimeout(() => { toastEl.classList.remove('show'); toastEl.style.background = ''; }, 4000);
-    });
+    saveRecordToFirebase(record);
 
     sessionStorage.removeItem(DRAFT_KEY);
 
