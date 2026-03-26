@@ -1474,6 +1474,8 @@
   </div>
   <div id="fbDebugContent" style="line-height:1.7;"></div>
   <button onclick="runFbDiag()" style="margin-top:0.75rem;width:100%;font-family:monospace;font-size:0.75rem;padding:6px;border-radius:6px;border:none;background:#3B82F6;color:white;cursor:pointer;">▶ Rodar diagnóstico agora</button>
+  <button onclick="forceSyncNow()" style="margin-top:0.4rem;width:100%;font-family:monospace;font-size:0.75rem;padding:6px;border-radius:6px;border:none;background:#10B981;color:white;cursor:pointer;">🔄 Buscar dados do Firebase agora</button>
+  <button onclick="pushLocalToFirebase()" style="margin-top:0.4rem;width:100%;font-family:monospace;font-size:0.75rem;padding:6px;border-radius:6px;border:none;background:#F59E0B;color:white;cursor:pointer;">⬆ Enviar dados locais ao Firebase</button>
 </div>
 
 <!-- ── TELA DE LOGIN ── -->
@@ -6789,6 +6791,50 @@ entryLines.join('\n\n') + '\n' +
     }).catch(err => {
       lines.push(`<br>❌ <b style="color:#F87171">Erro Firebase: ${err.message}</b>`);
       el.innerHTML = lines.join('<br>');
+    });
+  }
+
+  function forceSyncNow() {
+    const el = document.getElementById('fbDebugContent');
+    if (el) el.innerHTML = '⏳ Buscando dados do Firebase...';
+    db.ref('produtividade/records').once('value').then(snap => {
+      const data = snap.val();
+      const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+      if (records.length > 0) {
+        _dbCache = records;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+        refreshAllUI(records);
+        if (el) el.innerHTML = `✅ <b style="color:#4ADE80">${records.length} registros carregados do Firebase!</b>`;
+      } else {
+        if (el) el.innerHTML = `⚠️ <b style="color:#FBBF24">Firebase vazio. Use "Enviar dados locais" se tiver registros.</b>`;
+      }
+    }).catch(e => {
+      if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro: ${e.message}</b>`;
+    });
+  }
+
+  function pushLocalToFirebase() {
+    const el = document.getElementById('fbDebugContent');
+    const local = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch { return []; } })();
+    if (local.length === 0) {
+      if (el) el.innerHTML = `⚠️ <b style="color:#FBBF24">Nenhum dado local para enviar.</b>`;
+      return;
+    }
+    if (el) el.innerHTML = `⏳ Enviando ${local.length} registros ao Firebase...`;
+    let done = 0;
+    local.forEach(r => {
+      db.ref('produtividade/records/r_' + r.id).set(r)
+        .then(() => {
+          done++;
+          if (done === local.length) {
+            if (el) el.innerHTML = `✅ <b style="color:#4ADE80">${done} registros enviados ao Firebase com sucesso!</b>`;
+            _dbCache = local;
+            refreshAllUI(local);
+          }
+        })
+        .catch(e => {
+          if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro ao enviar: ${e.message}</b>`;
+        });
     });
   }
 
