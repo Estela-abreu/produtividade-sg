@@ -1466,6 +1466,16 @@
 </head>
 <body>
 
+<!-- ── DEBUG PANEL ── -->
+<div id="fbDebugPanel" style="display:none;position:fixed;bottom:1rem;left:1rem;background:#1F2937;color:#F9FAFB;padding:1rem 1.25rem;border-radius:10px;z-index:9999;font-size:0.75rem;font-family:monospace;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.65rem;">
+    <span style="font-weight:800;font-size:0.8rem;">🔍 Diagnóstico Firebase</span>
+    <button onclick="toggleFbDebug()" style="background:none;border:none;color:#9CA3AF;font-size:1rem;cursor:pointer;">✕</button>
+  </div>
+  <div id="fbDebugContent" style="line-height:1.7;"></div>
+  <button onclick="runFbDiag()" style="margin-top:0.75rem;width:100%;font-family:monospace;font-size:0.75rem;padding:6px;border-radius:6px;border:none;background:#3B82F6;color:white;cursor:pointer;">▶ Rodar diagnóstico agora</button>
+</div>
+
 <!-- ── TELA DE LOGIN ── -->
 <div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:flex;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
   <div style="background:white;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
@@ -1565,6 +1575,7 @@
       <div class="topbar-metric" id="fbStatusMetric">
         <span id="fbStatusDot" style="width:8px;height:8px;border-radius:50%;background:#6B7280;display:inline-block;transition:background 0.3s;"></span>
         <span class="topbar-metric-label" id="fbStatusLabel">Conectando...</span>
+        <span id="fbDebugLabel" style="font-size:0.65rem;color:#F59E0B;margin-left:4px;cursor:pointer;" title="Clique para ver diagnóstico" onclick="toggleFbDebug()">🔍</span>
       </div>
       <div class="topbar-sep"></div>
       <div class="topbar-metric clock-metric">
@@ -6725,6 +6736,60 @@ entryLines.join('\n\n') + '\n' +
     const modal = document.getElementById('evidPreviewModal');
     if (modal) modal.style.display = 'none';
     document.body.style.overflow = '';
+  }
+
+  // ── DIAGNÓSTICO FIREBASE ──
+  function toggleFbDebug() {
+    const p = document.getElementById('fbDebugPanel');
+    if (p.style.display === 'none') { p.style.display = 'block'; runFbDiag(); }
+    else p.style.display = 'none';
+  }
+
+  function runFbDiag() {
+    const el = document.getElementById('fbDebugContent');
+    if (!el) return;
+    el.innerHTML = '⏳ Verificando...';
+
+    const lines = [];
+    lines.push(`📦 Cache local: <b style="color:#4ADE80">${_dbCache.length} registros</b>`);
+    lines.push(`💾 localStorage: <b style="color:#60A5FA">${(() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]').length; } catch{return 0;} })()} registros</b>`);
+    lines.push(`🔌 Firebase ready: <b>${_firebaseReady ? '<span style="color:#4ADE80">SIM</span>' : '<span style="color:#F87171">NÃO</span>'}</b>`);
+    lines.push(`🗑 Deletando: <b>${_deleting}</b>`);
+    lines.push(`🌐 Protocolo: <b style="color:#FCD34D">${location.protocol}</b>`);
+    lines.push(`🔗 URL: <b style="color:#FCD34D;font-size:0.65rem">${location.href.substring(0,50)}</b>`);
+
+    el.innerHTML = lines.join('<br>') + '<br>⏳ Lendo Firebase...';
+
+    // Read directly from Firebase
+    db.ref('produtividade/records').once('value').then(snap => {
+      const data = snap.val();
+      const fbCount = data ? Object.keys(data).length : 0;
+      const fbIds = data ? Object.keys(data).slice(0,3).join(', ') : '—';
+      lines.push(`<br>🔥 Firebase tem: <b style="color:${fbCount>0?'#4ADE80':'#F87171'}">${fbCount} registros</b>`);
+      lines.push(`🔑 Primeiros IDs: <span style="color:#FCD34D;font-size:0.65rem">${fbIds}</span>`);
+
+      if (fbCount > _dbCache.length) {
+        lines.push(`<br>⚠️ <b style="color:#FBBF24">Firebase tem MAIS registros que o cache!</b>`);
+        lines.push(`→ Forçando sincronização...`);
+        const records = Object.values(data).sort((a,b) => b.id - a.id);
+        _dbCache = records;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+        refreshAllUI(records);
+        lines.push(`✅ <b style="color:#4ADE80">Sincronizado! ${records.length} registros carregados.</b>`);
+      } else if (fbCount === _dbCache.length) {
+        lines.push(`<br>✅ <b style="color:#4ADE80">Cache e Firebase sincronizados.</b>`);
+      } else if (fbCount < _dbCache.length && fbCount > 0) {
+        lines.push(`<br>⚠️ <b style="color:#FBBF24">Cache tem mais dados que Firebase. Enviando...</b>`);
+        _dbCache.forEach(r => {
+          db.ref('produtividade/records/r_' + r.id).set(r).catch(()=>{});
+        });
+      }
+
+      el.innerHTML = lines.join('<br>');
+    }).catch(err => {
+      lines.push(`<br>❌ <b style="color:#F87171">Erro Firebase: ${err.message}</b>`);
+      el.innerHTML = lines.join('<br>');
+    });
   }
 
   function doLogin() {
