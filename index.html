@@ -3582,22 +3582,24 @@
   let _dbCache      = [];
   let _firebaseReady = false;
   let _deleting     = false; // true apenas durante exclusão
+  let _lastSaveTime = 0;      // timestamp do último salvamento local
 
   function loadDB() { return [..._dbCache]; }
 
   // Salva um único registro no Firebase + localStorage
   function saveRecordToFirebase(record) {
-    // ✅ CORREÇÃO: Salva no Firebase PRIMEIRO, depois atualiza cache
-    // Isso garante que o listener Firebase notificará TODOS os usuários
+    // ✅ Atualiza cache local imediatamente (UX instantânea)
+    _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
+    _dbCache.unshift(record);
+    _dbCache.sort((a, b) => b.id - a.id);
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+    
+    // Marca timestamp para proteger contra sobrescrita imediata
+    _lastSaveTime = Date.now();
+
+    // Salva no Firebase → dispara listener para OUTROS usuários
     db.ref('produtividade/records/r_' + record.id).set(record)
-      .then(() => {
-        // Firebase confirmou → atualiza cache local
-        _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
-        _dbCache.unshift(record);
-        _dbCache.sort((a, b) => b.id - a.id);
-        try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
-        setFbStatus(true);
-      })
+      .then(() => setFbStatus(true))
       .catch(e => { 
         console.warn('Save error:', e); 
         showFirebaseRulesWarning(); 
@@ -3651,11 +3653,18 @@
     db.ref('produtividade/records').on('value', snap => {
       if (_deleting) return;
 
+      // Proteção: ignora apenas no 1º segundo após salvamento local
+      // (evita sobrescrever salvamento que ainda não foi confirmado pelo Firebase)
+      const timeSinceSave = Date.now() - _lastSaveTime;
+      if (_lastSaveTime > 0 && timeSinceSave < 1000) {
+        console.log('⏳ Listener aguardando confirmação de salvamento...');
+        return;
+      }
+
       const data = snap.val();
       const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
 
-      // ✅ CORREÇÃO: SEMPRE aceita dados do Firebase (nunca ignora, mesmo se vazio)
-      // Firebase é a fonte ÚNICA de verdade — se está vazio, cache deve refletir isso
+      // ✅ SEMPRE aceita dados do Firebase (fonte única de verdade)
       _dbCache = records;
       _firebaseReady = true;
       try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
