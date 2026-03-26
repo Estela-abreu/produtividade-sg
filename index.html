@@ -3627,24 +3627,27 @@
   // Remove UM registro diretamente do Firebase
   function doDeleteRecord(id) {
     const idStr = String(id);
-    _opInProgress = true;
 
-    // Remove do cache imediatamente
+    // 1. Remove do cache imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
 
-    // Deleta do Firebase
+    // 2. DESLIGA o listener para evitar que ele restaure o dado deletado
+    db.ref('produtividade/records').off('value');
+
+    // 3. Deleta do Firebase
     db.ref('produtividade/records/r_' + id).remove()
       .then(() => {
         setFbStatus(true);
-        // Aguarda 1s antes de liberar o listener (evita race condition)
-        setTimeout(() => { _opInProgress = false; }, 1000);
+        // 4. Aguarda 2s e RELIGA o listener
+        setTimeout(() => { _reattachListener(); }, 2000);
       })
       .catch(e => {
         console.warn('Erro ao excluir:', e);
-        _opInProgress = false;
+        showFirebaseRulesWarning();
+        setTimeout(() => { _reattachListener(); }, 1000);
       });
 
-    // Atualiza UI imediatamente
+    // 5. Atualiza UI imediatamente
     updateTabBadge();
     updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     updateCoordenacaoBadge();
@@ -3652,6 +3655,22 @@
     renderCfgRegistros();
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
+  }
+
+  function _reattachListener() {
+    db.ref('produtividade/records').on('value', snap => {
+      if (_opInProgress) return;
+      const data = snap.val();
+      const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+      _dbCache = records;
+      _firebaseReady = true;
+      localStorage.setItem(DB_KEY, JSON.stringify(records));
+      refreshAllUI(records);
+    }, err => {
+      console.warn('Listener error:', err);
+      if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
+      else setFbStatus(false);
+    });
   }
 
   function showFirebaseRulesWarning() {
@@ -3696,37 +3715,12 @@
 
   function initFirebaseSync() {
     try {
-      // Monitor connection
       db.ref('.info/connected').on('value', snap => {
         setFbStatus(snap.val() === true);
       });
 
-      // Listener principal — Firebase dispara para TODOS quando qualquer usuário salva
-      db.ref('produtividade/records').on('value', snap => {
-        // Ignora durante operação crítica (salvar/excluir)
-        if (_opInProgress) return;
-
-        const data = snap.val();
-        const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
-
-        _dbCache = records;
-        _firebaseReady = true;
-        localStorage.setItem(DB_KEY, JSON.stringify(records)); // backup offline
-        refreshAllUI(records);
-
-      }, err => {
-        console.warn('Erro listener Firebase:', err);
-        _firebaseReady = false;
-        if (err.code === 'PERMISSION_DENIED') {
-          showFirebaseRulesWarning();
-        } else {
-          setFbStatus(false);
-          // Fallback offline
-          const local = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch { return []; } })();
-          _dbCache = local;
-          refreshAllUI(local);
-        }
-      });
+      // Liga o listener principal
+      _reattachListener();
 
       // Sync contatos
       db.ref('produtividade/contacts').on('value', snap => {
@@ -3753,7 +3747,6 @@
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
         const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
-        // Só atualiza se houver diferença real
         const changed = records.length !== _dbCache.length ||
           records.some(fr => {
             const local = _dbCache.find(r => String(r.id) === String(fr.id));
