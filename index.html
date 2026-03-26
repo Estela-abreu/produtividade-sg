@@ -3659,13 +3659,21 @@
 
   function _reattachListener() {
     db.ref('produtividade/records').on('value', snap => {
-      if (_opInProgress) return;
       const data = snap.val();
       const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+
+      // NUNCA sobrescreve com lista vazia se já temos dados
+      // (Firebase pode retornar vazio momentaneamente na reconexão)
+      if (records.length === 0 && _dbCache.length > 0) {
+        console.warn('Firebase retornou vazio — mantendo cache atual');
+        return;
+      }
+
       _dbCache = records;
       _firebaseReady = true;
       localStorage.setItem(DB_KEY, JSON.stringify(records));
       refreshAllUI(records);
+
     }, err => {
       console.warn('Listener error:', err);
       if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
@@ -3714,13 +3722,50 @@
   }
 
   function initFirebaseSync() {
+    // 1. Carrega localStorage IMEDIATAMENTE como backup
+    //    (usuário vê os dados enquanto Firebase carrega)
+    const localBackup = (() => {
+      try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch { return []; }
+    })();
+    if (localBackup.length > 0) {
+      _dbCache = localBackup;
+      refreshAllUI(localBackup);
+    }
+
     try {
       db.ref('.info/connected').on('value', snap => {
         setFbStatus(snap.val() === true);
       });
 
       // Liga o listener principal
-      _reattachListener();
+      db.ref('produtividade/records').on('value', snap => {
+        const data = snap.val();
+        const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+
+        if (records.length === 0) {
+          // Firebase vazio mas temos dados locais → sobe para o Firebase
+          if (_dbCache.length > 0) {
+            console.log('Firebase vazio — enviando dados locais...');
+            _dbCache.forEach(r => {
+              db.ref('produtividade/records/r_' + r.id).set(r).catch(() => {});
+            });
+          }
+          // Não sobrescreve o cache com vazio
+          return;
+        }
+
+        // Firebase tem dados — é a fonte de verdade
+        _dbCache = records;
+        _firebaseReady = true;
+        localStorage.setItem(DB_KEY, JSON.stringify(records));
+        refreshAllUI(records);
+
+      }, err => {
+        console.warn('Listener error:', err);
+        _firebaseReady = false;
+        if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
+        else setFbStatus(false);
+      });
 
       // Sync contatos
       db.ref('produtividade/contacts').on('value', snap => {
@@ -3736,17 +3781,15 @@
     } catch(e) {
       console.warn('Firebase init error:', e);
       setFbStatus(false);
-      const local = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch { return []; } })();
-      _dbCache = local;
-      refreshAllUI(local);
     }
 
-    // Polling a cada 8s como garantia extra (para file://)
+    // Polling a cada 8s — garante sincronização multi-usuário
     setInterval(() => {
       if (_opInProgress) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
-        const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+        if (!data) return; // Firebase vazio — não limpa o cache
+        const records = Object.values(data).sort((a,b) => b.id - a.id);
         const changed = records.length !== _dbCache.length ||
           records.some(fr => {
             const local = _dbCache.find(r => String(r.id) === String(fr.id));
