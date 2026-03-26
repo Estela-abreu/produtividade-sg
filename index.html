@@ -3528,10 +3528,10 @@
             </div>
           </div>
           <div class="r-entry-fields" style="grid-template-columns:1fr;">
-            <div class="r-entry-field-block">
+            ${e.obs ? `<div class="r-entry-field-block">
               <div class="r-entry-field-label">📋 Observação</div>
-              <div class="r-entry-just ${e.obs ? '' : 'empty'}">${e.obs || 'Nenhuma observação informada.'}</div>
-            </div>
+              <div class="r-entry-just">${e.obs}</div>
+            </div>` : ''}
           </div>
         </div>`;
       list.appendChild(card);
@@ -3588,15 +3588,34 @@
 
   // saveRecordToFirebase — adds/updates single record atomically
   function saveRecordToFirebase(record) {
+    // Add to cache immediately
     _dbCache = _dbCache || loadDB();
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
     localStorage.setItem(DB_KEY, JSON.stringify(_dbCache));
+
+    // Guard: tell listener to not overwrite until save confirmed
+    _savingRecord = true;
+    _pendingSaveId = String(record.id);
+
     try {
       db.ref('produtividade/records/r_' + record.id).set(record)
-        .then(() => setFbStatus(true))
-        .catch(e => { console.warn('Firebase save error:', e); showFirebaseRulesWarning(); });
-    } catch(e) { console.warn('Firebase unavailable:', e); }
+        .then(() => {
+          setFbStatus(true);
+          _savingRecord = false;
+          _pendingSaveId = null;
+        })
+        .catch(e => {
+          console.warn('Firebase save error:', e);
+          showFirebaseRulesWarning();
+          _savingRecord = false;
+          _pendingSaveId = null;
+        });
+    } catch(e) {
+      console.warn('Firebase unavailable:', e);
+      _savingRecord = false;
+      _pendingSaveId = null;
+    }
   }
 
   // saveDB — saves a list of records, updating each one individually in Firebase
@@ -3663,14 +3682,21 @@
 
       // Real-time listener — Firebase is the single source of truth
       db.ref('produtividade/records').on('value', snap => {
+        // Skip if a delete or save is in progress
         if (_deletingRecord) return;
+
         const data = snap.val();
         const firebaseRecords = data
           ? Object.values(data).sort((a, b) => b.id - a.id)
           : [];
 
+        // If saving, ensure new record is in Firebase data before accepting
+        if (_savingRecord && _pendingSaveId) {
+          const hasPending = firebaseRecords.some(r => String(r.id) === _pendingSaveId);
+          if (!hasPending) return; // not synced yet — wait for next event
+        }
+
         if (firebaseRecords.length === 0) {
-          // Firebase empty: push local records up if we have any (first-time sync)
           const localRecords = _dbCache || (() => {
             try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch { return []; }
           })();
@@ -3686,7 +3712,6 @@
           return;
         }
 
-        // Firebase has data — use it as-is (authoritative)
         _dbCache = firebaseRecords;
         _firebaseReady = true;
         localStorage.setItem(DB_KEY, JSON.stringify(firebaseRecords));
@@ -3729,7 +3754,7 @@
 
   function startPolling() {
     setInterval(() => {
-      if (_deletingRecord) return;
+      if (_deletingRecord || _savingRecord) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
         const firebaseRecords = data
@@ -4021,7 +4046,8 @@
           <div class="db-record-right">
             <span class="db-record-total" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">⏱ ${pad(rh)}h ${pad(rmn)}min</span>
             <div class="db-record-actions">
-              <button class="db-action-btn" data-action="view" data-id="${r.id}" title="Ver resumo">👁</button>
+              <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
+              <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -4038,6 +4064,10 @@
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
+      });
+      card.querySelector('[data-action="edit"]')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openEditModal(r.id);
       });
       card.querySelector('[data-action="delete"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -4182,9 +4212,25 @@
               <div class="r-entry-time" style="color:${e.mins>0?color:'var(--gray-400)'}">⏱ ${e.mins>0?timeStr:'Sem tempo'}</div>
             </div>
             <div class="r-entry-fields" style="grid-template-columns:1fr;">
-              ${(e.catKey === 'incidencia' || e.catKey === 'deslocamento') && (e.hinicio || e.hfim) ? `
-              <div class="r-entry-field-block" style="background:${e.catKey==='incidencia'?'#FFFBEB':'#EFF6FF'};border:1px solid ${e.catKey==='incidencia'?'#FCD34D':'#BFDBFE'};">
-                <div class="r-entry-field-label" style="color:${e.catKey==='incidencia'?'#92400E':'#1E4DA1'};">${e.catKey==='incidencia'?'🔢 Número da incidência':'🕐 Período do deslocamento'}</div>
+              ${(e.catKey === 'incidencia' || e.catKey === 'deslocamento' || e.catKey === 'plataforma' || e.catKey === 'ocioso') && (e.hinicio || e.hfim) ? `
+              <div class="r-entry-field-block" style="background:${
+                e.catKey==='incidencia' ? '#FFFBEB' :
+                e.catKey==='deslocamento' ? '#EFF6FF' :
+                e.catKey==='plataforma' ? '#ECFDF5' : '#FFF1F2'
+              };border:1px solid ${
+                e.catKey==='incidencia' ? '#FCD34D' :
+                e.catKey==='deslocamento' ? '#BFDBFE' :
+                e.catKey==='plataforma' ? '#A7F3D0' : '#FDA4AF'
+              };">
+                <div class="r-entry-field-label" style="color:${
+                  e.catKey==='incidencia' ? '#92400E' :
+                  e.catKey==='deslocamento' ? '#1E4DA1' :
+                  e.catKey==='plataforma' ? '#065F46' : '#9F1239'
+                };">${
+                  e.catKey==='incidencia' ? '🔢 Número da incidência' :
+                  e.catKey==='deslocamento' ? '🕐 Período do deslocamento' :
+                  e.catKey==='plataforma' ? '🕐 Período de plataforma' : '🕐 Período ocioso'
+                }</div>
                 ${e.catKey==='incidencia' ? `
                 <div style="display:flex;align-items:center;gap:0.65rem;">
                   <div class="r-entry-just" style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:0.08em;">${e.numinc || '—'}</div>
@@ -4201,7 +4247,7 @@
                 <div class="r-entry-field-label" style="color:#92400E;">📝 Observação da causa</div>
                 <div class="r-entry-just">${e.obsCausa}</div>
               </div>` : ''}` : ''}
-              <div class="r-entry-field-block"><div class="r-entry-field-label">📋 Observação</div><div class="r-entry-just ${e.obs?'':'empty'}">${e.obs||'—'}</div></div>
+              ${e.obs ? `<div class="r-entry-field-block"><div class="r-entry-field-label">📋 Observação</div><div class="r-entry-just">${e.obs}</div></div>` : ""}
             </div>
             <div class="r-entry-fields">${supBlock}</div>
           </div>`;
@@ -6109,6 +6155,10 @@ entryLines.join('\n\n') + '\n' +
   }
 
   // Core deletion logic shared by both DB tab and Config tab
+  let _savingRecord  = false; // guard: ignore listener while saving
+  let _deletingRecord = false; // guard: ignore listener while deleting
+  let _pendingSaveId  = null;  // id of record being saved
+
   function doDeleteRecord(id) {
     const idStr = String(id);
     _deletingRecord = true;
@@ -6119,9 +6169,18 @@ entryLines.join('\n\n') + '\n' +
 
     try {
       db.ref('produtividade/records/r_' + id).remove()
-        .then(() => { _deletingRecord = false; setFbStatus(true); })
-        .catch(e => { console.warn('Firebase delete error:', e); _deletingRecord = false; });
-    } catch(e) { _deletingRecord = false; }
+        .then(() => {
+          // Re-read from Firebase to confirm deletion, then clear flag
+          setTimeout(() => { _deletingRecord = false; }, 2000);
+          setFbStatus(true);
+        })
+        .catch(e => {
+          console.warn('Firebase delete error:', e);
+          setTimeout(() => { _deletingRecord = false; }, 2000);
+        });
+    } catch(e) {
+      setTimeout(() => { _deletingRecord = false; }, 2000);
+    }
 
     updateTabBadge();
     updateTabBadgeRetorno(records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
@@ -6131,8 +6190,6 @@ entryLines.join('\n\n') + '\n' +
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
   }
-
-  let _deletingRecord = false;
 
   function cfgDeleteRecord(id) {
     const idStr = String(id);
@@ -6167,56 +6224,85 @@ entryLines.join('\n\n') + '\n' +
     _editingRecordId = id;
     const [ry,rm,rd] = r.data.split('-');
     const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const badge = r.registroId ? ` · ${r.registroId}` : '';
     document.getElementById('editRecordSubtitle').textContent =
-      dias[new Date(r.data+'T12:00:00').getDay()] + ', ' + rd+'/'+rm+'/'+ry + ' · Turno ' + r.turno + ' · ' + r.equipe;
+      dias[new Date(r.data+'T12:00:00').getDay()] + ', ' + rd+'/'+rm+'/'+ry + ' · Turno ' + r.turno + ' · ' + r.equipe + badge;
     document.getElementById('editData').value    = r.data;
     document.getElementById('editTurno').value   = r.turno;
     document.getElementById('editEquipe').value  = r.equipe;
     document.getElementById('editEntrada').value = r.jornadaEntrada || '';
     document.getElementById('editSaida').value   = r.jornadaSaida   || '';
-    // Build entries editor
+
     const entriesEl = document.getElementById('editEntriesList');
     entriesEl.innerHTML = '';
+
     r.entries.forEach((e, idx) => {
       const color = catColors[e.catKey] || '#888';
       const cat   = categorias[e.catKey];
       const card  = document.createElement('div');
       card.className = 'edit-entry-card';
       const causasVal = e.causas ? e.causas.join(', ') : '';
-      const minsTotal = e.h * 60 + (e.mn || 0);
+      const hasTime = ['deslocamento','plataforma','ocioso','reparo','intervalo','incidencia'].includes(e.catKey);
+      const needsLimit = entryNeedsJustificativa(e);
+      const limitBadge = (e.catKey === 'deslocamento' || e.catKey === 'ocioso' || e.catKey === 'plataforma' || e.catKey === 'incidencia')
+        ? `<span style="font-size:0.65rem;font-weight:800;padding:2px 8px;border-radius:99px;${needsLimit ? 'background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;' : 'background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;'}">
+            ${needsLimit ? '⚠️ Fora do tempo' : '✅ Dentro do tempo'}</span>` : '';
+
       card.innerHTML = `
         <div class="edit-entry-header">
-          <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:0.88rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:0.88rem;flex-wrap:wrap;">
             <span style="background:${color}20;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;">${cat?.icon||'?'}</span>
             <span>${cat?.nome||e.catKey}</span>
             <span class="r-entry-num" style="background:${color}">Nº${idx+1}</span>
+            ${limitBadge}
           </div>
         </div>
         <div class="edit-entry-fields">
           ${e.catKey === 'incidencia' ? `
-          <div>
-            <label class="edit-field-label">🔢 Número da incidência</label>
-            <input class="edit-field-input" id="edit_numinc_${idx}" value="${e.numinc||''}">
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
             <div>
-              <label class="edit-field-label">🕐 Início</label>
-              <input type="time" class="edit-field-input" id="edit_hinicio_${idx}" value="${e.hinicio||''}">
+              <label class="edit-field-label">🔢 Número da incidência</label>
+              <input class="edit-field-input" id="edit_numinc_${idx}" value="${e.numinc||''}">
             </div>
             <div>
-              <label class="edit-field-label">🕐 Fim</label>
-              <input type="time" class="edit-field-input" id="edit_hfim_${idx}" value="${e.hfim||''}">
+              <label class="edit-field-label">⚡ Causa</label>
+              <input class="edit-field-input" id="edit_causas_${idx}" value="${causasVal}" placeholder="Ex: VEGETAÇÃO">
             </div>
-          </div>
-          <div style="grid-column:1/-1;">
-            <label class="edit-field-label">⚡ Causas (separadas por vírgula)</label>
-            <input class="edit-field-input" id="edit_causas_${idx}" value="${causasVal}" placeholder="VEGETAÇÃO, CHUVA...">
-          </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+              <div>
+                <label class="edit-field-label">🕐 Início</label>
+                <input type="time" class="edit-field-input" id="edit_hinicio_${idx}" value="${e.hinicio||''}">
+              </div>
+              <div>
+                <label class="edit-field-label">🕐 Fim</label>
+                <input type="time" class="edit-field-input" id="edit_hfim_${idx}" value="${e.hfim||''}">
+              </div>
+            </div>
+            <div>
+              <label class="edit-field-label">📝 Obs. da causa (opcional)</label>
+              <input class="edit-field-input" id="edit_obscausa_${idx}" value="${e.obsCausa||''}">
+            </div>
+          ` : hasTime ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+              <div>
+                <label class="edit-field-label">🕐 Início</label>
+                <input type="time" class="edit-field-input" id="edit_hinicio_${idx}" value="${e.hinicio||''}"
+                  ${e.catKey === 'plataforma' ? 'style="background:#D1FAE5;opacity:0.85;"' : ''}>
+              </div>
+              <div>
+                <label class="edit-field-label">🕐 Fim</label>
+                <input type="time" class="edit-field-input" id="edit_hfim_${idx}" value="${e.hfim||''}">
+              </div>
+            </div>
+            <div>
+              <label class="edit-field-label">⏱ Duração (minutos)</label>
+              <input type="number" class="edit-field-input" id="edit_mins_${idx}" value="${e.mins||0}" min="0" max="1440"
+                style="color:${color};font-weight:700;" placeholder="Ou calcule pelos horários acima">
+            </div>
           ` : `
-          <div>
-            <label class="edit-field-label">⏱ Duração (minutos)</label>
-            <input type="number" class="edit-field-input" id="edit_mins_${idx}" value="${minsTotal}" min="0" max="1440">
-          </div>
+            <div>
+              <label class="edit-field-label">⏱ Duração (minutos)</label>
+              <input type="number" class="edit-field-input" id="edit_mins_${idx}" value="${e.mins||0}" min="0" max="1440">
+            </div>
           `}
           <div style="grid-column:1/-1;">
             <label class="edit-field-label">📋 Observação</label>
@@ -6225,6 +6311,7 @@ entryLines.join('\n\n') + '\n' +
         </div>`;
       entriesEl.appendChild(card);
     });
+
     const modal = document.getElementById('editRecordModal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -6236,40 +6323,89 @@ entryLines.join('\n\n') + '\n' +
     const rIdx = records.findIndex(r => r.id === id);
     if (rIdx === -1) return;
     const r = records[rIdx];
-    // Update identification
-    r.data          = document.getElementById('editData').value   || r.data;
-    r.turno         = document.getElementById('editTurno').value  || r.turno;
-    r.equipe        = document.getElementById('editEquipe').value.trim() || r.equipe;
-    r.jornadaEntrada= document.getElementById('editEntrada').value || '';
-    r.jornadaSaida  = document.getElementById('editSaida').value   || '';
-    // Update entries
+
+    // Update header fields
+    r.data           = document.getElementById('editData').value    || r.data;
+    r.turno          = document.getElementById('editTurno').value   || r.turno;
+    r.equipe         = document.getElementById('editEquipe').value.trim() || r.equipe;
+    r.jornadaEntrada = document.getElementById('editEntrada').value || '';
+    r.jornadaSaida   = document.getElementById('editSaida').value   || '';
+
+    // Update each entry
     r.entries.forEach((e, idx) => {
       if (e.catKey === 'incidencia') {
-        e.numinc  = (document.getElementById('edit_numinc_' + idx)?.value  || '').trim();
-        e.hinicio = document.getElementById('edit_hinicio_' + idx)?.value  || '';
-        e.hfim    = document.getElementById('edit_hfim_'    + idx)?.value  || '';
-        const causasRaw = (document.getElementById('edit_causas_' + idx)?.value || '');
+        e.numinc  = (document.getElementById('edit_numinc_'  + idx)?.value || '').trim();
+        e.hinicio = document.getElementById('edit_hinicio_' + idx)?.value || '';
+        e.hfim    = document.getElementById('edit_hfim_'    + idx)?.value || '';
+        const causasRaw = document.getElementById('edit_causas_' + idx)?.value || '';
         e.causas  = causasRaw.split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
-        // Recalc mins from times
         if (e.hinicio && e.hfim) {
           const [ih,im] = e.hinicio.split(':').map(Number);
           const [fh,fm] = e.hfim.split(':').map(Number);
           let m = (fh*60+fm)-(ih*60+im); if(m<0) m+=1440;
           e.mins = m; e.h = Math.floor(m/60); e.mn = m%60;
         }
+        // Recompute obsCausa
+        e.obsCausa = (document.getElementById('edit_obscausa_' + idx)?.value || '').trim() || e.obsCausa;
       } else {
-        const mins = parseInt(document.getElementById('edit_mins_' + idx)?.value) || 0;
-        e.mins = mins; e.h = Math.floor(mins/60); e.mn = mins%60;
+        // For time-based entries: prefer hinicio/hfim if available, else use mins input
+        const hini = document.getElementById('edit_hinicio_' + idx)?.value || '';
+        const hfim = document.getElementById('edit_hfim_'    + idx)?.value || '';
+        if (hini && hfim) {
+          e.hinicio = hini; e.hfim = hfim;
+          const [ih,im] = hini.split(':').map(Number);
+          const [fh,fm] = hfim.split(':').map(Number);
+          let m = (fh*60+fm)-(ih*60+im); if(m<0) m+=1440;
+          e.mins = m; e.h = Math.floor(m/60); e.mn = m%60;
+        } else {
+          const mins = parseInt(document.getElementById('edit_mins_' + idx)?.value) || 0;
+          e.mins = mins; e.h = Math.floor(mins/60); e.mn = mins%60;
+          if (hini) e.hinicio = hini;
+          if (hfim) e.hfim = hfim;
+        }
       }
       e.obs = (document.getElementById('edit_obs_' + idx)?.value || '').trim();
+
+      // Recompute classification status
+      if (e.catKey === 'deslocamento') {
+        e.deslocStatus = e.mins <= DESLOC_LIMITE_MIN ? 'dentro' : 'fora';
+      } else if (e.catKey === 'ocioso') {
+        e.ociososStatus = e.mins <= OCIOSO_LIMITE_MIN ? 'dentro' : 'fora';
+      } else if (e.catKey === 'plataforma') {
+        e.plataformaStatus = e.mins <= PLATAFORMA_LIMITE_MIN ? 'dentro' : 'fora';
+      }
     });
+
     // Recalc total
     r.totalMin = r.entries.reduce((s, e) => s + e.mins, 0);
+    r.h = Math.floor(r.totalMin / 60);
+    r.mn = r.totalMin % 60;
+
+    // REVALIDATION: check if any entry now needs justificativa
+    const hasDesvio = r.entries.some(e => entryNeedsJustificativa(e));
+
+    if (hasDesvio) {
+      // Reset justificativa & coordination — send back to Justificativa flow
+      r.status = undefined;
+      r.supervisorAnswers = [];
+      r.coordStatus = undefined;
+      r.coordMotivo = undefined;
+      showCopyToast('⚠️ Registro editado com desvio — enviado para Justificativa!');
+    } else {
+      // No desvio — stays in Banco de Dados, clear any previous justificativa flags
+      r.status = 'revisado';
+      r.coordStatus = 'aprovado';
+      showCopyToast('✅ Registro atualizado! Sem desvios detectados.');
+    }
+
+    r.editedAt = new Date().toISOString();
+    records[rIdx] = r;
     saveDB(records);
     closeEditModal();
-    renderCfgRegistros();
     applyDBFilters();
-    showCopyToast('✅ Registro atualizado!');
+    renderRetorno();
+    updateTabBadgeRetorno(loadDB().filter(rec => needsJustificativa(rec) && rec.status !== 'revisado').length);
+    updateCoordenacaoBadge();
   }
 
   function closeEditModal() {
