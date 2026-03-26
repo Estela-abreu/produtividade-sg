@@ -1462,12 +1462,6 @@
     letter-spacing: 0.03em;
     border-top: 1px solid var(--gray-200);
   }
-
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-    20%, 40%, 60%, 80% { transform: translateX(8px); }
-  }
 </style>
 </head>
 <body>
@@ -1497,8 +1491,8 @@
       ❌ Usuário ou senha incorretos.
     </div>
 
-    <button id="loginBtn" onclick="doLogin()"
-      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;transition:all 0.3s;">
+    <button onclick="doLogin()"
+      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;">
       ENTRAR
     </button>
 
@@ -3588,129 +3582,28 @@
   let _dbCache      = [];
   let _firebaseReady = false;
   let _deleting     = false; // true apenas durante exclusão
-  let _lastSaveTime = 0;      // timestamp do último salvamento local
 
   function loadDB() { return [..._dbCache]; }
 
   // Salva um único registro no Firebase + localStorage
-  function saveRecordToFirebase(record) {
-    console.log('🔄 Iniciando salvamento:', {
-      id: record.id,
-      registroId: record.registroId,
-      cache_antes: _dbCache.length
-    });
-
-    // ✅ Atualiza cache local imediatamente (UX instantânea)
+  function saveRecordToFirebase(record, onConfirmed) {
+    // 1. Atualiza cache e localStorage imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
     _dbCache.sort((a, b) => b.id - a.id);
-    try { 
-      localStorage.setItem(DB_KEY, JSON.stringify(_dbCache));
-      console.log('💾 LocalStorage atualizado:', _dbCache.length, 'registros');
-    } catch(e) {
-      console.error('❌ Erro ao salvar localStorage:', e);
-    }
-    
-    // Marca timestamp para proteção
-    _lastSaveTime = Date.now();
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    // Salva no Firebase com confirmação visual
-    const fbPath = 'produtividade/records/r_' + record.id;
-    console.log('📤 Enviando para Firebase:', fbPath);
-    
-    db.ref(fbPath).set(record)
+    // 2. Grava no Firebase e confirma
+    db.ref('produtividade/records/r_' + record.id).set(record)
       .then(() => {
         setFbStatus(true);
-        console.log('✅ Firebase confirmou salvamento:', record.registroId);
-        // ✅ CONFIRMAÇÃO VISUAL DE SUCESSO
-        showSaveConfirmation(record.registroId || record.id, true);
-        
-        // Verifica se realmente foi salvo
-        setTimeout(() => {
-          db.ref(fbPath).once('value').then(snap => {
-            if (snap.exists()) {
-              console.log('✅ Verificação: Registro existe no Firebase');
-            } else {
-              console.error('⚠️ AVISO: Registro NÃO encontrado no Firebase após salvamento!');
-            }
-          });
-        }, 1000);
+        if (onConfirmed) onConfirmed(true);
       })
-      .catch(e => { 
-        console.error('❌ Erro ao salvar no Firebase:', e);
+      .catch(e => {
+        console.warn('Save error:', e);
         showFirebaseRulesWarning();
-        // ⚠️ ALERTA DE ERRO
-        showSaveConfirmation(record.registroId || record.id, false, e.message);
+        if (onConfirmed) onConfirmed(false);
       });
-  }
-  }
-
-  // Nova função: Confirmação visual de salvamento
-  function showSaveConfirmation(registroId, success, errorMsg) {
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${success ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : '#DC2626'};
-      color: white;
-      padding: 1rem 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      z-index: 99999;
-      font-family: 'Barlow', sans-serif;
-      font-weight: 700;
-      font-size: 0.95rem;
-      min-width: 300px;
-      animation: slideInRight 0.4s ease-out;
-    `;
-    
-    if (success) {
-      toast.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="font-size: 1.5rem;">✅</div>
-          <div>
-            <div style="font-size: 1rem; margin-bottom: 0.25rem;">Registro Salvo com Sucesso!</div>
-            <div style="font-size: 0.8rem; opacity: 0.9;">ID: ${registroId} • Firebase sincronizado</div>
-          </div>
-        </div>
-      `;
-    } else {
-      toast.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="font-size: 1.5rem;">⚠️</div>
-          <div>
-            <div style="font-size: 1rem; margin-bottom: 0.25rem;">Erro ao Salvar!</div>
-            <div style="font-size: 0.75rem; opacity: 0.9;">${errorMsg || 'Tente novamente'}</div>
-          </div>
-        </div>
-      `;
-    }
-    
-    document.body.appendChild(toast);
-    
-    // Remove após 4 segundos
-    setTimeout(() => {
-      toast.style.animation = 'slideOutRight 0.4s ease-in';
-      setTimeout(() => toast.remove(), 400);
-    }, 4000);
-  }
-
-  // Adiciona animações CSS (se ainda não existirem)
-  if (!document.getElementById('confirmationAnimations')) {
-    const style = document.createElement('style');
-    style.id = 'confirmationAnimations';
-    style.textContent = `
-      @keyframes slideInRight {
-        from { transform: translateX(400px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-      }
-      @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(400px); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(style);
   }
 
   // Atualiza múltiplos registros (edição, status)
@@ -3756,36 +3649,22 @@
 
   // Listener Firebase — fonte de verdade para todos os usuários
   function _attachListener() {
-    db.ref('produtividade/records').off('value'); // garante sem duplicata
+    // Remove listener anterior para evitar duplicatas
+    db.ref('produtividade/records').off('value');
+
     db.ref('produtividade/records').on('value', snap => {
       if (_deleting) return;
 
       const data = snap.val();
-      const fbRecords = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+      const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
 
-      // ✅ MERGE inteligente: Firebase + registros locais recentes (últimos 5s)
-      const now = Date.now();
-      const recentLocalRecords = _dbCache.filter(r => {
-        // Mantém registros locais que foram salvos nos últimos 5 segundos
-        // e ainda não aparecem no Firebase
-        const isRecent = (now - r.id) < 5000; // ID é timestamp
-        const notInFirebase = !fbRecords.find(fr => String(fr.id) === String(r.id));
-        return isRecent && notInFirebase;
-      });
+      // Protege apenas contra Firebase vazio sem dados nenhum
+      if (records.length === 0 && _dbCache.length > 0) return;
 
-      // Combina: Firebase (verdade absoluta) + registros locais recentes
-      const merged = [...fbRecords];
-      recentLocalRecords.forEach(localRec => {
-        if (!merged.find(r => String(r.id) === String(localRec.id))) {
-          merged.push(localRec);
-        }
-      });
-      merged.sort((a, b) => b.id - a.id);
-
-      _dbCache = merged;
+      _dbCache = records;
       _firebaseReady = true;
-      try { localStorage.setItem(DB_KEY, JSON.stringify(merged)); } catch(e) {}
-      refreshAllUI(merged);
+      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+      refreshAllUI(records);
 
     }, err => {
       console.warn('Listener error:', err);
@@ -3835,7 +3714,7 @@
   }
 
   function initFirebaseSync() {
-    // Carrega localStorage imediatamente — usuário vê dados enquanto Firebase conecta
+    // Carrega localStorage imediatamente
     try {
       const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
       if (local.length > 0) {
@@ -3845,17 +3724,26 @@
     } catch(e) {}
 
     try {
-      // Monitor de conexão — reanexa listener ao reconectar
+      // Monitor de conexão — só atualiza indicador visual
+      let _wasOffline = false;
       db.ref('.info/connected').on('value', snap => {
         const online = snap.val() === true;
         setFbStatus(online);
-        if (online) {
-          // Reconectou — reanexa listener para garantir dados atualizados
-          _attachListener();
+        if (online && _wasOffline) {
+          // Voltou do offline — força busca imediata para pegar registros perdidos
+          db.ref('produtividade/records').once('value').then(snap => {
+            const data = snap.val();
+            if (!data) return;
+            const records = Object.values(data).sort((a, b) => b.id - a.id);
+            _dbCache = records;
+            try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+            refreshAllUI(records);
+          }).catch(() => {});
         }
+        _wasOffline = !online;
       });
 
-      // Liga listener principal
+      // Liga listener principal UMA VEZ — o Firebase mantém automaticamente
       _attachListener();
 
       // Sync contatos
@@ -3874,41 +3762,25 @@
       setFbStatus(false);
     }
 
-    // Polling a cada 5s — garante sincronização entre usuários diferentes
+    // Polling a cada 5s — garante sincronização entre usuários
     setInterval(() => {
       if (_deleting) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
-        const fbRecords = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+        if (!data) return;
 
-        // ✅ MERGE: Firebase + registros locais recentes (últimos 5s)
-        const now = Date.now();
-        const recentLocalRecords = _dbCache.filter(r => {
-          const isRecent = (now - r.id) < 5000;
-          const notInFirebase = !fbRecords.find(fr => String(fr.id) === String(r.id));
-          return isRecent && notInFirebase;
-        });
-
-        const merged = [...fbRecords];
-        recentLocalRecords.forEach(localRec => {
-          if (!merged.find(r => String(r.id) === String(localRec.id))) {
-            merged.push(localRec);
-          }
-        });
-        merged.sort((a, b) => b.id - a.id);
-
-        // Atualiza se houver diferença
+        const records = Object.values(data).sort((a, b) => b.id - a.id);
         const changed =
-          merged.length !== _dbCache.length ||
-          merged.some(mr => {
-            const cached = _dbCache.find(r => String(r.id) === String(mr.id));
-            return !cached || JSON.stringify(cached) !== JSON.stringify(mr);
+          records.length !== _dbCache.length ||
+          records.some(fr => {
+            const cached = _dbCache.find(r => String(r.id) === String(fr.id));
+            return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
           });
 
         if (changed) {
-          _dbCache = merged;
-          try { localStorage.setItem(DB_KEY, JSON.stringify(merged)); } catch(e) {}
-          refreshAllUI(merged);
+          _dbCache = records;
+          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+          refreshAllUI(records);
         }
       }).catch(() => {});
     }, 5000);
@@ -3993,16 +3865,28 @@
       ...form
     };
 
-    saveRecordToFirebase(record);
-    sessionStorage.removeItem(DRAFT_KEY);
-
-    // Show save toast
-    const t = document.getElementById('saveToast');
     const [y,m,d] = data.split('-');
-    document.getElementById('saveToastMsg').textContent =
-      `✅ Registro ${registroId} salvo! ${d}/${m}/${y} · Turno ${turno} · ${equipe}`;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3500);
+    const toastEl = document.getElementById('saveToast');
+    const toastMsg = document.getElementById('saveToastMsg');
+
+    // Fase 1 — salvando (amarelo)
+    toastMsg.textContent = `⏳ Salvando ${registroId}...`;
+    toastEl.style.background = '#D97706';
+    toastEl.classList.add('show');
+
+    saveRecordToFirebase(record, (ok) => {
+      // Fase 2 — confirmado (verde) ou erro (vermelho)
+      if (ok) {
+        toastMsg.textContent = `✅ ${registroId} gravado com sucesso! ${d}/${m}/${y} · Turno ${turno} · ${equipe}`;
+        toastEl.style.background = 'var(--green-dark)';
+      } else {
+        toastMsg.textContent = `⚠️ Erro ao gravar ${registroId} no servidor. Verifique a conexão.`;
+        toastEl.style.background = '#DC2626';
+      }
+      setTimeout(() => { toastEl.classList.remove('show'); toastEl.style.background = ''; }, 4000);
+    });
+
+    sessionStorage.removeItem(DRAFT_KEY);
 
     // Update justificativa badge with pending count
     const allRec = loadDB();
@@ -6844,69 +6728,16 @@ entryLines.join('\n\n') + '\n' +
   }
 
   function doLogin() {
-    console.log('🔐 Tentativa de login...');
-    
-    const userInput = document.getElementById('loginUser');
-    const passInput = document.getElementById('loginPass');
-    const err = document.getElementById('loginErr');
-    const loginScreen = document.getElementById('loginScreen');
-    
-    if (!userInput || !passInput) {
-      console.error('❌ Campos de login não encontrados!');
-      alert('Erro: Campos de login não encontrados. Recarregue a página.');
-      return;
-    }
-    
-    const user = userInput.value.trim().toLowerCase();
-    const pass = passInput.value.trim().toLowerCase();
-    
-    console.log('👤 Usuário digitado:', user ? '***' : '(vazio)');
-    console.log('🔑 Senha digitada:', pass ? '***' : '(vazia)');
-    
-    if (!user || !pass) {
-      if (err) {
-        err.textContent = '⚠️ Por favor, preencha usuário e senha.';
-        err.style.display = 'block';
-      }
-      return;
-    }
-    
+    const user = document.getElementById('loginUser')?.value.trim().toLowerCase();
+    const pass = document.getElementById('loginPass')?.value.trim().toLowerCase();
+    const err  = document.getElementById('loginErr');
     if (user === 'enel' && pass === 'brasil') {
-      console.log('✅ Login bem-sucedido!');
-      
-      // Salva autenticação
+      document.getElementById('loginScreen').style.display = 'none';
       sessionStorage.setItem('enel_auth', '1');
-      
-      // Esconde tela de login com animação
-      if (loginScreen) {
-        loginScreen.style.transition = 'opacity 0.3s ease-out';
-        loginScreen.style.opacity = '0';
-        setTimeout(() => {
-          loginScreen.style.display = 'none';
-          console.log('✅ Sistema carregado!');
-        }, 300);
-      }
-      
-      // Esconde mensagem de erro se estava visível
-      if (err) err.style.display = 'none';
-      
     } else {
-      console.warn('❌ Credenciais inválidas');
-      
-      if (err) {
-        err.textContent = '❌ Usuário ou senha incorretos.';
-        err.style.display = 'block';
-      }
-      
-      // Limpa senha e foca novamente
-      passInput.value = '';
-      passInput.focus();
-      
-      // Shake animation no erro
-      if (err) {
-        err.style.animation = 'shake 0.4s';
-        setTimeout(() => { err.style.animation = ''; }, 400);
-      }
+      if (err) err.style.display = 'block';
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginPass').focus();
     }
   }
 
