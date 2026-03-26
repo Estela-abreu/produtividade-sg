@@ -3588,22 +3588,123 @@
 
   // Salva um único registro no Firebase + localStorage
   function saveRecordToFirebase(record) {
+    console.log('🔄 Iniciando salvamento:', {
+      id: record.id,
+      registroId: record.registroId,
+      cache_antes: _dbCache.length
+    });
+
     // ✅ Atualiza cache local imediatamente (UX instantânea)
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
     _dbCache.sort((a, b) => b.id - a.id);
-    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+    try { 
+      localStorage.setItem(DB_KEY, JSON.stringify(_dbCache));
+      console.log('💾 LocalStorage atualizado:', _dbCache.length, 'registros');
+    } catch(e) {
+      console.error('❌ Erro ao salvar localStorage:', e);
+    }
     
-    // Marca timestamp para proteger contra sobrescrita imediata
+    // Marca timestamp para proteção
     _lastSaveTime = Date.now();
 
-    // Salva no Firebase → dispara listener para OUTROS usuários
-    db.ref('produtividade/records/r_' + record.id).set(record)
-      .then(() => setFbStatus(true))
+    // Salva no Firebase com confirmação visual
+    const fbPath = 'produtividade/records/r_' + record.id;
+    console.log('📤 Enviando para Firebase:', fbPath);
+    
+    db.ref(fbPath).set(record)
+      .then(() => {
+        setFbStatus(true);
+        console.log('✅ Firebase confirmou salvamento:', record.registroId);
+        // ✅ CONFIRMAÇÃO VISUAL DE SUCESSO
+        showSaveConfirmation(record.registroId || record.id, true);
+        
+        // Verifica se realmente foi salvo
+        setTimeout(() => {
+          db.ref(fbPath).once('value').then(snap => {
+            if (snap.exists()) {
+              console.log('✅ Verificação: Registro existe no Firebase');
+            } else {
+              console.error('⚠️ AVISO: Registro NÃO encontrado no Firebase após salvamento!');
+            }
+          });
+        }, 1000);
+      })
       .catch(e => { 
-        console.warn('Save error:', e); 
-        showFirebaseRulesWarning(); 
+        console.error('❌ Erro ao salvar no Firebase:', e);
+        showFirebaseRulesWarning();
+        // ⚠️ ALERTA DE ERRO
+        showSaveConfirmation(record.registroId || record.id, false, e.message);
       });
+  }
+  }
+
+  // Nova função: Confirmação visual de salvamento
+  function showSaveConfirmation(registroId, success, errorMsg) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${success ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : '#DC2626'};
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 99999;
+      font-family: 'Barlow', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      min-width: 300px;
+      animation: slideInRight 0.4s ease-out;
+    `;
+    
+    if (success) {
+      toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="font-size: 1.5rem;">✅</div>
+          <div>
+            <div style="font-size: 1rem; margin-bottom: 0.25rem;">Registro Salvo com Sucesso!</div>
+            <div style="font-size: 0.8rem; opacity: 0.9;">ID: ${registroId} • Firebase sincronizado</div>
+          </div>
+        </div>
+      `;
+    } else {
+      toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="font-size: 1.5rem;">⚠️</div>
+          <div>
+            <div style="font-size: 1rem; margin-bottom: 0.25rem;">Erro ao Salvar!</div>
+            <div style="font-size: 0.75rem; opacity: 0.9;">${errorMsg || 'Tente novamente'}</div>
+          </div>
+        </div>
+      `;
+    }
+    
+    document.body.appendChild(toast);
+    
+    // Remove após 4 segundos
+    setTimeout(() => {
+      toast.style.animation = 'slideOutRight 0.4s ease-in';
+      setTimeout(() => toast.remove(), 400);
+    }, 4000);
+  }
+
+  // Adiciona animações CSS (se ainda não existirem)
+  if (!document.getElementById('confirmationAnimations')) {
+    const style = document.createElement('style');
+    style.id = 'confirmationAnimations';
+    style.textContent = `
+      @keyframes slideInRight {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(400px); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   // Atualiza múltiplos registros (edição, status)
@@ -3653,22 +3754,32 @@
     db.ref('produtividade/records').on('value', snap => {
       if (_deleting) return;
 
-      // Proteção: ignora apenas no 1º segundo após salvamento local
-      // (evita sobrescrever salvamento que ainda não foi confirmado pelo Firebase)
-      const timeSinceSave = Date.now() - _lastSaveTime;
-      if (_lastSaveTime > 0 && timeSinceSave < 1000) {
-        console.log('⏳ Listener aguardando confirmação de salvamento...');
-        return;
-      }
-
       const data = snap.val();
-      const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+      const fbRecords = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
 
-      // ✅ SEMPRE aceita dados do Firebase (fonte única de verdade)
-      _dbCache = records;
+      // ✅ MERGE inteligente: Firebase + registros locais recentes (últimos 5s)
+      const now = Date.now();
+      const recentLocalRecords = _dbCache.filter(r => {
+        // Mantém registros locais que foram salvos nos últimos 5 segundos
+        // e ainda não aparecem no Firebase
+        const isRecent = (now - r.id) < 5000; // ID é timestamp
+        const notInFirebase = !fbRecords.find(fr => String(fr.id) === String(r.id));
+        return isRecent && notInFirebase;
+      });
+
+      // Combina: Firebase (verdade absoluta) + registros locais recentes
+      const merged = [...fbRecords];
+      recentLocalRecords.forEach(localRec => {
+        if (!merged.find(r => String(r.id) === String(localRec.id))) {
+          merged.push(localRec);
+        }
+      });
+      merged.sort((a, b) => b.id - a.id);
+
+      _dbCache = merged;
       _firebaseReady = true;
-      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-      refreshAllUI(records);
+      try { localStorage.setItem(DB_KEY, JSON.stringify(merged)); } catch(e) {}
+      refreshAllUI(merged);
 
     }, err => {
       console.warn('Listener error:', err);
@@ -3762,21 +3873,36 @@
       if (_deleting) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
-        const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+        const fbRecords = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
 
-        // ✅ CORREÇÃO: Atualiza SEMPRE, mesmo se Firebase estiver vazio
-        // Atualiza se Firebase tem mais/menos registros OU registros diferentes
+        // ✅ MERGE: Firebase + registros locais recentes (últimos 5s)
+        const now = Date.now();
+        const recentLocalRecords = _dbCache.filter(r => {
+          const isRecent = (now - r.id) < 5000;
+          const notInFirebase = !fbRecords.find(fr => String(fr.id) === String(r.id));
+          return isRecent && notInFirebase;
+        });
+
+        const merged = [...fbRecords];
+        recentLocalRecords.forEach(localRec => {
+          if (!merged.find(r => String(r.id) === String(localRec.id))) {
+            merged.push(localRec);
+          }
+        });
+        merged.sort((a, b) => b.id - a.id);
+
+        // Atualiza se houver diferença
         const changed =
-          records.length !== _dbCache.length ||
-          records.some(fr => {
-            const cached = _dbCache.find(r => String(r.id) === String(fr.id));
-            return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
+          merged.length !== _dbCache.length ||
+          merged.some(mr => {
+            const cached = _dbCache.find(r => String(r.id) === String(mr.id));
+            return !cached || JSON.stringify(cached) !== JSON.stringify(mr);
           });
 
         if (changed) {
-          _dbCache = records;
-          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-          refreshAllUI(records);
+          _dbCache = merged;
+          try { localStorage.setItem(DB_KEY, JSON.stringify(merged)); } catch(e) {}
+          refreshAllUI(merged);
         }
       }).catch(() => {});
     }, 5000);
