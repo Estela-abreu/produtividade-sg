@@ -3576,78 +3576,61 @@
   };
 
   // ══════════════════════════════════════════
-  //  CAMADA DE DADOS — FIREBASE DIRETO
-  //  Regra: toda ação vai direto ao Firebase
-  //  _dbCache = snapshot do último dado do Firebase
-  //  Nunca usamos localStorage como fonte
+  //  CAMADA DE DADOS
   // ══════════════════════════════════════════
 
-  let _dbCache        = [];   // espelho do Firebase (atualizado pelo listener)
-  let _firebaseReady  = false;
-  let _opInProgress   = false; // bloqueia listener durante operação crítica
+  let _dbCache      = [];
+  let _firebaseReady = false;
+  let _deleting     = false; // true apenas durante exclusão
 
-  function loadDB() {
-    return [..._dbCache];
-  }
+  function loadDB() { return [..._dbCache]; }
 
-  // Salva UM registro diretamente no Firebase (sem tocar nos outros)
+  // Salva um único registro no Firebase + localStorage
   function saveRecordToFirebase(record) {
-    _opInProgress = true;
-    // Atualiza cache local imediatamente para UI não piscar
+    // 1. Atualiza cache e localStorage imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
-    _dbCache.sort((a,b) => b.id - a.id);
+    _dbCache.sort((a, b) => b.id - a.id);
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    return db.ref('produtividade/records/r_' + record.id).set(record)
-      .then(() => {
-        setFbStatus(true);
-        _opInProgress = false;
-      })
-      .catch(e => {
-        console.warn('Erro ao salvar:', e);
-        _opInProgress = false;
-        showFirebaseRulesWarning();
-      });
+    // 2. Grava no Firebase
+    db.ref('produtividade/records/r_' + record.id).set(record)
+      .then(() => setFbStatus(true))
+      .catch(e => { console.warn('Save error:', e); showFirebaseRulesWarning(); });
   }
 
-  // Atualiza UM registro existente no Firebase
+  // Atualiza múltiplos registros (edição, status)
   function saveDB(records) {
-    // records = lista atualizada. Calcula diff e só escreve o que mudou.
-    _opInProgress = true;
-    _dbCache = [...records].sort((a,b) => b.id - a.id);
-    const writes = records.map(r =>
-      db.ref('produtividade/records/r_' + r.id).set(r).catch(e => console.warn(e))
-    );
-    Promise.all(writes).then(() => {
-      setFbStatus(true);
-      _opInProgress = false;
-    }).catch(() => { _opInProgress = false; });
+    _dbCache = [...records].sort((a, b) => b.id - a.id);
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+    records.forEach(r => {
+      db.ref('produtividade/records/r_' + r.id).set(r)
+        .catch(e => console.warn('SaveDB error:', e));
+    });
+    setFbStatus(true);
   }
 
-  // Remove UM registro diretamente do Firebase
+  // Exclui um registro definitivamente
   function doDeleteRecord(id) {
-    const idStr = String(id);
+    _deleting = true;
 
-    // 1. Remove do cache imediatamente
-    _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
+    // Remove do cache e localStorage
+    _dbCache = _dbCache.filter(r => String(r.id) !== String(id));
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    // 2. DESLIGA o listener para evitar que ele restaure o dado deletado
+    // Desliga listener, remove, religa
     db.ref('produtividade/records').off('value');
-
-    // 3. Deleta do Firebase
     db.ref('produtividade/records/r_' + id).remove()
       .then(() => {
         setFbStatus(true);
-        // 4. Aguarda 2s e RELIGA o listener
-        setTimeout(() => { _reattachListener(); }, 2000);
+        setTimeout(() => { _deleting = false; _attachListener(); }, 2000);
       })
       .catch(e => {
-        console.warn('Erro ao excluir:', e);
+        console.warn('Delete error:', e);
         showFirebaseRulesWarning();
-        setTimeout(() => { _reattachListener(); }, 1000);
+        setTimeout(() => { _deleting = false; _attachListener(); }, 1000);
       });
 
-    // 5. Atualiza UI imediatamente
     updateTabBadge();
     updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     updateCoordenacaoBadge();
@@ -3657,21 +3640,21 @@
     showCopyToast('🗑 Registro excluído com sucesso.');
   }
 
-  function _reattachListener() {
+  // Listener Firebase — única fonte de verdade quando online
+  function _attachListener() {
     db.ref('produtividade/records').on('value', snap => {
-      const data = snap.val();
-      const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+      if (_deleting) return; // ignora durante exclusão
 
-      // NUNCA sobrescreve com lista vazia se já temos dados
-      // (Firebase pode retornar vazio momentaneamente na reconexão)
-      if (records.length === 0 && _dbCache.length > 0) {
-        console.warn('Firebase retornou vazio — mantendo cache atual');
-        return;
-      }
+      const data = snap.val();
+      const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+
+      // Se Firebase retornou vazio MAS temos dados no cache/local,
+      // não apaga — pode ser latência da rede
+      if (records.length === 0 && _dbCache.length > 0) return;
 
       _dbCache = records;
       _firebaseReady = true;
-      localStorage.setItem(DB_KEY, JSON.stringify(records));
+      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
       refreshAllUI(records);
 
     }, err => {
@@ -3722,50 +3705,20 @@
   }
 
   function initFirebaseSync() {
-    // 1. Carrega localStorage IMEDIATAMENTE como backup
-    //    (usuário vê os dados enquanto Firebase carrega)
-    const localBackup = (() => {
-      try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch { return []; }
-    })();
-    if (localBackup.length > 0) {
-      _dbCache = localBackup;
-      refreshAllUI(localBackup);
-    }
+    // Carrega localStorage imediatamente — usuário vê dados enquanto Firebase conecta
+    try {
+      const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+      if (local.length > 0) {
+        _dbCache = local;
+        refreshAllUI(local);
+      }
+    } catch(e) {}
 
     try {
-      db.ref('.info/connected').on('value', snap => {
-        setFbStatus(snap.val() === true);
-      });
+      db.ref('.info/connected').on('value', snap => setFbStatus(snap.val() === true));
 
-      // Liga o listener principal
-      db.ref('produtividade/records').on('value', snap => {
-        const data = snap.val();
-        const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
-
-        if (records.length === 0) {
-          // Firebase vazio mas temos dados locais → sobe para o Firebase
-          if (_dbCache.length > 0) {
-            console.log('Firebase vazio — enviando dados locais...');
-            _dbCache.forEach(r => {
-              db.ref('produtividade/records/r_' + r.id).set(r).catch(() => {});
-            });
-          }
-          // Não sobrescreve o cache com vazio
-          return;
-        }
-
-        // Firebase tem dados — é a fonte de verdade
-        _dbCache = records;
-        _firebaseReady = true;
-        localStorage.setItem(DB_KEY, JSON.stringify(records));
-        refreshAllUI(records);
-
-      }, err => {
-        console.warn('Listener error:', err);
-        _firebaseReady = false;
-        if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
-        else setFbStatus(false);
-      });
+      // Liga listener principal
+      _attachListener();
 
       // Sync contatos
       db.ref('produtividade/contacts').on('value', snap => {
@@ -3783,21 +3736,26 @@
       setFbStatus(false);
     }
 
-    // Polling a cada 8s — garante sincronização multi-usuário
+    // Polling a cada 8s — sincroniza mudanças de outros usuários
     setInterval(() => {
-      if (_opInProgress) return;
+      if (_deleting) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
-        if (!data) return; // Firebase vazio — não limpa o cache
-        const records = Object.values(data).sort((a,b) => b.id - a.id);
-        const changed = records.length !== _dbCache.length ||
+        if (!data) return; // Firebase vazio — preserva cache
+
+        const records = Object.values(data).sort((a, b) => b.id - a.id);
+
+        // Só atualiza se houver diferença real
+        const changed =
+          records.length !== _dbCache.length ||
           records.some(fr => {
-            const local = _dbCache.find(r => String(r.id) === String(fr.id));
-            return !local || JSON.stringify(local) !== JSON.stringify(fr);
+            const cached = _dbCache.find(r => String(r.id) === String(fr.id));
+            return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
           });
+
         if (changed) {
           _dbCache = records;
-          localStorage.setItem(DB_KEY, JSON.stringify(records));
+          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
           refreshAllUI(records);
         }
       }).catch(() => {});
