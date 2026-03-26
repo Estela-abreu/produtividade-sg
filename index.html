@@ -3575,62 +3575,83 @@
     incidencia:   '#D97706',
   };
 
-  // ── Firebase DB (primary) + localStorage (cache/offline) ──
-  let _dbCache = null;
-  let _firebaseReady = false;
+  // ══════════════════════════════════════════
+  //  CAMADA DE DADOS — FIREBASE DIRETO
+  //  Regra: toda ação vai direto ao Firebase
+  //  _dbCache = snapshot do último dado do Firebase
+  //  Nunca usamos localStorage como fonte
+  // ══════════════════════════════════════════
+
+  let _dbCache        = [];   // espelho do Firebase (atualizado pelo listener)
+  let _firebaseReady  = false;
+  let _opInProgress   = false; // bloqueia listener durante operação crítica
 
   function loadDB() {
-    // Always prefer Firebase cache; fall back to localStorage only if Firebase not loaded
-    if (_dbCache !== null) return [..._dbCache];
-    try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); }
-    catch { return []; }
+    return [..._dbCache];
   }
 
-  // saveRecordToFirebase — adds/updates single record atomically
+  // Salva UM registro diretamente no Firebase (sem tocar nos outros)
   function saveRecordToFirebase(record) {
-    // Add to cache immediately
-    _dbCache = _dbCache || loadDB();
+    _opInProgress = true;
+    // Atualiza cache local imediatamente para UI não piscar
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
-    localStorage.setItem(DB_KEY, JSON.stringify(_dbCache));
+    _dbCache.sort((a,b) => b.id - a.id);
 
-    // Guard: tell listener to not overwrite until save confirmed
-    _savingRecord = true;
-    _pendingSaveId = String(record.id);
-
-    try {
-      db.ref('produtividade/records/r_' + record.id).set(record)
-        .then(() => {
-          setFbStatus(true);
-          _savingRecord = false;
-          _pendingSaveId = null;
-        })
-        .catch(e => {
-          console.warn('Firebase save error:', e);
-          showFirebaseRulesWarning();
-          _savingRecord = false;
-          _pendingSaveId = null;
-        });
-    } catch(e) {
-      console.warn('Firebase unavailable:', e);
-      _savingRecord = false;
-      _pendingSaveId = null;
-    }
+    return db.ref('produtividade/records/r_' + record.id).set(record)
+      .then(() => {
+        setFbStatus(true);
+        _opInProgress = false;
+      })
+      .catch(e => {
+        console.warn('Erro ao salvar:', e);
+        _opInProgress = false;
+        showFirebaseRulesWarning();
+      });
   }
 
-  // saveDB — saves a list of records, updating each one individually in Firebase
-  // NEVER deletes unrelated records (safe for multi-user)
+  // Atualiza UM registro existente no Firebase
   function saveDB(records) {
-    _dbCache = [...records];
-    localStorage.setItem(DB_KEY, JSON.stringify(records));
-    try {
-      // Each record gets its own path update — atomic, no overwrite of others
-      records.forEach(r => {
-        db.ref('produtividade/records/r_' + r.id).set(r)
-          .catch(e => console.warn('Firebase update error:', e));
-      });
+    // records = lista atualizada. Calcula diff e só escreve o que mudou.
+    _opInProgress = true;
+    _dbCache = [...records].sort((a,b) => b.id - a.id);
+    const writes = records.map(r =>
+      db.ref('produtividade/records/r_' + r.id).set(r).catch(e => console.warn(e))
+    );
+    Promise.all(writes).then(() => {
       setFbStatus(true);
-    } catch(e) { console.warn('Firebase unavailable:', e); }
+      _opInProgress = false;
+    }).catch(() => { _opInProgress = false; });
+  }
+
+  // Remove UM registro diretamente do Firebase
+  function doDeleteRecord(id) {
+    const idStr = String(id);
+    _opInProgress = true;
+
+    // Remove do cache imediatamente
+    _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
+
+    // Deleta do Firebase
+    db.ref('produtividade/records/r_' + id).remove()
+      .then(() => {
+        setFbStatus(true);
+        // Aguarda 1s antes de liberar o listener (evita race condition)
+        setTimeout(() => { _opInProgress = false; }, 1000);
+      })
+      .catch(e => {
+        console.warn('Erro ao excluir:', e);
+        _opInProgress = false;
+      });
+
+    // Atualiza UI imediatamente
+    updateTabBadge();
+    updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
+    updateCoordenacaoBadge();
+    applyDBFilters();
+    renderCfgRegistros();
+    renderRetorno();
+    showCopyToast('🗑 Registro excluído com sucesso.');
   }
 
   function showFirebaseRulesWarning() {
@@ -3675,65 +3696,39 @@
 
   function initFirebaseSync() {
     try {
-      // Connection status
+      // Monitor connection
       db.ref('.info/connected').on('value', snap => {
         setFbStatus(snap.val() === true);
       });
 
-      // Real-time listener — Firebase is the single source of truth
+      // Listener principal — Firebase dispara para TODOS quando qualquer usuário salva
       db.ref('produtividade/records').on('value', snap => {
-        // Skip if a delete or save is in progress
-        if (_deletingRecord) return;
+        // Ignora durante operação crítica (salvar/excluir)
+        if (_opInProgress) return;
 
         const data = snap.val();
-        const firebaseRecords = data
-          ? Object.values(data).sort((a, b) => b.id - a.id)
-          : [];
+        const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
 
-        // If saving, ensure new record is in Firebase data before accepting
-        if (_savingRecord && _pendingSaveId) {
-          const hasPending = firebaseRecords.some(r => String(r.id) === _pendingSaveId);
-          if (!hasPending) return; // not synced yet — wait for next event
-        }
-
-        if (firebaseRecords.length === 0) {
-          const localRecords = _dbCache || (() => {
-            try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch { return []; }
-          })();
-          if (localRecords.length > 0) {
-            localRecords.forEach(r => {
-              db.ref('produtividade/records/r_' + r.id).set(r).catch(() => {});
-            });
-          }
-          _dbCache = localRecords;
-          _firebaseReady = true;
-          localStorage.setItem(DB_KEY, JSON.stringify(localRecords));
-          refreshAllUI(localRecords);
-          return;
-        }
-
-        _dbCache = firebaseRecords;
+        _dbCache = records;
         _firebaseReady = true;
-        localStorage.setItem(DB_KEY, JSON.stringify(firebaseRecords));
-        refreshAllUI(firebaseRecords);
+        localStorage.setItem(DB_KEY, JSON.stringify(records)); // backup offline
+        refreshAllUI(records);
 
       }, err => {
-        console.warn('Firebase listener error:', err);
+        console.warn('Erro listener Firebase:', err);
         _firebaseReady = false;
         if (err.code === 'PERMISSION_DENIED') {
           showFirebaseRulesWarning();
         } else {
           setFbStatus(false);
-          // Offline fallback
-          const local = (() => {
-            try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch { return []; }
-          })();
+          // Fallback offline
+          const local = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch { return []; } })();
           _dbCache = local;
           refreshAllUI(local);
         }
       });
 
-      // Sync contacts in real time
+      // Sync contatos
       db.ref('produtividade/contacts').on('value', snap => {
         const data = snap.val();
         if (data) {
@@ -3747,40 +3742,30 @@
     } catch(e) {
       console.warn('Firebase init error:', e);
       setFbStatus(false);
+      const local = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch { return []; } })();
+      _dbCache = local;
+      refreshAllUI(local);
     }
-    // Aggressive polling for file:// protocol (every 5 seconds)
-    startPolling();
-  }
 
-  function startPolling() {
+    // Polling a cada 8s como garantia extra (para file://)
     setInterval(() => {
-      if (_deletingRecord || _savingRecord) return;
+      if (_opInProgress) return;
       db.ref('produtividade/records').once('value').then(snap => {
         const data = snap.val();
-        const firebaseRecords = data
-          ? Object.values(data).sort((a, b) => b.id - a.id)
-          : [];
-        const current = _dbCache || [];
-
-        // Detect any difference between Firebase and current cache
-        if (firebaseRecords.length !== current.length) {
-          _dbCache = firebaseRecords;
-          localStorage.setItem(DB_KEY, JSON.stringify(firebaseRecords));
-          refreshAllUI(firebaseRecords);
-          return;
-        }
-        // Check if any record differs
-        const hasChange = firebaseRecords.some(fr => {
-          const local = current.find(r => String(r.id) === String(fr.id));
-          return !local || JSON.stringify(local) !== JSON.stringify(fr);
-        });
-        if (hasChange) {
-          _dbCache = firebaseRecords;
-          localStorage.setItem(DB_KEY, JSON.stringify(firebaseRecords));
-          refreshAllUI(firebaseRecords);
+        const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+        // Só atualiza se houver diferença real
+        const changed = records.length !== _dbCache.length ||
+          records.some(fr => {
+            const local = _dbCache.find(r => String(r.id) === String(fr.id));
+            return !local || JSON.stringify(local) !== JSON.stringify(fr);
+          });
+        if (changed) {
+          _dbCache = records;
+          localStorage.setItem(DB_KEY, JSON.stringify(records));
+          refreshAllUI(records);
         }
       }).catch(() => {});
-    }, 5000); // every 5 seconds
+    }, 8000);
   }
 
   function collectFormData() {
@@ -6155,42 +6140,6 @@ entryLines.join('\n\n') + '\n' +
   }
 
   // Core deletion logic shared by both DB tab and Config tab
-  let _savingRecord  = false; // guard: ignore listener while saving
-  let _deletingRecord = false; // guard: ignore listener while deleting
-  let _pendingSaveId  = null;  // id of record being saved
-
-  function doDeleteRecord(id) {
-    const idStr = String(id);
-    _deletingRecord = true;
-
-    const records = (_dbCache || loadDB()).filter(r => String(r.id) !== idStr);
-    _dbCache = records;
-    localStorage.setItem(DB_KEY, JSON.stringify(records));
-
-    try {
-      db.ref('produtividade/records/r_' + id).remove()
-        .then(() => {
-          // Re-read from Firebase to confirm deletion, then clear flag
-          setTimeout(() => { _deletingRecord = false; }, 2000);
-          setFbStatus(true);
-        })
-        .catch(e => {
-          console.warn('Firebase delete error:', e);
-          setTimeout(() => { _deletingRecord = false; }, 2000);
-        });
-    } catch(e) {
-      setTimeout(() => { _deletingRecord = false; }, 2000);
-    }
-
-    updateTabBadge();
-    updateTabBadgeRetorno(records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
-    updateCoordenacaoBadge();
-    applyDBFilters();
-    renderCfgRegistros();
-    renderRetorno();
-    showCopyToast('🗑 Registro excluído com sucesso.');
-  }
-
   function cfgDeleteRecord(id) {
     const idStr = String(id);
     const btn = document.querySelector(`.cfg-reg-btn.del[data-id="${idStr}"]`);
