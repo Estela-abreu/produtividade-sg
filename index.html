@@ -1462,6 +1462,12 @@
     letter-spacing: 0.03em;
     border-top: 1px solid var(--gray-200);
   }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+    20%, 40%, 60%, 80% { transform: translateX(8px); }
+  }
 </style>
 </head>
 <body>
@@ -1491,8 +1497,8 @@
       ❌ Usuário ou senha incorretos.
     </div>
 
-    <button onclick="doLogin()"
-      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;">
+    <button id="loginBtn" onclick="doLogin()"
+      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;transition:all 0.3s;">
       ENTRAR
     </button>
 
@@ -6838,16 +6844,69 @@ entryLines.join('\n\n') + '\n' +
   }
 
   function doLogin() {
-    const user = document.getElementById('loginUser')?.value.trim().toLowerCase();
-    const pass = document.getElementById('loginPass')?.value.trim().toLowerCase();
-    const err  = document.getElementById('loginErr');
+    console.log('🔐 Tentativa de login...');
+    
+    const userInput = document.getElementById('loginUser');
+    const passInput = document.getElementById('loginPass');
+    const err = document.getElementById('loginErr');
+    const loginScreen = document.getElementById('loginScreen');
+    
+    if (!userInput || !passInput) {
+      console.error('❌ Campos de login não encontrados!');
+      alert('Erro: Campos de login não encontrados. Recarregue a página.');
+      return;
+    }
+    
+    const user = userInput.value.trim().toLowerCase();
+    const pass = passInput.value.trim().toLowerCase();
+    
+    console.log('👤 Usuário digitado:', user ? '***' : '(vazio)');
+    console.log('🔑 Senha digitada:', pass ? '***' : '(vazia)');
+    
+    if (!user || !pass) {
+      if (err) {
+        err.textContent = '⚠️ Por favor, preencha usuário e senha.';
+        err.style.display = 'block';
+      }
+      return;
+    }
+    
     if (user === 'enel' && pass === 'brasil') {
-      document.getElementById('loginScreen').style.display = 'none';
+      console.log('✅ Login bem-sucedido!');
+      
+      // Salva autenticação
       sessionStorage.setItem('enel_auth', '1');
+      
+      // Esconde tela de login com animação
+      if (loginScreen) {
+        loginScreen.style.transition = 'opacity 0.3s ease-out';
+        loginScreen.style.opacity = '0';
+        setTimeout(() => {
+          loginScreen.style.display = 'none';
+          console.log('✅ Sistema carregado!');
+        }, 300);
+      }
+      
+      // Esconde mensagem de erro se estava visível
+      if (err) err.style.display = 'none';
+      
     } else {
-      if (err) err.style.display = 'block';
-      document.getElementById('loginPass').value = '';
-      document.getElementById('loginPass').focus();
+      console.warn('❌ Credenciais inválidas');
+      
+      if (err) {
+        err.textContent = '❌ Usuário ou senha incorretos.';
+        err.style.display = 'block';
+      }
+      
+      // Limpa senha e foca novamente
+      passInput.value = '';
+      passInput.focus();
+      
+      // Shake animation no erro
+      if (err) {
+        err.style.animation = 'shake 0.4s';
+        setTimeout(() => { err.style.animation = ''; }, 400);
+      }
     }
   }
 
