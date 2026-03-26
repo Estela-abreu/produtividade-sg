@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Análise de Produtividade – Enel Brasil</title>
 <!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyBW-_5syFT-dshn_p4PrBB1Aq8n3AEKo94",
@@ -19,6 +19,7 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  console.log('Firebase inicializado. DB:', db.app.name);
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -3662,17 +3663,20 @@
 
   // Listener Firebase — fonte de verdade para todos os usuários
   function _attachListener() {
-    // Remove listener anterior para evitar duplicatas
     db.ref('produtividade/records').off('value');
+    console.log('[FB] Listener anexado');
 
     db.ref('produtividade/records').on('value', snap => {
       if (_deleting) return;
 
       const data = snap.val();
       const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+      console.log('[FB] Listener disparou —', records.length, 'registros');
 
-      // Protege apenas contra Firebase vazio sem dados nenhum
-      if (records.length === 0 && _dbCache.length > 0) return;
+      if (records.length === 0 && _dbCache.length > 0) {
+        console.warn('[FB] Vazio ignorado — cache tem', _dbCache.length);
+        return;
+      }
 
       _dbCache = records;
       _firebaseReady = true;
@@ -3680,7 +3684,7 @@
       refreshAllUI(records);
 
     }, err => {
-      console.warn('Listener error:', err);
+      console.error('[FB] Erro listener:', err.code, err.message);
       if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
       else setFbStatus(false);
     });
