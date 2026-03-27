@@ -1739,12 +1739,10 @@
         </div>
       </div>
 
-      <!-- Supervisor sugerido -->
-      <div class="field" style="margin-top:0.75rem;" id="supervisorField">
-        <label for="supervisorSel" style="font-size:0.82rem;font-weight:700;color:var(--gray-700);">👤 Supervisor <span style="font-size:0.72rem;font-weight:500;color:var(--gray-400);">(opcional)</span></label>
-        <select id="supervisorSel" style="font-family:'Barlow',sans-serif;font-size:0.9rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.55rem 0.75rem;width:100%;background:white;">
-          <option value="">— Selecione o supervisor —</option>
-        </select>
+      <!-- Supervisor sugerido (exibição informativa) -->
+      <div class="field" style="margin-top:0.75rem;display:none;" id="supervisorField">
+        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);">👤 Supervisores do Turno</label>
+        <div id="supervisorDisplay" style="font-family:'Barlow',sans-serif;font-size:0.95rem;font-weight:600;color:var(--gray-800);background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.55rem 0.75rem;"></div>
       </div>
 
     </div>
@@ -4324,6 +4322,10 @@
         })();
 
         const supBlock = isRevisado && supAns ? `
+          ${supAns.supervisorResp ? `<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
+            <div class="r-entry-field-label" style="color:#1E4DA1;">👤 Supervisor responsável</div>
+            <div class="r-entry-just"><strong>${supAns.supervisorResp}</strong></div>
+          </div>` : ''}
           <div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
             <div class="r-entry-field-label" style="color:#1E4DA1;">✅ Justificativa</div>
             <div class="r-entry-just">${supAns.justSel ? '<strong>'+supAns.justSel+'</strong> · ' : ''}${supAns.just || '—'}</div>
@@ -4892,6 +4894,15 @@
             </div>
 
             <div class="retorno-sup-row" style="margin-top:0.65rem;">
+              <!-- Supervisor responsável -->
+              <div class="ret-sup-field" style="grid-column:1/-1;margin-bottom:0.35rem;">
+                <label class="ret-sup-label">👤 Supervisor responsável <span class="req-star">*</span></label>
+                <select class="ret-sup-select" id="retSupSel_${r.id}_${idx}"
+                  onchange="checkRetornoEntry(${r.id},${idx})" ${isDone ? 'disabled' : ''}>
+                  <option value="">– Selecione o supervisor –</option>
+                  ${(()=>{ const all=[]; Object.values(getSupervisores()).forEach(a=>a.forEach(s=>{ if(!all.includes(s)) all.push(s); })); return all.map(s=>`<option value="${s}" ${supAns?.supervisorResp===s?'selected':''}>${s}</option>`).join(''); })()}
+                </select>
+              </div>
               <!-- Justificativa -->
               <div class="ret-sup-field">
                 <label class="ret-sup-label">✅ Justificativa</label>
@@ -5249,6 +5260,7 @@
       const just         = document.getElementById('retJust_'     + recordId + '_' + i)?.value.trim() || '';
       const acao         = document.getElementById('retAcao_'     + recordId + '_' + i)?.value.trim() || '';
       const acaoStatus   = document.getElementById('retStatusVal_'+ recordId + '_' + i)?.value || '';
+      const supervisorResp = document.getElementById('retSupSel_' + recordId + '_' + i)?.value || '';
       const fileInput    = document.getElementById('retEvidFile_'       + recordId + '_' + i);
       const hiddenInput  = document.getElementById('retEvidFileHidden_' + recordId + '_' + i);
       const evidData     = fileInput?._evidData
@@ -5260,12 +5272,13 @@
       const dataPrevista = document.getElementById('retDataPrev_' + recordId + '_' + i)?.value || '';
       const notApplicable = acaoSel === 'Não se aplica';
 
+      if (!supervisorResp)                                { showCopyToast('⚠️ Selecione o supervisor responsável.'); return; }
       if (!justSel || !just)                              { showCopyToast('⚠️ Preencha a justificativa de todas as ocorrências.'); return; }
       if (!acaoSel || (!notApplicable && !acao))          { showCopyToast('⚠️ Preencha a ação corretiva de todas as ocorrências.'); return; }
       if (!acaoStatus)                                    { showCopyToast('⚠️ Selecione o status da ação corretiva.'); return; }
       if (acaoStatus === 'nao_realizada' && !dataPrevista){ showCopyToast('⚠️ Informe a data prevista para execução.'); return; }
 
-      supAnswers.push({ justSel, acaoSel, just, acao, acaoStatus, evidData, evidName, dataPrevista });
+      supAnswers.push({ supervisorResp, justSel, acaoSel, just, acao, acaoStatus, evidData, evidName, dataPrevista });
     }
     records[rIdx].supervisorAnswers = supAnswers;
     records[rIdx].supervisorAt = new Date().toISOString();
@@ -6919,14 +6932,17 @@ entryLines.join('\n\n') + '\n' +
   function saveSupervisores(obj) { saveCfg(CFG_SUPERVISORES_KEY, obj); }
 
   function onTurnoChange(turno) {
-    const sel = document.getElementById('supervisorSel');
     const field = document.getElementById('supervisorField');
-    if (!sel) return;
+    const display = document.getElementById('supervisorDisplay');
+    if (!field || !display) return;
     const sups = getSupervisores();
     const lista = sups[turno] || [];
-    sel.innerHTML = '<option value="">— Selecione o supervisor —</option>' +
-      lista.map(s => `<option value="${s}">${s}</option>`).join('');
-    if (field) field.style.display = lista.length ? '' : 'none';
+    if (lista.length) {
+      display.textContent = lista.join(', ');
+      field.style.display = '';
+    } else {
+      field.style.display = 'none';
+    }
   }
 
   // ── DIAGNÓSTICO FIREBASE ──
