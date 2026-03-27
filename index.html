@@ -4,22 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Análise de Produtividade – Enel Brasil</title>
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Firebase via REST API pura — sem SDK, funciona em qualquer ambiente -->
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBW-_5syFT-dshn_p4PrBB1Aq8n3AEKo94",
-    authDomain: "produtividade-sg.firebaseapp.com",
-    databaseURL: "https://produtividade-sg-default-rtdb.firebaseio.com",
-    projectId: "produtividade-sg",
-    storageBucket: "produtividade-sg.firebasestorage.app",
-    messagingSenderId: "787358890665",
-    appId: "1:787358890665:web:dab02a2dc55cc87f4ec7b8"
+  const FB_URL = 'https://produtividade-sg-default-rtdb.firebaseio.com';
+
+  const db = {
+    _listeners: {},
+    ref: function(path) {
+      return {
+        _path: path,
+        set: function(data) {
+          return fetch(`${FB_URL}/${path}.json`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+          }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+        },
+        remove: function() {
+          return fetch(`${FB_URL}/${path}.json`, { method: 'DELETE' })
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+        },
+        once: function(event) {
+          return fetch(`${FB_URL}/${path}.json`)
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(data => ({ val: () => data }));
+        },
+        on: function(event, cb, errCb) {
+          // Simula listener com polling agressivo
+          const key = path + '|' + event;
+          if (db._listeners[key]) clearInterval(db._listeners[key]);
+          // Dispara imediatamente
+          fetch(`${FB_URL}/${path}.json`)
+            .then(r => r.json())
+            .then(data => cb({ val: () => data }))
+            .catch(e => { if (errCb) errCb(e); });
+          // Depois a cada 4s
+          db._listeners[key] = setInterval(() => {
+            fetch(`${FB_URL}/${path}.json`)
+              .then(r => r.json())
+              .then(data => cb({ val: () => data }))
+              .catch(e => { if (errCb) errCb(e); });
+          }, 4000);
+          return this;
+        },
+        off: function(event) {
+          const key = path + '|' + event;
+          if (db._listeners[key]) { clearInterval(db._listeners[key]); delete db._listeners[key]; }
+        },
+        app: { name: '[DEFAULT]' }
+      };
+    }
   };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  console.log('Firebase inicializado. DB:', db.app.name);
+
+  console.log('Firebase REST API inicializado. URL:', FB_URL);
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -3269,24 +3306,18 @@
   }
 
   function initConfigSync() {
-    try {
-      db.ref('produtividade/config').on('value', snap => {
-        const data = snap.val();
+    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
+      .then(r => r.json())
+      .then(data => {
         if (!data) return;
         Object.entries(data).forEach(([k, v]) => {
-          // Restore original key format
-          const localKey = k.replace(/_/g, function(m, offset, str) {
-            // Only restore special chars that were replaced
-            return m;
-          });
           _cfgCache[k] = v;
           try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
         });
-        if (document.getElementById('configPanel')?.style.display !== 'none') renderConfigPanel();
+        if (document.getElementById(`configPanel`)?.style.display !== `none`) renderConfigPanel();
         renderContactChips();
         applyCatLimites();
-      });
-    } catch(e) { console.warn('Config sync error:', e); }
+      }).catch(e => console.warn(`Config sync error:`, e));
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
@@ -3599,56 +3630,24 @@
 
   function loadDB() { return [..._dbCache]; }
 
-  // Salva um único registro no Firebase + localStorage
-  // Usa SDK primeiro, REST API como fallback
+  // Salva um único registro no Firebase via REST
   function saveRecordToFirebase(record) {
-    // 1. Atualiza cache e localStorage imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
     _dbCache.unshift(record);
     _dbCache.sort((a, b) => b.id - a.id);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    // 2. Tenta SDK do Firebase
     db.ref('produtividade/records/r_' + record.id).set(record)
-      .then(() => {
-        setFbStatus(true);
-        console.log('[FB] Registro salvo via SDK:', record.id);
-      })
-      .catch(e => {
-        console.warn('[FB] SDK falhou, tentando REST API:', e.message);
-        // 3. Fallback: REST API do Firebase
-        _saveViaREST(record);
-      });
+      .then(() => { setFbStatus(true); console.log('[REST] Salvo:', record.id); })
+      .catch(e => { console.error('[REST] Erro ao salvar:', e.message); showFirebaseRulesWarning(); });
   }
 
-  // Fallback REST API — funciona mesmo quando WebSocket falha
-  function _saveViaREST(record) {
-    const url = `https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${record.id}.json`;
-    fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(record)
-    })
-    .then(r => r.json())
-    .then(() => {
-      setFbStatus(true);
-      console.log('[FB] Registro salvo via REST API:', record.id);
-    })
-    .catch(e => {
-      console.error('[FB] REST API também falhou:', e.message);
-      showFirebaseRulesWarning();
-    });
-  }
-
-  // Busca todos os registros via REST API (fallback para quando listener não funciona)
+  // Fallback REST API — já integrado no db object acima
+  function _saveViaREST(record) { saveRecordToFirebase(record); }
   function _fetchViaREST() {
-    const url = `https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json`;
-    return fetch(url)
+    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json`)
       .then(r => r.json())
-      .then(data => {
-        if (!data) return [];
-        return Object.values(data).sort((a, b) => b.id - a.id);
-      });
+      .then(data => data ? Object.values(data).sort((a,b) => b.id - a.id) : []);
   }
 
   // Atualiza múltiplos registros (edição, status)
@@ -3762,68 +3761,32 @@
   }
 
   function initFirebaseSync() {
+    _firebaseReady = true; // REST API sempre disponível
+
     // Carrega localStorage imediatamente
     try {
       const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
-      if (local.length > 0) {
-        _dbCache = local;
-        refreshAllUI(local);
-      }
+      if (local.length > 0) { _dbCache = local; refreshAllUI(local); }
     } catch(e) {}
 
-    try {
-      // Monitor de conexão — só atualiza indicador visual
-      let _wasOffline = false;
-      db.ref('.info/connected').on('value', snap => {
-        const online = snap.val() === true;
-        setFbStatus(online);
-        if (online && _wasOffline) {
-          // Voltou do offline — força busca imediata para pegar registros perdidos
-          db.ref('produtividade/records').once('value').then(snap => {
-            const data = snap.val();
-            if (!data) return;
-            const records = Object.values(data).sort((a, b) => b.id - a.id);
-            _dbCache = records;
-            try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-            refreshAllUI(records);
-          }).catch(() => {});
-        }
-        _wasOffline = !online;
-      });
+    // Testa conexão REST e carrega dados
+    _fetchViaREST().then(records => {
+      if (records.length > 0) {
+        _dbCache = records;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+        refreshAllUI(records);
+        setFbStatus(true);
+        console.log('[REST] Carregados', records.length, 'registros');
+      } else if (_dbCache.length > 0) {
+        // Firebase vazio mas temos local — envia ao Firebase
+        _dbCache.forEach(r => db.ref('produtividade/records/r_' + r.id).set(r).catch(()=>{}));
+      }
+    }).catch(e => { console.warn('[REST] Erro inicial:', e.message); setFbStatus(false); });
 
-      // Liga listener principal UMA VEZ — o Firebase mantém automaticamente
-      _attachListener();
-
-      // Sync contatos
-      db.ref('produtividade/contacts').on('value', snap => {
-        const data = snap.val();
-        if (data) {
-          const contacts = Array.isArray(data) ? data : Object.values(data);
-          _cfgCache[CONTACTS_KEY] = contacts;
-          try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch {}
-          renderContactChips();
-        }
-      });
-
-    } catch(e) {
-      console.warn('Firebase init error:', e);
-      setFbStatus(false);
-    }
-
-    // Polling a cada 4s — usa REST API como fallback se SDK falhar
+    // Polling a cada 4s — sincroniza todos os usuários via REST
     setInterval(() => {
       if (_deleting) return;
-
-      // Tenta SDK primeiro, depois REST
-      const tryFetch = db.ref('produtividade/records').once('value')
-        .then(snap => {
-          const data = snap.val();
-          if (!data) return null;
-          return Object.values(data).sort((a, b) => b.id - a.id);
-        })
-        .catch(() => _fetchViaREST()); // fallback REST
-
-      tryFetch.then(records => {
+      _fetchViaREST().then(records => {
         if (!records || records.length === 0) return;
         const changed =
           records.length !== _dbCache.length ||
@@ -3832,13 +3795,41 @@
             return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
           });
         if (changed) {
-          console.log('[FB] Polling detectou mudança —', records.length, 'registros');
+          console.log('[REST] Mudança detectada —', records.length, 'registros');
           _dbCache = records;
           try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
           refreshAllUI(records);
         }
       }).catch(() => {});
     }, 4000);
+
+    // Sync contatos via REST polling
+    setInterval(() => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json`)
+        .then(r => r.json())
+        .then(data => {
+          if (data) {
+            const contacts = Array.isArray(data) ? data : Object.values(data);
+            _cfgCache[CONTACTS_KEY] = contacts;
+            try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch {}
+            renderContactChips();
+          }
+        }).catch(() => {});
+    }, 10000);
+
+    // Sync config via REST polling
+    setInterval(() => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data) return;
+          Object.entries(data).forEach(([k, v]) => {
+            _cfgCache[k] = v;
+            try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+          });
+          applyCatLimites();
+        }).catch(() => {});
+    }, 15000);
   }
 
   function collectFormData() {
