@@ -4515,37 +4515,35 @@
       track.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Sem ocorrências posicionadas</div>';
     }
 
-    // Labels row — intervalos de 30 em 30 minutos
-    const labels = document.createElement('div');
-    labels.style.cssText = 'position:relative;height:24px;margin-top:0.35rem;';
+    // Labels row — intervalos de 30 em 30 minutos, alinhados horizontalmente
+    const labelsWrap = document.createElement('div');
+    labelsWrap.style.cssText = 'position:relative;margin-top:0.4rem;height:18px;overflow:visible;';
 
-    // Marcadores a cada 30 minutos
+    // Gera todos os marcos: início, cada 30min, fim
+    const allMarks = [];
+    allMarks.push({ min: startMin, label: entrada, isEdge: true });
     const step = 30;
     const firstMark = Math.ceil(startMin / step) * step;
     for (let min = firstMark; min <= endMin; min += step) {
-      const pct = ((min - startMin) / totalSpan * 100).toFixed(2);
-      if (pct <= 1 || pct >= 99) continue;
-      const tick = document.createElement('div');
+      if (min === startMin || min === endMin) continue;
       const h = Math.floor(min / 60), m = min % 60;
-      const label = h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0');
-      tick.style.cssText = `position:absolute;left:${pct}%;transform:translateX(-50%);font-size:0.62rem;font-weight:${m===0?'800':'600'};color:${m===0?'var(--gray-600)':'var(--gray-400)'};white-space:nowrap;`;
-      tick.textContent = label;
-      labels.appendChild(tick);
+      allMarks.push({ min, label: h.toString().padStart(2,'0')+':'+m.toString().padStart(2,'0'), isEdge: false, isHour: m===0 });
     }
+    if (saida && toMins(saida) !== startMin) allMarks.push({ min: endMin, label: saida, isEdge: true });
 
-    // Always show start label at far left
-    const startLbl = document.createElement('div');
-    startLbl.style.cssText = 'position:absolute;left:0;font-size:0.68rem;font-weight:800;color:var(--green-dark);white-space:nowrap;';
-    startLbl.textContent = '🕐 ' + entrada;
-    labels.appendChild(startLbl);
-
-    // Always show end label at far right
-    if (saida) {
-      const endLbl = document.createElement('div');
-      endLbl.style.cssText = 'position:absolute;right:0;font-size:0.68rem;font-weight:800;color:var(--green-dark);white-space:nowrap;';
-      endLbl.textContent = saida + ' 🕐';
-      labels.appendChild(endLbl);
-    }
+    allMarks.forEach(mark => {
+      const pct = ((mark.min - startMin) / totalSpan * 100);
+      const el = document.createElement('div');
+      const isStart = mark.min === startMin;
+      const isEnd   = mark.min === endMin && saida;
+      el.style.cssText = `position:absolute;` +
+        (isStart ? 'left:0;transform:none;' : isEnd ? 'right:0;transform:none;' : `left:${pct.toFixed(2)}%;transform:translateX(-50%);`) +
+        `font-size:0.62rem;font-weight:${mark.isEdge||mark.isHour?'800':'500'};` +
+        `color:${mark.isEdge?'var(--green-dark)':mark.isHour?'var(--gray-700)':'var(--gray-400)'};` +
+        `white-space:nowrap;top:0;line-height:18px;`;
+      el.textContent = mark.label;
+      labelsWrap.appendChild(el);
+    });
 
     // Legend chips
     const legend = document.createElement('div');
@@ -4561,7 +4559,7 @@
     });
 
     container.appendChild(track);
-    container.appendChild(labels);
+    container.appendChild(labelsWrap);
     if (seen.size > 1) container.appendChild(legend);
   }
 
@@ -5609,7 +5607,10 @@ entryLines.join('\n\n') + '\n' +
 '🔖 Total de ocorrências: *' + r.entries.length + '*\n' +
 '\n' +
 '👉 *Ação necessária:*\n' +
-'Acessar a plataforma para preenchimento de Justificativa e Ação corretiva.';
+'Acessar a plataforma para preenchimento de Justificativa e Ação corretiva.\n' +
+'\n' +
+'Acesse a plataforma:\n' +
+'https://estela-abreu.github.io/produtividade-sg/';
 
     const preview = document.getElementById('notifyPreview');
     if (preview) preview.textContent = msg;
