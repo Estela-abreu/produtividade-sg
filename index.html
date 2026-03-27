@@ -3661,27 +3661,16 @@
     setFbStatus(true);
   }
 
-  // Exclui um registro definitivamente
+  // Exclui um registro definitivamente via REST
   function doDeleteRecord(id) {
+    const idStr = String(id);
     _deleting = true;
 
-    // Remove do cache e localStorage
-    _dbCache = _dbCache.filter(r => String(r.id) !== String(id));
+    // Remove do cache e localStorage imediatamente
+    _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    // Desliga listener, remove, religa
-    db.ref('produtividade/records').off('value');
-    db.ref('produtividade/records/r_' + id).remove()
-      .then(() => {
-        setFbStatus(true);
-        setTimeout(() => { _deleting = false; _attachListener(); }, 2000);
-      })
-      .catch(e => {
-        console.warn('Delete error:', e);
-        showFirebaseRulesWarning();
-        setTimeout(() => { _deleting = false; _attachListener(); }, 1000);
-      });
-
+    // Atualiza UI imediatamente
     updateTabBadge();
     updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     updateCoordenacaoBadge();
@@ -3689,6 +3678,30 @@
     renderCfgRegistros();
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
+
+    // Deleta no Firebase via REST DELETE
+    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${idStr}.json`, {
+      method: 'DELETE'
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      setFbStatus(true);
+      console.log('[REST] Deletado:', idStr);
+      // Confirma que Firebase não tem mais o registro
+      return _fetchViaREST();
+    })
+    .then(records => {
+      // Usa o resultado confirmado do Firebase
+      _dbCache = records;
+      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+      refreshAllUI(records);
+      _deleting = false;
+    })
+    .catch(e => {
+      console.error('[REST] Erro ao excluir:', e.message);
+      showFirebaseRulesWarning();
+      _deleting = false;
+    });
   }
 
   // Listener Firebase — fonte de verdade para todos os usuários
