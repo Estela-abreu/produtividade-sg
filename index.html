@@ -2374,6 +2374,18 @@
       <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#7C3AED;margin-bottom:0.65rem;">⚡ Ocorrências</div>
       <div id="editEntriesList"></div>
 
+      <!-- Adicionar nova ocorrência -->
+      <div style="margin-top:1rem;border-top:1px dashed #DDD6FE;padding-top:0.85rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#7C3AED;margin-bottom:0.6rem;">➕ Adicionar Nova Ocorrência</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;" id="editCatBtns">
+          <button onclick="editAddEntry('plataforma')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #00843D;color:#00843D;background:white;cursor:pointer;">🏗️ Plataforma</button>
+          <button onclick="editAddEntry('deslocamento')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #1E4DA1;color:#1E4DA1;background:white;cursor:pointer;">🚗 Deslocamento</button>
+          <button onclick="editAddEntry('ocioso')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #9F1239;color:#9F1239;background:white;cursor:pointer;">⏸️ Ocioso</button>
+          <button onclick="editAddEntry('intervalo')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #6B21A8;color:#6B21A8;background:white;cursor:pointer;">☕ Intervalo</button>
+          <button onclick="editAddEntry('incidencia')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #D97706;color:#D97706;background:white;cursor:pointer;">⚡ Incidência</button>
+        </div>
+      </div>
+
     </div>
     <div style="padding:0.85rem 1.5rem;border-top:1px solid var(--gray-100);display:flex;justify-content:flex-end;gap:0.65rem;background:var(--gray-50);">
       <button onclick="closeEditModal()" style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;padding:0.6rem 1.2rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;">Cancelar</button>
@@ -6390,11 +6402,74 @@ entryLines.join('\n\n') + '\n' +
     doDeleteRecord(id);
   }
 
+  // ── Edit Modal — Add new entry ──
+  let _editNewEntries = []; // new entries added during edit
+
+  function editAddEntry(catKey) {
+    const newIdx = 'new_' + Date.now();
+    _editNewEntries.push({ catKey, idx: newIdx });
+
+    const color = catColors[catKey] || '#888';
+    const cat   = categorias[catKey];
+    const entriesEl = document.getElementById('editEntriesList');
+
+    const card = document.createElement('div');
+    card.className = 'edit-entry-card';
+    card.dataset.newIdx = newIdx;
+    card.style.borderLeft = `3px solid ${color}`;
+    card.style.background = `${color}08`;
+
+    const hasTime = ['deslocamento','plataforma','ocioso','reparo','intervalo','incidencia'].includes(catKey);
+    card.innerHTML = `
+      <div class="edit-entry-header">
+        <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:0.88rem;">
+          <span style="background:${color}20;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;">${cat?.icon||'?'}</span>
+          <span>${cat?.nome||catKey}</span>
+          <span style="font-size:0.65rem;font-weight:800;background:#7C3AED;color:white;padding:2px 8px;border-radius:99px;">NOVA</span>
+        </div>
+        <button onclick="this.closest('.edit-entry-card').remove()" style="background:none;border:none;color:#EF4444;font-size:1rem;cursor:pointer;" title="Remover">✕</button>
+      </div>
+      <div class="edit-entry-fields">
+        ${catKey === 'incidencia' ? `
+          <div><label class="edit-field-label">🔢 Nº Incidência</label>
+            <input class="edit-field-input" id="enew_numinc_${newIdx}" placeholder="Número..."></div>
+          <div><label class="edit-field-label">⚡ Causa</label>
+            <input class="edit-field-input" id="enew_causas_${newIdx}" placeholder="Ex: VEGETAÇÃO"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+            <div><label class="edit-field-label">🕐 Início</label>
+              <input type="time" class="edit-field-input" id="enew_hinicio_${newIdx}"></div>
+            <div><label class="edit-field-label">🕐 Fim</label>
+              <input type="time" class="edit-field-input" id="enew_hfim_${newIdx}"></div>
+          </div>
+          <div><label class="edit-field-label">📝 Obs. causa (opcional)</label>
+            <input class="edit-field-input" id="enew_obscausa_${newIdx}" placeholder="Observação..."></div>
+        ` : hasTime ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+            <div><label class="edit-field-label">🕐 Início</label>
+              <input type="time" class="edit-field-input" id="enew_hinicio_${newIdx}"></div>
+            <div><label class="edit-field-label">🕐 Fim</label>
+              <input type="time" class="edit-field-input" id="enew_hfim_${newIdx}"></div>
+          </div>
+          <div><label class="edit-field-label">⏱ Duração (minutos)</label>
+            <input type="number" class="edit-field-input" id="enew_mins_${newIdx}" min="0" max="1440" placeholder="Ou calcule pelos horários"></div>
+        ` : `
+          <div><label class="edit-field-label">⏱ Duração (minutos)</label>
+            <input type="number" class="edit-field-input" id="enew_mins_${newIdx}" min="0" max="1440"></div>
+        `}
+        <div style="grid-column:1/-1;"><label class="edit-field-label">📋 Observação</label>
+          <textarea class="edit-field-input" id="enew_obs_${newIdx}" rows="2" style="resize:vertical;"></textarea></div>
+      </div>`;
+
+    entriesEl.appendChild(card);
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   // ── Edit Modal ──
   function openEditModal(id) {
     const r = loadDB().find(rec => rec.id === id);
     if (!r) return;
     _editingRecordId = id;
+    _editNewEntries = []; // reset new entries list
     const [ry,rm,rd] = r.data.split('-');
     const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     const badge = r.registroId ? ` · ${r.registroId}` : '';
@@ -6547,6 +6622,49 @@ entryLines.join('\n\n') + '\n' +
       } else if (e.catKey === 'plataforma') {
         e.plataformaStatus = e.mins <= PLATAFORMA_LIMITE_MIN ? 'dentro' : 'fora';
       }
+    });
+
+    // Collect NEW entries added during edit
+    const newEntryCards = document.querySelectorAll('#editEntriesList .edit-entry-card[data-new-idx]');
+    newEntryCards.forEach(card => {
+      const newIdx = card.dataset.newIdx;
+      // Determine catKey from the card's border color mapping
+      const catMatch = _editNewEntries.find(e => e.idx === newIdx);
+      if (!catMatch) return;
+      const catKey = catMatch.catKey;
+
+      let mins = 0, h = 0, mn = 0, hinicio = '', hfim = '', numinc = '', causas = [], obsCausa = '';
+      const hiniEl = document.getElementById('enew_hinicio_' + newIdx);
+      const hfimEl = document.getElementById('enew_hfim_' + newIdx);
+      const minsEl = document.getElementById('enew_mins_' + newIdx);
+
+      if (hiniEl?.value && hfimEl?.value) {
+        hinicio = hiniEl.value; hfim = hfimEl.value;
+        const [ih,im] = hinicio.split(':').map(Number);
+        const [fh,fm] = hfim.split(':').map(Number);
+        let m = (fh*60+fm)-(ih*60+im); if(m<0) m+=1440;
+        mins = m;
+      } else if (minsEl?.value) {
+        mins = parseInt(minsEl.value) || 0;
+      }
+      h = Math.floor(mins/60); mn = mins%60;
+
+      if (catKey === 'incidencia') {
+        numinc = document.getElementById('enew_numinc_' + newIdx)?.value.trim() || '';
+        const causasRaw = document.getElementById('enew_causas_' + newIdx)?.value || '';
+        causas = causasRaw.split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+        obsCausa = document.getElementById('enew_obscausa_' + newIdx)?.value.trim() || '';
+      }
+
+      const obs = document.getElementById('enew_obs_' + newIdx)?.value.trim() || '';
+
+      // Compute classification
+      let deslocStatus, ociososStatus, plataformaStatus;
+      if (catKey === 'deslocamento') deslocStatus = mins <= DESLOC_LIMITE_MIN ? 'dentro' : 'fora';
+      if (catKey === 'ocioso') ociososStatus = mins <= OCIOSO_LIMITE_MIN ? 'dentro' : 'fora';
+      if (catKey === 'plataforma') plataformaStatus = mins <= PLATAFORMA_LIMITE_MIN ? 'dentro' : 'fora';
+
+      r.entries.push({ catKey, h, mn, mins, obs, hinicio, hfim, numinc, causas, obsCausa, deslocStatus, ociososStatus, plataformaStatus });
     });
 
     // Recalc total
