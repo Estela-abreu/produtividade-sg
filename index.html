@@ -3647,8 +3647,11 @@
   function _saveViaREST(record) { saveRecordToFirebase(record); }
   function _fetchViaREST() {
     return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json`)
-      .then(r => r.json())
-      .then(data => data ? Object.values(data).sort((a,b) => b.id - a.id) : []);
+      .then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(data => {
+        if (!data || typeof data !== 'object') return [];
+        return Object.values(data).filter(r => r && r.id).sort((a,b) => b.id - a.id);
+      });
   }
 
   // Atualiza múltiplos registros (edição, status)
@@ -3665,10 +3668,16 @@
   // Exclui um registro definitivamente via REST
   function doDeleteRecord(id) {
     const idStr = String(id);
-    _deleting = true;
-    _deletedIds.add(idStr); // nunca restaurar este ID
+    _deletedIds.add(idStr);
 
-    // Remove do cache e localStorage imediatamente
+    // Persiste lista de deletados no localStorage (sobrevive reload)
+    try {
+      const saved = JSON.parse(localStorage.getItem('enel_deleted_ids') || '[]');
+      if (!saved.includes(idStr)) saved.push(idStr);
+      localStorage.setItem('enel_deleted_ids', JSON.stringify(saved));
+    } catch(e) {}
+
+    // Remove do cache imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
@@ -3681,7 +3690,7 @@
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
 
-    // Deleta no Firebase via REST DELETE (tenta até 3x)
+    // Deleta no Firebase via REST (tenta até 5x)
     const tryDelete = (attempt) => {
       fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${idStr}.json`, {
         method: 'DELETE'
@@ -3689,13 +3698,17 @@
       .then(r => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         setFbStatus(true);
-        console.log('[REST] Deletado com sucesso:', idStr);
-        _deleting = false;
+        console.log('[REST] Deletado:', idStr, 'na tentativa', attempt);
+        // Grava tombstone no Firebase para outros usuários saberem
+        fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted/${idStr}.json`, {
+          method: 'PUT',
+          body: JSON.stringify(Date.now()),
+          headers: {'Content-Type': 'application/json'}
+        }).catch(() => {});
       })
       .catch(e => {
-        console.error('[REST] Tentativa', attempt, 'falhou:', e.message);
-        if (attempt < 3) setTimeout(() => tryDelete(attempt + 1), 2000);
-        else { _deleting = false; }
+        console.error('[REST] Delete tentativa', attempt, ':', e.message);
+        if (attempt < 5) setTimeout(() => tryDelete(attempt + 1), 3000);
       });
     };
     tryDelete(1);
@@ -3771,41 +3784,76 @@
   }
 
   function initFirebaseSync() {
-    _firebaseReady = true; // REST API sempre disponível
+    _firebaseReady = true;
 
-    // Carrega localStorage imediatamente
+    // Carrega lista de IDs deletados do localStorage (persiste entre reloads)
     try {
-      const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+      const saved = JSON.parse(localStorage.getItem('enel_deleted_ids') || '[]');
+      saved.forEach(id => _deletedIds.add(String(id)));
+      if (_deletedIds.size > 0) console.log('[REST] IDs deletados carregados:', _deletedIds.size);
+    } catch(e) {}
+
+    // Carrega tombstones do Firebase (IDs deletados por outros usuários)
+    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
+      .then(r => r.json())
+      .then(data => {
+        if (data && typeof data === 'object') {
+          Object.keys(data).forEach(id => _deletedIds.add(String(id)));
+          // Persiste no localStorage
+          localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds]));
+        }
+      }).catch(() => {});
+
+    // Carrega localStorage imediatamente (filtrando deletados)
+    try {
+      const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]')
+        .filter(r => !_deletedIds.has(String(r.id)));
       if (local.length > 0) { _dbCache = local; refreshAllUI(local); }
     } catch(e) {}
 
-    // Testa conexão REST e carrega dados
+    // Busca dados do Firebase (filtrando deletados)
     _fetchViaREST().then(records => {
-      if (records.length > 0) {
-        _dbCache = records;
-        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-        refreshAllUI(records);
+      const filtered = records.filter(r => !_deletedIds.has(String(r.id)));
+      // Remove do Firebase os que estão na lista de deletados
+      records.filter(r => _deletedIds.has(String(r.id))).forEach(r => {
+        fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
+      });
+      if (filtered.length > 0 || _dbCache.length === 0) {
+        _dbCache = filtered;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(filtered)); } catch(e) {}
+        refreshAllUI(filtered);
         setFbStatus(true);
-        console.log('[REST] Carregados', records.length, 'registros');
-      } else if (_dbCache.length > 0) {
-        // Firebase vazio mas temos local — envia ao Firebase
-        _dbCache.forEach(r => db.ref('produtividade/records/r_' + r.id).set(r).catch(()=>{}));
+      } else if (_dbCache.length > 0 && filtered.length === 0) {
+        _dbCache.forEach(r => {
+          fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+            method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
+          }).catch(()=>{});
+        });
       }
     }).catch(e => { console.warn('[REST] Erro inicial:', e.message); setFbStatus(false); });
 
     // Polling a cada 4s — sincroniza todos os usuários via REST
     setInterval(() => {
       if (_deleting) return;
+
+      // Atualiza tombstones (IDs deletados por outros usuários)
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
+        .then(r => r.json())
+        .then(data => {
+          if (data && typeof data === 'object') {
+            Object.keys(data).forEach(id => _deletedIds.add(String(id)));
+          }
+        }).catch(() => {});
+
       _fetchViaREST().then(allRecords => {
         if (!allRecords || allRecords.length === 0) return;
 
-        // Filtra registros que foram deletados localmente
+        // Filtra registros deletados
         const records = allRecords.filter(r => !_deletedIds.has(String(r.id)));
 
-        // Se algum registro deletado ainda está no Firebase, deleta de novo
+        // Remove do Firebase os que ainda estão lá mas foram deletados
         allRecords.forEach(r => {
           if (_deletedIds.has(String(r.id))) {
-            console.warn('[REST] Registro deletado ainda no Firebase, removendo:', r.id);
             fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
           }
         });
@@ -3816,8 +3864,8 @@
             const cached = _dbCache.find(r => String(r.id) === String(fr.id));
             return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
           });
+
         if (changed) {
-          console.log('[REST] Mudança detectada —', records.length, 'registros');
           _dbCache = records;
           try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
           refreshAllUI(records);
