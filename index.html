@@ -3818,17 +3818,24 @@
       records.filter(r => _deletedIds.has(String(r.id))).forEach(r => {
         fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
       });
-      if (filtered.length > 0 || _dbCache.length === 0) {
-        _dbCache = filtered;
-        try { localStorage.setItem(DB_KEY, JSON.stringify(filtered)); } catch(e) {}
-        refreshAllUI(filtered);
-        setFbStatus(true);
-      } else if (_dbCache.length > 0 && filtered.length === 0) {
-        _dbCache.forEach(r => {
-          fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-            method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
-          }).catch(()=>{});
-        });
+      // Firebase é a fonte de verdade — aceita mesmo se vazio
+      _dbCache = filtered;
+      try { localStorage.setItem(DB_KEY, JSON.stringify(filtered)); } catch(e) {}
+      refreshAllUI(filtered);
+      setFbStatus(true);
+      // Se Firebase vazio mas temos dados locais sem tombstone, sobe ao Firebase
+      if (filtered.length === 0 && _dbCache.length === 0) {
+        const localBackup = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch{return [];} })();
+        const validLocal = localBackup.filter(r => !_deletedIds.has(String(r.id)));
+        if (validLocal.length > 0) {
+          validLocal.forEach(r => {
+            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+              method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
+            }).catch(()=>{});
+          });
+          _dbCache = validLocal;
+          refreshAllUI(validLocal);
+        }
       }
     }).catch(e => { console.warn('[REST] Erro inicial:', e.message); setFbStatus(false); });
 
@@ -3846,26 +3853,29 @@
         }).catch(() => {});
 
       _fetchViaREST().then(allRecords => {
-        if (!allRecords || allRecords.length === 0) return;
-
+        // allRecords pode ser [] — significa que Firebase está vazio (tudo foi deletado)
         // Filtra registros deletados
-        const records = allRecords.filter(r => !_deletedIds.has(String(r.id)));
+        const records = (allRecords || []).filter(r => !_deletedIds.has(String(r.id)));
 
         // Remove do Firebase os que ainda estão lá mas foram deletados
-        allRecords.forEach(r => {
+        (allRecords || []).forEach(r => {
           if (_deletedIds.has(String(r.id))) {
             fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
           }
         });
 
+        // Compara com cache atual — se diferente, atualiza (inclusive se ficou vazio)
+        const fbCount  = records.length;
+        const cacheCount = _dbCache.length;
         const changed =
-          records.length !== _dbCache.length ||
+          fbCount !== cacheCount ||
           records.some(fr => {
             const cached = _dbCache.find(r => String(r.id) === String(fr.id));
             return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
           });
 
         if (changed) {
+          console.log('[REST] Sincronizando: Firebase=', fbCount, '| Cache=', cacheCount);
           _dbCache = records;
           try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
           refreshAllUI(records);
