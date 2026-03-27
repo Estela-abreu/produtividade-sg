@@ -1690,7 +1690,7 @@
         </div>
         <div class="field">
           <label for="turno">Turno <span class="req">*</span></label>
-          <select id="turno" required>
+          <select id="turno" required onchange="onTurnoChange(this.value)">
             <option value="" disabled selected>Selecione o turno</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -1737,6 +1737,14 @@
               onblur="this.style.borderColor='var(--gray-200)';this.style.background='var(--gray-50)'">
           </div>
         </div>
+      </div>
+
+      <!-- Supervisor sugerido -->
+      <div class="field" style="margin-top:0.75rem;" id="supervisorField">
+        <label for="supervisorSel" style="font-size:0.82rem;font-weight:700;color:var(--gray-700);">👤 Supervisor <span style="font-size:0.72rem;font-weight:500;color:var(--gray-400);">(opcional)</span></label>
+        <select id="supervisorSel" style="font-family:'Barlow',sans-serif;font-size:0.9rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.55rem 0.75rem;width:100%;background:white;">
+          <option value="">— Selecione o supervisor —</option>
+        </select>
       </div>
 
     </div>
@@ -2111,6 +2119,15 @@
     </div>
   </div>
 
+  <!-- Seção 3: Supervisores por Turno -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">👤 Supervisores por Turno</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Supervisores sugeridos automaticamente ao selecionar o turno no Registro.</div>
+      <div id="cfgSupervisoresList"></div>
+    </div>
+  </div>
+
   <!-- Seção 4: Contatos WhatsApp -->
   <div class="cfg-card">
     <div class="cfg-card-header">📱 Contatos WhatsApp</div>
@@ -2266,11 +2283,11 @@
         <span class="rid-value" id="rEquipe">—</span>
       </div>
       <div class="resumo-id-card">
-        <span class="rid-label">🕐 Entrada</span>
+        <span class="rid-label">🕐 Início da Jornada</span>
         <span class="rid-value" id="rEntrada">—</span>
       </div>
       <div class="resumo-id-card">
-        <span class="rid-label">🕐 Saída</span>
+        <span class="rid-label">🕐 Fim da Jornada</span>
         <span class="rid-value" id="rSaida">—</span>
       </div>
     </div>
@@ -4028,8 +4045,11 @@
     document.getElementById('cardJust').style.display = 'none';
     document.getElementById('totalBar').style.display = 'none';
     entryCounter = 0;
+    const supSel = document.getElementById('supervisorSel');
+    if (supSel) supSel.selectedIndex = 0;
+    const supField = document.getElementById('supervisorField');
+    if (supField) supField.style.display = 'none';
   }
-
 
   function applyDBFilters() {
     const dataVal   = document.getElementById('dbFilterData')?.value || '';
@@ -4313,7 +4333,7 @@
             <div class="r-entry-just">${supAns.acaoSel ? '<strong>'+supAns.acaoSel+'</strong> · ' : ''}${supAns.acao || '—'}</div>
           </div>
           ${supAns.acaoStatus ? `<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
-            <div class="r-entry-field-label" style="color:#1E4DA1;">🔄 Status</div>
+            <div class="r-entry-field-label" style="color:#1E4DA1;">🔄 Status da Ação</div>
             <div class="r-entry-just">${supAns.acaoStatus==='realizada'?'✅ Realizada':'❌ Não realizada'}${supAns.dataPrevista?' · 📅 '+supAns.dataPrevista:''}</div>
           </div>` : ''}
           ${supAns.evidData ? `<div class="r-entry-field-block" style="grid-column:1/-1;background:#ECFDF5;border:1px solid #6EE7B7;">
@@ -4495,18 +4515,21 @@
       track.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Sem ocorrências posicionadas</div>';
     }
 
-    // Labels row with intermediate hour markers
+    // Labels row — intervalos de 30 em 30 minutos
     const labels = document.createElement('div');
     labels.style.cssText = 'position:relative;height:24px;margin-top:0.35rem;';
 
-    // Intermediate hour labels
-    for (let h = firstHour; h <= lastHour; h++) {
-      const min = h * 60;
+    // Marcadores a cada 30 minutos
+    const step = 30;
+    const firstMark = Math.ceil(startMin / step) * step;
+    for (let min = firstMark; min <= endMin; min += step) {
       const pct = ((min - startMin) / totalSpan * 100).toFixed(2);
-      if (pct <= 0 || pct >= 100) continue;
+      if (pct <= 1 || pct >= 99) continue;
       const tick = document.createElement('div');
-      tick.style.cssText = `position:absolute;left:${pct}%;transform:translateX(-50%);font-size:0.65rem;font-weight:700;color:var(--gray-400);white-space:nowrap;`;
-      tick.textContent = h.toString().padStart(2,'0') + ':00';
+      const h = Math.floor(min / 60), m = min % 60;
+      const label = h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0');
+      tick.style.cssText = `position:absolute;left:${pct}%;transform:translateX(-50%);font-size:0.62rem;font-weight:${m===0?'800':'600'};color:${m===0?'var(--gray-600)':'var(--gray-400)'};white-space:nowrap;`;
+      tick.textContent = label;
       labels.appendChild(tick);
     }
 
@@ -5905,6 +5928,7 @@ entryLines.join('\n\n') + '\n' +
     renderCfgCausas();
     renderCfgLimites();
     renderCfgCatLimites();
+    renderCfgSupervisores();
     renderCfgContacts();
     renderCfgRegistros();
     renderCfgImagePreview();
@@ -6046,6 +6070,45 @@ entryLines.join('\n\n') + '\n' +
     applyCatLimites(); // apply immediately
     const labels = { plataforma: 'Tempo de Plataforma', deslocamento: 'Deslocamento', ocioso: 'Tempo Ocioso' };
     showCopyToast('✅ Limite de ' + (labels[key] || key) + ' atualizado para ' + val + 'min!');
+  }
+
+  function renderCfgSupervisores() {
+    const el = document.getElementById('cfgSupervisoresList');
+    if (!el) return;
+    const sups = getSupervisores();
+    const turnos = ['A','B','C'];
+    el.innerHTML = turnos.map(t => {
+      const lista = sups[t] || [];
+      return `<div style="margin-bottom:1rem;">
+        <div style="font-size:0.8rem;font-weight:800;color:var(--gray-700);margin-bottom:0.5rem;">Turno ${t}</div>
+        <div id="cfgSupList_${t}" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.45rem;">
+          ${lista.map(s => `<span class="cfg-tag">${s}<button onclick="cfgRemoveSup('${t}','${s.replace(/'/g,"\\'")}')">✕</button></span>`).join('')}
+        </div>
+        <div class="cfg-add-row">
+          <input type="text" id="cfgNewSup_${t}" placeholder="Nome do supervisor..." class="cfg-input"
+            onkeydown="if(event.key==='Enter')cfgAddSup('${t}')">
+          <button class="cfg-btn-add" onclick="cfgAddSup('${t}')">+ Adicionar</button>
+        </div>
+      </div>`;
+    }).join('<hr style="margin:0.75rem 0;border:none;border-top:1px solid var(--gray-100);">');
+  }
+
+  function cfgAddSup(turno) {
+    const inp = document.getElementById('cfgNewSup_' + turno);
+    const val = inp?.value.trim();
+    if (!val) return;
+    const sups = getSupervisores();
+    if (!sups[turno]) sups[turno] = [];
+    if (!sups[turno].includes(val)) { sups[turno].push(val); saveSupervisores(sups); }
+    inp.value = '';
+    renderCfgSupervisores();
+    showCopyToast('✅ Supervisor adicionado!');
+  }
+
+  function cfgRemoveSup(turno, nome) {
+    const sups = getSupervisores();
+    if (sups[turno]) { sups[turno] = sups[turno].filter(s => s !== nome); saveSupervisores(sups); }
+    renderCfgSupervisores();
   }
 
   function renderCfgCausas() {
@@ -6842,6 +6905,27 @@ entryLines.join('\n\n') + '\n' +
     const modal = document.getElementById('evidPreviewModal');
     if (modal) modal.style.display = 'none';
     document.body.style.overflow = '';
+  }
+
+  // ── Supervisores por Turno ──
+  const CFG_SUPERVISORES_KEY = 'enel_cfg_supervisores';
+  const SUPERVISORES_DEFAULT = {
+    A: ['Lucas Costa'],
+    B: ['Dalmir', 'Darvison', 'Alexandre'],
+    C: ['Marcelo', 'Adriano', 'Helio']
+  };
+  function getSupervisores() { return getCfg(CFG_SUPERVISORES_KEY, JSON.parse(JSON.stringify(SUPERVISORES_DEFAULT))); }
+  function saveSupervisores(obj) { saveCfg(CFG_SUPERVISORES_KEY, obj); }
+
+  function onTurnoChange(turno) {
+    const sel = document.getElementById('supervisorSel');
+    const field = document.getElementById('supervisorField');
+    if (!sel) return;
+    const sups = getSupervisores();
+    const lista = sups[turno] || [];
+    sel.innerHTML = '<option value="">— Selecione o supervisor —</option>' +
+      lista.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (field) field.style.display = lista.length ? '' : 'none';
   }
 
   // ── DIAGNÓSTICO FIREBASE ──
