@@ -3626,7 +3626,8 @@
 
   let _dbCache      = [];
   let _firebaseReady = false;
-  let _deleting     = false; // true apenas durante exclusão
+  let _deleting     = false;
+  let _deletedIds   = new Set(); // IDs permanentemente deletados — nunca restaurar
 
   function loadDB() { return [..._dbCache]; }
 
@@ -3665,6 +3666,7 @@
   function doDeleteRecord(id) {
     const idStr = String(id);
     _deleting = true;
+    _deletedIds.add(idStr); // nunca restaurar este ID
 
     // Remove do cache e localStorage imediatamente
     _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
@@ -3679,29 +3681,24 @@
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
 
-    // Deleta no Firebase via REST DELETE
-    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${idStr}.json`, {
-      method: 'DELETE'
-    })
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      setFbStatus(true);
-      console.log('[REST] Deletado:', idStr);
-      // Confirma que Firebase não tem mais o registro
-      return _fetchViaREST();
-    })
-    .then(records => {
-      // Usa o resultado confirmado do Firebase
-      _dbCache = records;
-      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-      refreshAllUI(records);
-      _deleting = false;
-    })
-    .catch(e => {
-      console.error('[REST] Erro ao excluir:', e.message);
-      showFirebaseRulesWarning();
-      _deleting = false;
-    });
+    // Deleta no Firebase via REST DELETE (tenta até 3x)
+    const tryDelete = (attempt) => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${idStr}.json`, {
+        method: 'DELETE'
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        setFbStatus(true);
+        console.log('[REST] Deletado com sucesso:', idStr);
+        _deleting = false;
+      })
+      .catch(e => {
+        console.error('[REST] Tentativa', attempt, 'falhou:', e.message);
+        if (attempt < 3) setTimeout(() => tryDelete(attempt + 1), 2000);
+        else { _deleting = false; }
+      });
+    };
+    tryDelete(1);
   }
 
   // Listener Firebase — fonte de verdade para todos os usuários
@@ -3799,8 +3796,20 @@
     // Polling a cada 4s — sincroniza todos os usuários via REST
     setInterval(() => {
       if (_deleting) return;
-      _fetchViaREST().then(records => {
-        if (!records || records.length === 0) return;
+      _fetchViaREST().then(allRecords => {
+        if (!allRecords || allRecords.length === 0) return;
+
+        // Filtra registros que foram deletados localmente
+        const records = allRecords.filter(r => !_deletedIds.has(String(r.id)));
+
+        // Se algum registro deletado ainda está no Firebase, deleta de novo
+        allRecords.forEach(r => {
+          if (_deletedIds.has(String(r.id))) {
+            console.warn('[REST] Registro deletado ainda no Firebase, removendo:', r.id);
+            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
+          }
+        });
+
         const changed =
           records.length !== _dbCache.length ||
           records.some(fr => {
