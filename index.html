@@ -6809,10 +6809,11 @@ entryLines.join('\n\n') + '\n' +
 
   function updateCoordenacaoBadge() {
     const records = loadDB();
-    // Records awaiting coordination: status=revisado or parcial, no coordStatus yet
-    const count = records.filter(r =>
-      (r.status === 'revisado' || r.status === 'parcial') && !r.coordStatus
-    ).length;
+    // Only records that went through justificativa (have real supervisor answers) and await coordination
+    const count = records.filter(r => {
+      const hasRealAnswers = r.supervisorAnswers && r.supervisorAnswers.some(a => a !== null && a !== undefined);
+      return hasRealAnswers && !r.coordStatus;
+    }).length;
     const badge = document.getElementById('tabBadgeCoordenacao');
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
   }
@@ -6822,11 +6823,14 @@ entryLines.join('\n\n') + '\n' +
     const subtitle = document.getElementById('coordSubtitle');
     if (!listEl) return;
     const all = loadDB();
-    // Only records with supervisor answers
-    const eligible = all.filter(r =>
-      (r.status === 'revisado' || r.status === 'parcial') ||
-      r.coordStatus === 'aprovado' || r.coordStatus === 'reprovado'
-    );
+
+    // Only records that went through justificativa flow:
+    // must have at least one real supervisorAnswer (not null)
+    const eligible = all.filter(r => {
+      const hasRealAnswers = r.supervisorAnswers && r.supervisorAnswers.some(a => a !== null && a !== undefined);
+      const wasCoordinated = r.coordStatus === 'aprovado' || r.coordStatus === 'reprovado';
+      return hasRealAnswers || wasCoordinated;
+    });
     let filtered = eligible;
     if (_coordFilter === 'pending')  filtered = eligible.filter(r => !r.coordStatus);
     if (_coordFilter === 'approved') filtered = eligible.filter(r => r.coordStatus === 'aprovado');
