@@ -1592,6 +1592,10 @@
       <span class="sidebar-icon">📊</span> Banco de Dados
       <span class="sidebar-badge" id="tabBadge" style="display:none;background:var(--green);">0</span>
     </button>
+    <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:#818CF8;">
+      <span class="sidebar-icon">📋</span> Reunião
+      <span class="sidebar-badge" id="tabBadgeReuniao" style="display:none;background:#6366F1;">0</span>
+    </button>
     <button class="sidebar-item config-item" id="tabBtnConfig" onclick="switchTab('config')" title="Acesso restrito ao administrador">
       <span class="sidebar-icon">⚙️</span> Configuração
     </button>
@@ -1993,6 +1997,22 @@
 </div><!-- /tabRetorno -->
 
 <!-- ── ABA COORDENAÇÃO ── -->
+
+<!-- ── ABA REUNIÃO ── -->
+<div id="tabReuniao" style="display:none;">
+  <div style="max-width:1100px;margin:0 auto;padding:1.5rem 2rem 3rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Painel de Reunião</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);">Registros selecionados para apresentação · Visão gerencial</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🖨️ Imprimir</button>
+      </div>
+    </div>
+    <div id="reuniaoList"></div>
+  </div>
+</div>
 
 <!-- ── ABA CONFIGURAÇÃO ── -->
 <div id="tabConfig" style="display:none;">
@@ -3735,10 +3755,12 @@
     updateTabBadge();
     updateTabBadgeRetorno(records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     updateTopbarMetrics();
+    updateBadgeReuniao();
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
-    if (activeBtn === 'tabBtnRetorno')     renderRetorno();
-    if (activeBtn === 'tabBtnNotify')      renderNotifyTab();
+    if (activeBtn === 'tabBtnRetorno')  renderRetorno();
+    if (activeBtn === 'tabBtnNotify')   renderNotifyTab();
+    if (activeBtn === 'tabBtnReuniao')  renderReuniao();
   }
 
   function setFbStatus(connected) {
@@ -4154,6 +4176,8 @@
             <div class="db-record-actions">
               <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
               <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
+              <button class="db-action-btn" data-action="meeting" data-id="${r.id}" title="${r.reuniao ? 'Remover da reunião' : 'Incluir na reunião'}"
+                style="color:${r.reuniao ? '#6366F1' : 'var(--gray-400)'};font-size:0.9rem;">${r.reuniao ? '📋' : '📋'}</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -4167,6 +4191,10 @@
       listEl.appendChild(card);
 
       // Direct event listeners — most reliable approach
+      card.querySelector('[data-action="meeting"]')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleReuniao(r.id);
+      });
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
@@ -4387,43 +4415,28 @@
     modal.scrollTop = 0;
   }
 
-  function buildTimeline(r) {
-    const section = document.getElementById('rTimelineSection');
-    const container = document.getElementById('rTimeline');
-    if (!section || !container) return;
-
+  // Shared timeline builder — returns a container div (used by resumo modal AND reunião)
+  function buildTimelineEl(r) {
     const entrada = r.jornadaEntrada;
     const saida   = r.jornadaSaida;
-
-    // Need at least entrada to build timeline
-    if (!entrada) {
-      section.style.display = 'none';
-      return;
-    }
-    section.style.display = 'block';
-    container.innerHTML = '';
+    if (!entrada) return null;
 
     const toMins = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
     const startMin = toMins(entrada);
     const endMin   = saida ? toMins(saida) : startMin + (r.totalMin || 480);
     const totalSpan = Math.max(endMin - startMin, 1);
 
-    // Build entries with time positions
-    // For non-incidencia: distribute sequentially starting from entrada
-    // For incidencia: use hinicio/hfim if available
     const segments = [];
     let cursor = startMin;
-
     r.entries.forEach(e => {
       const color = catColors[e.catKey] || '#888';
       const cat   = categorias[e.catKey];
       const mins  = e.mins || 0;
       let segStart, segEnd;
-
       if ((e.catKey === 'incidencia' || e.catKey === 'deslocamento' || e.catKey === 'plataforma' || e.catKey === 'reparo' || e.catKey === 'ocioso' || e.catKey === 'intervalo') && e.hinicio && e.hfim) {
         segStart = toMins(e.hinicio);
         segEnd   = toMins(e.hfim);
-        if (segEnd <= segStart) segEnd += 24*60; // overnight
+        if (segEnd <= segStart) segEnd += 24*60;
       } else {
         segStart = cursor;
         segEnd   = cursor + mins;
@@ -4432,13 +4445,13 @@
       segments.push({ e, cat, color, segStart, segEnd, mins });
     });
 
-    // Create track
+    const wrap = document.createElement('div');
+
     const track = document.createElement('div');
     track.className = 'timeline-track';
 
-    // Subtle hour tick lines on track
     const firstHour = Math.ceil(startMin / 60);
-    const lastHour  = Math.floor(endMin   / 60);
+    const lastHour  = Math.floor(endMin / 60);
     for (let hh = firstHour; hh <= lastHour; hh++) {
       const pct = ((hh * 60 - startMin) / totalSpan * 100).toFixed(2);
       if (pct <= 0 || pct >= 100) continue;
@@ -4452,32 +4465,26 @@
       const left  = Math.max(0, (s.segStart - startMin) / totalSpan * 100);
       const width = Math.min(100 - left, (s.segEnd - s.segStart) / totalSpan * 100);
       if (width < 0.3) return;
-
       const bar = document.createElement('div');
       bar.className = 'timeline-bar';
       bar.style.cssText = `left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${s.color};`;
-
       const h = Math.floor(s.mins/60), m = s.mins%60;
       const timeStr = pad(h)+'h'+pad(m);
       const startLabel = Math.floor(s.segStart/60)+':'+(s.segStart%60).toString().padStart(2,'0');
       const endLabel   = Math.floor(s.segEnd/60)+':'+(s.segEnd%60).toString().padStart(2,'0');
-
       bar.innerHTML = `
         <div class="timeline-bar-label">${width > 8 ? s.cat.icon+' '+s.cat.nome : s.cat.icon}</div>
         <div class="timeline-tooltip">${s.cat.icon} ${s.cat.nome}<br>${startLabel} → ${endLabel} · ${timeStr}</div>`;
       track.appendChild(bar);
     });
 
-    // Empty space indicator
     if (!segments.length) {
       track.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Sem ocorrências posicionadas</div>';
     }
 
-    // Labels row — intervalos de 30 em 30 minutos, alinhados horizontalmente
     const labelsWrap = document.createElement('div');
     labelsWrap.style.cssText = 'position:relative;margin-top:0.4rem;height:18px;overflow:visible;';
 
-    // Gera todos os marcos: início, cada 30min, fim
     const allMarks = [];
     allMarks.push({ min: startMin, label: entrada, isEdge: true });
     const step = 30;
@@ -4503,7 +4510,6 @@
       labelsWrap.appendChild(el);
     });
 
-    // Legend chips
     const legend = document.createElement('div');
     legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;';
     const seen = new Set();
@@ -4516,9 +4522,21 @@
       legend.appendChild(chip);
     });
 
-    container.appendChild(track);
-    container.appendChild(labelsWrap);
-    if (seen.size > 1) container.appendChild(legend);
+    wrap.appendChild(track);
+    wrap.appendChild(labelsWrap);
+    if (seen.size > 1) wrap.appendChild(legend);
+    return wrap;
+  }
+
+  function buildTimeline(r) {
+    const section = document.getElementById('rTimelineSection');
+    const container = document.getElementById('rTimeline');
+    if (!section || !container) return;
+    if (!r.jornadaEntrada) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    container.innerHTML = '';
+    const el = buildTimelineEl(r);
+    if (el) container.appendChild(el);
   }
 
   function clearAllDB() {
@@ -4543,6 +4561,7 @@
     notify:      '📨 Notificar Supervisor',
     retorno:     '✅ Justificativa',
     db:          '📊 Banco de Dados Produtividade',
+    reuniao:     '📋 Painel de Reunião',
     config:      '⚙️ Configuração'
   };
 
@@ -4559,14 +4578,16 @@
     document.getElementById('tabForm').style.display        = tab === 'form'        ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'      ? 'block' : 'none';
     document.getElementById('tabRetorno').style.display     = tab === 'retorno'     ? 'block' : 'none';
-      document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
+    document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
+    document.getElementById('tabReuniao').style.display     = tab === 'reuniao'     ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','Retorno','DB','Config'].forEach(t => {
+    ['Inicio','Form','Notify','Retorno','DB','Reuniao','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
     if (tab === 'db')          { applyDBFilters(); window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'retorno')     { renderRetorno();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -6769,7 +6790,164 @@ entryLines.join('\n\n') + '\n' +
     }
   }
 
-  // ── DIAGNÓSTICO FIREBASE ──
+  // ══════════════════════════════════════════
+  //  ABA REUNIÃO
+  // ══════════════════════════════════════════
+
+  function toggleReuniao(id) {
+    const records = loadDB();
+    const r = records.find(rec => rec.id === id);
+    if (!r) return;
+    r.reuniao = !r.reuniao;
+    saveDB(records);
+    applyDBFilters();
+    updateBadgeReuniao();
+    showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
+  }
+
+  function updateBadgeReuniao() {
+    const count = loadDB().filter(r => r.reuniao).length;
+    const badge = document.getElementById('tabBadgeReuniao');
+    if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
+  }
+
+  function renderReuniao() {
+    const listEl = document.getElementById('reuniaoList');
+    if (!listEl) return;
+    const all = loadDB();
+    const marked = all.filter(r => r.reuniao);
+    updateBadgeReuniao();
+
+    if (!marked.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
+        <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+        <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
+        <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
+      </div>`;
+      return;
+    }
+
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const toMins = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; };
+
+    listEl.innerHTML = '';
+    marked.forEach(r => {
+      const [ry,rm,rd] = r.data.split('-');
+      const dataBR = rd+'/'+rm+'/'+ry;
+      const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
+      const totalH = Math.floor(r.totalMin/60), totalM = r.totalMin%60;
+      const supervisorStr = (()=>{ const s=getSupervisores(); return (s[r.turno]||[]).join(', ')||'—'; })();
+
+      // ── Timeline ──
+
+
+      // ── Ocorrências table ──
+      const ocRows = r.entries.map(e => {
+        const color = catColors[e.catKey]||'#888';
+        const cat   = categorias[e.catKey];
+        const desvio = entryNeedsJustificativa(e);
+        const limite = e.catKey==='plataforma' ? PLATAFORMA_LIMITE_MIN : e.catKey==='deslocamento' ? DESLOC_LIMITE_MIN : e.catKey==='ocioso' ? OCIOSO_LIMITE_MIN : e.catKey==='incidencia' ? (getIncidenciaLimite(e.causas)||0) : 0;
+        const tempoEsp = limite ? `${pad(Math.floor(limite/60))}:${pad(limite%60)}` : '—';
+        const statusBadge = desvio
+          ? `<span style="font-size:0.7rem;font-weight:800;background:#DC2626;color:white;padding:3px 10px;border-radius:99px;">⚠️ Fora do Tempo</span>`
+          : `<span style="font-size:0.7rem;font-weight:800;background:#16A34A;color:white;padding:3px 10px;border-radius:99px;">✅ Dentro do Tempo</span>`;
+        return `<tr style="border-bottom:1px solid #F3F4F6;">
+          <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
+          <td style="padding:0.55rem 0.75rem;color:#374151;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
+          <td style="padding:0.55rem 0.75rem;text-align:center;font-weight:700;">${pad(Math.floor(e.mins/60))}:${pad(e.mins%60)}</td>
+          <td style="padding:0.55rem 0.75rem;text-align:center;color:#6B7280;">${tempoEsp}</td>
+          <td style="padding:0.55rem 0.75rem;text-align:center;">${statusBadge}</td>
+        </tr>`;
+      }).join('');
+
+      // ── Justificativas ──
+      const justRows = r.entries.map((e, idx) => {
+        const supAns = r.supervisorAnswers?.[idx];
+        if (!supAns) return '';
+        const cat = categorias[e.catKey];
+        return `<tr style="border-bottom:1px solid #F3F4F6;">
+          <td style="padding:0.55rem 0.75rem;font-weight:700;color:#374151;">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
+          <td style="padding:0.55rem 0.75rem;color:#374151;">${supAns.justSel||'—'}: ${supAns.just||'—'}</td>
+          <td style="padding:0.55rem 0.75rem;color:#374151;">${supAns.acao||'—'}</td>
+        </tr>`;
+      }).filter(Boolean).join('');
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:white;border-radius:10px;margin-bottom:1.75rem;box-shadow:0 2px 12px rgba(79,70,229,0.1);border:1px solid #C7D2FE;overflow:hidden;';
+      card.innerHTML = `
+        <!-- Cabeçalho -->
+        <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+          <div style="display:flex;flex-direction:column;gap:0.3rem;">
+            <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:white;">👷 Equipe: <strong>${r.equipe}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong style="color:white;">${r.turno}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong style="color:white;">${diaSem}, ${dataBR}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Supervisor: <strong style="color:white;">${supervisorStr}</strong></span>
+            </div>
+            ${r.jornadaEntrada ? `<div style="font-size:0.78rem;color:#93C5FD;">🕐 Jornada: <strong style="color:white;">${r.jornadaEntrada}</strong> às <strong style="color:white;">${r.jornadaSaida||'—'}</strong></div>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
+            <button onclick="toggleReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
+
+        <!-- Ocorrências -->
+        <div style="padding:0 1.25rem;">
+          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;">
+            <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
+            <thead>
+              <tr style="background:#F8FAFF;">
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Esperado</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Status</th>
+              </tr>
+            </thead>
+            <tbody>${ocRows}</tbody>
+          </table>
+        </div>
+
+        ${justRows ? `
+        <!-- Justificativas -->
+        <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
+          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0.75rem -1.25rem 0.25rem;">
+            <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Justificativas e Ações</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#F8FAFF;">
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;width:18%;">Categoria</th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Ação Corretiva</th>
+              </tr>
+            </thead>
+            <tbody>${justRows}</tbody>
+          </table>
+        </div>` : ''}`;
+
+      listEl.appendChild(card);
+
+      // Append real timeline (same as Banco de Dados / Resumo)
+      const tlContainer = card.querySelector(`#reu_tl_${r.id}`);
+      if (tlContainer && r.jornadaEntrada) {
+        const tlEl = buildTimelineEl(r);
+        if (tlEl) tlContainer.appendChild(tlEl);
+      }
+    });
+  }
+
+  function printReuniao() {
+    window.print();
+  }
+
+
   function toggleFbDebug() {
     const p = document.getElementById('fbDebugPanel');
     if (p.style.display === 'none') { p.style.display = 'block'; runFbDiag(); }
