@@ -1584,10 +1584,6 @@
       <span class="sidebar-icon">✅</span> Justificativa
       <span class="sidebar-badge" id="tabBadgeRetorno" style="display:none;">0</span>
     </button>
-    <button class="sidebar-item" id="tabBtnCoordenacao" onclick="switchTab('coordenacao')" style="color:#6366F1;">
-      <span class="sidebar-icon">🎯</span> Coordenação
-      <span class="sidebar-badge" id="tabBadgeCoordenacao" style="display:none;background:#6366F1;">0</span>
-    </button>
     <button class="sidebar-item" id="tabBtnDB" onclick="switchTab('db')">
       <span class="sidebar-icon">📊</span> Banco de Dados
       <span class="sidebar-badge" id="tabBadge" style="display:none;background:var(--green);">0</span>
@@ -1993,46 +1989,6 @@
 </div><!-- /tabRetorno -->
 
 <!-- ── ABA COORDENAÇÃO ── -->
-<div id="tabCoordenacao" style="display:none;">
-
-  <!-- Lock screen -->
-  <div id="coordLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
-    <div style="font-size:2.5rem;margin-bottom:1rem;">🎯</div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:800;color:#6366F1;margin-bottom:0.5rem;">Coordenação</div>
-    <div style="font-size:0.88rem;color:var(--gray-500);margin-bottom:1.5rem;">Acesso restrito. Informe a senha para validar as justificativas.</div>
-    <div style="display:flex;gap:0.5rem;justify-content:center;">
-      <input type="password" id="coordPassInput" placeholder="Senha da coordenação"
-        style="font-family:'Barlow',sans-serif;font-size:0.95rem;border:1.5px solid #6366F1;border-radius:var(--radius-sm);padding:0.6rem 1rem;outline:none;width:220px;color:#312E81;background:#EEF2FF;"
-        onkeydown="if(event.key==='Enter')checkCoordPass()">
-      <button onclick="checkCoordPass()"
-        style="font-family:'Barlow',sans-serif;font-size:0.9rem;font-weight:800;padding:0.6rem 1.3rem;border-radius:var(--radius-sm);border:none;background:#6366F1;color:white;cursor:pointer;">
-        Entrar
-      </button>
-    </div>
-    <div id="coordPassErr" style="font-size:0.8rem;color:#DC2626;margin-top:0.5rem;display:none;">Senha incorreta.</div>
-  </div>
-
-  <!-- Panel -->
-  <div id="coordPanel" style="display:none;max-width:960px;margin:0 auto;padding:1.5rem 2rem 3rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem;">
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;color:#6366F1;text-transform:uppercase;letter-spacing:0.05em;">🎯 Coordenação</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);">Validação final das justificativas · Acesso restrito</div>
-      </div>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
-        <div style="display:flex;gap:0.35rem;">
-          <button class="db-btn-filter active" id="coordFilterPending" onclick="filterCoordenacao('pending')">⏳ Aguardando</button>
-          <button class="db-btn-filter" id="coordFilterApproved" onclick="filterCoordenacao('approved')">✅ Aprovados</button>
-          <button class="db-btn-filter" id="coordFilterRejected" onclick="filterCoordenacao('rejected')">❌ Reprovados</button>
-          <button class="db-btn-filter" id="coordFilterAll" onclick="filterCoordenacao('all')">Todos</button>
-        </div>
-        <button onclick="lockCoordenacao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🔒 Sair</button>
-      </div>
-    </div>
-    <div id="coordSubtitle" style="font-size:0.8rem;color:var(--gray-400);margin-bottom:1rem;"></div>
-    <div id="coordList"></div>
-  </div>
-</div><!-- /tabCoordenacao -->
 
 <!-- ── ABA CONFIGURAÇÃO ── -->
 <div id="tabConfig" style="display:none;">
@@ -2153,17 +2109,6 @@
     </div>
   </div>
 
-  <div class="cfg-card">
-    <div class="cfg-card-header" style="color:#6366F1;background:#EEF2FF;border-color:#C7D2FE;">🎯 Senha da Aba Coordenação</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Senha padrão inicial: <strong>coord123</strong></div>
-      <div class="cfg-add-row">
-        <input type="password" id="cfgCoordPass1" placeholder="Nova senha" class="cfg-input" style="max-width:180px;">
-        <input type="password" id="cfgCoordPass2" placeholder="Confirmar senha" class="cfg-input" style="max-width:180px;">
-        <button class="cfg-btn-save" onclick="cfgChangeCoordPass()">💾 Alterar</button>
-      </div>
-      <div id="cfgCoordPassMsg" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
-    </div>
   </div>
 
   <!-- Seção 6: Imagem da Tela de Início -->
@@ -3711,7 +3656,6 @@
     // Atualiza UI imediatamente
     updateTabBadge();
     updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
-    updateCoordenacaoBadge();
     applyDBFilters();
     renderCfgRegistros();
     renderRetorno();
@@ -3786,15 +3730,11 @@
   function refreshAllUI(records) {
     updateTabBadge();
     updateTabBadgeRetorno(records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
-    updateCoordenacaoBadge();
     updateTopbarMetrics();
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnRetorno')     renderRetorno();
     if (activeBtn === 'tabBtnNotify')      renderNotifyTab();
-    if (activeBtn === 'tabBtnCoordenacao') {
-      if (document.getElementById('coordPanel')?.style.display !== 'none') renderCoordenacao();
-    }
   }
 
   function setFbStatus(connected) {
@@ -4598,7 +4538,6 @@
     form:        '📋 Registro',
     notify:      '📨 Notificar Supervisor',
     retorno:     '✅ Justificativa',
-    coordenacao: '🎯 Coordenação',
     db:          '📊 Banco de Dados Produtividade',
     config:      '⚙️ Configuração'
   };
@@ -4609,7 +4548,6 @@
     if (_currentTab === 'form' && tab !== 'form') saveDraft();
 
     // Lock protected tabs when navigating away
-    if (_currentTab === 'coordenacao' && tab !== 'coordenacao') lockCoordenacao();
     if (_currentTab === 'config'      && tab !== 'config')      lockConfig();
 
     _currentTab = tab;
@@ -4617,10 +4555,9 @@
     document.getElementById('tabForm').style.display        = tab === 'form'        ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'      ? 'block' : 'none';
     document.getElementById('tabRetorno').style.display     = tab === 'retorno'     ? 'block' : 'none';
-    document.getElementById('tabCoordenacao').style.display = tab === 'coordenacao' ? 'block' : 'none';
-    document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
+      document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','Retorno','Coordenacao','DB','Config'].forEach(t => {
+    ['Inicio','Form','Notify','Retorno','DB','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
@@ -4629,7 +4566,6 @@
     if (tab === 'retorno')     { renderRetorno();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'coordenacao') { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')        { window.scrollTo({ top:0, behavior:'smooth' }); }
   }
 
@@ -5298,13 +5234,10 @@
     const allRealizada = supAnswers.filter(a => a !== null).every(a => a.acaoStatus === 'realizada');
     records[rIdx].status = allRealizada ? 'revisado' : 'parcial';
     // Reset coord status so it goes back to coordination queue
-    records[rIdx].coordStatus = undefined;
-    records[rIdx].coordMotivo = undefined;
     saveDB(records);
     updateTabBadge();
     updateTabBadgeRetorno(loadDB().filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
-    updateCoordenacaoBadge();
-    showCopyToast('💾 Justificativas salvas! Enviado para Coordenação.');
+    showCopyToast('💾 Justificativas salvas com sucesso!');
     renderRetorno();
   }
 
@@ -6679,13 +6612,10 @@ entryLines.join('\n\n') + '\n' +
       // Reset justificativa & coordination — send back to Justificativa flow
       r.status = undefined;
       r.supervisorAnswers = [];
-      r.coordStatus = undefined;
-      r.coordMotivo = undefined;
       showCopyToast('⚠️ Registro editado com desvio — enviado para Justificativa!');
     } else {
       // No desvio — stays in Banco de Dados, clear any previous justificativa flags
       r.status = 'revisado';
-      r.coordStatus = 'aprovado';
       showCopyToast('✅ Registro atualizado! Sem desvios detectados.');
     }
 
@@ -6696,7 +6626,6 @@ entryLines.join('\n\n') + '\n' +
     applyDBFilters();
     renderRetorno();
     updateTabBadgeRetorno(loadDB().filter(rec => needsJustificativa(rec) && rec.status !== 'revisado').length);
-    updateCoordenacaoBadge();
   }
 
   function closeEditModal() {
@@ -6770,237 +6699,6 @@ entryLines.join('\n\n') + '\n' +
   // ══════════════════════════════════════════
   //  ABA COORDENAÇÃO
   // ══════════════════════════════════════════
-
-  const CFG_COORD_PASS_KEY = 'enel_cfg_coord_pass';
-  let _coordFilter = 'pending';
-  function getCoordPass() { return getCfg(CFG_COORD_PASS_KEY, 'coord123'); }
-
-  function checkCoordPass() {
-    const inp = document.getElementById('coordPassInput');
-    const err = document.getElementById('coordPassErr');
-    if (inp.value === getCoordPass()) {
-      document.getElementById('coordLock').style.display  = 'none';
-      document.getElementById('coordPanel').style.display = 'block';
-      inp.value = '';
-      err.style.display = 'none';
-      renderCoordenacao();
-    } else {
-      err.style.display = 'block';
-      inp.value = '';
-      inp.focus();
-    }
-  }
-
-  function lockCoordenacao() {
-    document.getElementById('coordLock').style.display  = 'block';
-    document.getElementById('coordPanel').style.display = 'none';
-    const inp = document.getElementById('coordPassInput');
-    if (inp) inp.value = '';
-  }
-
-  function filterCoordenacao(f) {
-    _coordFilter = f;
-    ['pending','approved','rejected','all'].forEach(k => {
-      const id = 'coordFilter' + k.charAt(0).toUpperCase() + k.slice(1);
-      document.getElementById(id)?.classList.toggle('active', k === f);
-    });
-    renderCoordenacao();
-  }
-
-  function updateCoordenacaoBadge() {
-    const records = loadDB();
-    // Only records that went through justificativa (have real supervisor answers) and await coordination
-    const count = records.filter(r => {
-      const hasRealAnswers = r.supervisorAnswers && r.supervisorAnswers.some(a => a !== null && a !== undefined);
-      return hasRealAnswers && !r.coordStatus;
-    }).length;
-    const badge = document.getElementById('tabBadgeCoordenacao');
-    if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
-  }
-
-  function renderCoordenacao() {
-    const listEl = document.getElementById('coordList');
-    const subtitle = document.getElementById('coordSubtitle');
-    if (!listEl) return;
-    const all = loadDB();
-
-    // Only records that went through justificativa flow:
-    // must have at least one real supervisorAnswer (not null)
-    const eligible = all.filter(r => {
-      const hasRealAnswers = r.supervisorAnswers && r.supervisorAnswers.some(a => a !== null && a !== undefined);
-      const wasCoordinated = r.coordStatus === 'aprovado' || r.coordStatus === 'reprovado';
-      return hasRealAnswers || wasCoordinated;
-    });
-    let filtered = eligible;
-    if (_coordFilter === 'pending')  filtered = eligible.filter(r => !r.coordStatus);
-    if (_coordFilter === 'approved') filtered = eligible.filter(r => r.coordStatus === 'aprovado');
-    if (_coordFilter === 'rejected') filtered = eligible.filter(r => r.coordStatus === 'reprovado');
-    if (subtitle) subtitle.textContent = filtered.length + ' registro' + (filtered.length !== 1 ? 's' : '') + ' encontrado' + (filtered.length !== 1 ? 's' : '');
-    listEl.innerHTML = '';
-    if (!filtered.length) {
-      listEl.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--gray-400);font-size:0.9rem;">📭 Nenhum registro encontrado.</div>';
-      return;
-    }
-    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    filtered.forEach(r => {
-      const [ry,rm,rd] = r.data.split('-');
-      const dataBR = rd+'/'+rm+'/'+ry;
-      const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
-      const coordBadge = r.coordStatus === 'aprovado'
-        ? '<span style="font-size:0.72rem;font-weight:800;background:#D1FAE5;color:#065F46;padding:2px 10px;border-radius:99px;">✅ Aprovado</span>'
-        : r.coordStatus === 'reprovado'
-          ? '<span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 10px;border-radius:99px;">❌ Reprovado</span>'
-          : '<span style="font-size:0.72rem;font-weight:800;background:#EEF2FF;color:#4338CA;padding:2px 10px;border-radius:99px;">⏳ Aguardando</span>';
-
-      const card = document.createElement('div');
-      card.style.cssText = 'border:1.5px solid var(--gray-200);border-radius:var(--radius);margin-bottom:1rem;overflow:hidden;';
-      // Header
-      const header = document.createElement('div');
-      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;background:var(--gray-50);flex-wrap:wrap;gap:0.5rem;cursor:pointer;';
-      header.innerHTML = `
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:var(--green-dark);">📅 ${diaSem}, ${dataBR}</span>
-          ${r.registroId ? `<span style="font-size:0.72rem;font-weight:800;background:#1E4DA1;color:white;padding:2px 9px;border-radius:99px;">${r.registroId}</span>` : ''}
-          <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
-          <span class="db-meta-pill">👷 ${r.equipe}</span>
-          <span class="db-meta-pill">⚡ ${r.entries.length} ocorrência${r.entries.length!==1?'s':''}</span>
-          ${coordBadge}
-        </div>
-        <span style="color:var(--gray-400);">▾</span>`;
-
-      const body = document.createElement('div');
-      body.style.cssText = 'padding:1rem 1.1rem;display:none;';
-
-      // Build entries display
-      let entriesHTML = '';
-      r.entries.forEach((e, idx) => {
-        const color = catColors[e.catKey] || '#888';
-        const cat   = categorias[e.catKey];
-        const supAns = r.supervisorAnswers?.[idx];
-        const h = Math.floor(e.mins/60), m = e.mins%60;
-        const timeStr = pad(h)+'h'+pad(m)+'min';
-        entriesHTML += `
-          <div style="border:1px solid var(--gray-200);border-radius:var(--radius-sm);margin-bottom:0.75rem;overflow:hidden;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0.85rem;background:${color}15;border-bottom:1px solid ${color}30;">
-              <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;font-size:0.88rem;">
-                ${cat?.icon} ${cat?.nome}
-                <span style="font-size:0.65rem;font-weight:800;background:${color};color:white;padding:1px 7px;border-radius:99px;">Nº${idx+1}</span>
-              </div>
-              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;color:${color};">⏱ ${timeStr}</span>
-            </div>
-            ${supAns ? `<div style="padding:0.65rem 0.85rem;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1rem;">
-              <div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Justificativa</div>
-                <div style="font-size:0.82rem;font-weight:700;color:#065F46;">${supAns.justSel||'—'}</div>
-                ${supAns.just?`<div style="font-size:0.78rem;color:var(--gray-600);margin-top:2px;">${supAns.just}</div>`:''}
-              </div>
-              <div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Ação corretiva</div>
-                <div style="font-size:0.82rem;font-weight:700;color:#1E4DA1;">${supAns.acaoSel||'—'}</div>
-                ${supAns.acao?`<div style="font-size:0.78rem;color:var(--gray-600);margin-top:2px;">${supAns.acao}</div>`:''}
-              </div>
-              <div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Status da ação</div>
-                <div style="font-size:0.82rem;font-weight:700;">${supAns.acaoStatus==='realizada'?'<span style="color:#059669;">✅ Realizada</span>':supAns.acaoStatus==='nao_realizada'?'<span style="color:#D97706;">❌ Não realizada</span>':'—'}</div>
-                ${supAns.dataPrevista?`<div style="font-size:0.75rem;color:var(--gray-500);">📅 Prevista: ${supAns.dataPrevista}</div>`:''}
-              </div>
-              ${supAns.evidName || supAns.evidData ?`<div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Evidência</div>
-                ${supAns.evidData
-                  ? `<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
-                      <span style="font-size:0.78rem;font-weight:600;color:#065F46;">📎 ${supAns.evidName||'Evidência'}</span>
-                      <button type="button" onclick="openEvidPreview(this.dataset.url,this.dataset.name)" data-url="${supAns.evidData}" data-name="${supAns.evidName||'evidencia'}" style="font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #059669;background:white;color:#059669;cursor:pointer;">👁 Ver</button>
-                      <a href="${supAns.evidData}" download="${supAns.evidName||'evidencia'}" style="font-size:0.7rem;color:#059669;font-weight:700;text-decoration:none;">⬇ Baixar</a>
-                    </div>`
-                  : `<div style="font-size:0.78rem;color:#059669;font-weight:600;">📎 ${supAns.evidName}</div>`
-                }</div>`:''}
-            </div>` : '<div style="padding:0.5rem 0.85rem;font-size:0.8rem;color:var(--gray-400);font-style:italic;">Sem justificativa preenchida.</div>'}
-          </div>`;
-      });
-      body.innerHTML = entriesHTML;
-
-      // Action buttons (only if not yet decided)
-      if (!r.coordStatus) {
-        const actDiv = document.createElement('div');
-        actDiv.style.cssText = 'padding:0 1.1rem 1rem;display:flex;gap:0.65rem;align-items:flex-start;flex-wrap:wrap;';
-        actDiv.innerHTML = `
-          <button onclick="coordDecide(${r.id},'aprovado')"
-            style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.4rem;border-radius:var(--radius-sm);border:none;background:#059669;color:white;cursor:pointer;">
-            ✅ Aprovar
-          </button>
-          <div style="flex:1;min-width:200px;">
-            <input type="text" id="coordMotivo_${r.id}" placeholder="Motivo da reprovação (obrigatório para reprovar)..."
-              style="font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.5rem 0.75rem;width:100%;outline:none;background:var(--gray-50);">
-          </div>
-          <button onclick="coordDecide(${r.id},'reprovado')"
-            style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.4rem;border-radius:var(--radius-sm);border:none;background:#DC2626;color:white;cursor:pointer;">
-            ❌ Reprovar
-          </button>`;
-        body.appendChild(actDiv);
-      } else if (r.coordStatus === 'reprovado' && r.coordMotivo) {
-        const motivoDiv = document.createElement('div');
-        motivoDiv.style.cssText = 'padding:0 1.1rem 1rem;';
-        motivoDiv.innerHTML = `<div style="padding:0.5rem 0.85rem;background:#FEE2E2;border-radius:6px;border-left:3px solid #DC2626;font-size:0.82rem;color:#991B1B;"><strong>Motivo da reprovação:</strong> ${r.coordMotivo}</div>`;
-        body.appendChild(motivoDiv);
-      }
-
-      header.addEventListener('click', () => {
-        body.style.display = body.style.display === 'none' ? 'block' : 'none';
-        header.querySelector('span:last-child').textContent = body.style.display === 'none' ? '▾' : '▴';
-      });
-      card.appendChild(header);
-      card.appendChild(body);
-      listEl.appendChild(card);
-    });
-    updateCoordenacaoBadge();
-  }
-
-  function coordDecide(id, decision) {
-    const records = loadDB();
-    const rIdx = records.findIndex(r => r.id === id);
-    if (rIdx === -1) return;
-
-    if (decision === 'reprovado') {
-      const motivo = document.getElementById('coordMotivo_' + id)?.value.trim();
-      if (!motivo) { showCopyToast('⚠️ Informe o motivo da reprovação.'); return; }
-      records[rIdx].coordStatus = 'reprovado';
-      records[rIdx].coordMotivo = motivo;
-      records[rIdx].coordAt = new Date().toISOString();
-      // Return to justificativa — keep supervisorAnswers so supervisor sees their previous data
-      records[rIdx].status = 'reprovado'; // new status so it shows in justificativa
-      // Do NOT clear supervisorAnswers — data is preserved for editing
-      saveDB(records);
-      showCopyToast('❌ Registro reprovado. Retornou para Justificativa com dados preservados.');
-    } else {
-      records[rIdx].coordStatus = 'aprovado';
-      records[rIdx].coordAt = new Date().toISOString();
-      // CRITICAL: if any entry is "nao_realizada", keep as parcial (pendente)
-      // Only mark as revisado if all entries are "realizada"
-      const supAnswers = records[rIdx].supervisorAnswers || [];
-      const allRealizada = supAnswers.length > 0 && supAnswers.every(a => a.acaoStatus === 'realizada');
-      if (!allRealizada) {
-        records[rIdx].status = 'parcial'; // remains pending
-      }
-      saveDB(records);
-      const msg = allRealizada
-        ? '✅ Aprovado e liberado para o Banco de Dados!'
-        : '✅ Aprovado! Registro permanece PENDENTE até todas as ações serem realizadas.';
-      showCopyToast(msg);
-    }
-    updateTabBadge();
-    updateTabBadgeRetorno(loadDB().filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
-    updateCoordenacaoBadge();
-    renderCoordenacao();
-  }
-
-  function cfgChangeCoordPass() {
-    const p1 = document.getElementById('cfgCoordPass1')?.value;
-    const p2 = document.getElementById('cfgCoordPass2')?.value;
-    const msg = document.getElementById('cfgCoordPassMsg');
-    if (!p1 || p1.length < 4) { if(msg){msg.textContent='Senha deve ter ao menos 4 caracteres.';msg.style.color='#DC2626';msg.style.display='block';} return; }
-    if (p1 !== p2)             { if(msg){msg.textContent='As senhas não coincidem.';msg.style.color='#DC2626';msg.style.display='block';} return; }
-    saveCfg(CFG_COORD_PASS_KEY, p1);
-    document.getElementById('cfgCoordPass1').value = '';
-    document.getElementById('cfgCoordPass2').value = '';
-    if (msg) { msg.textContent='✅ Senha da Coordenação alterada!'; msg.style.color='var(--green-dark)'; msg.style.display='block'; }
-    setTimeout(()=>{ if(msg) msg.style.display='none'; }, 3000);
-  }
 
   function openEvidPreview(dataUrl, name) {
     const modal   = document.getElementById('evidPreviewModal');
