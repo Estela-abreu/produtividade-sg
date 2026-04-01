@@ -1575,10 +1575,10 @@
   </div>
 
   <div class="sidebar-nav">
-    <button class="sidebar-item" id="tabBtnInicio" onclick="switchTab('inicio')">
+    <button class="sidebar-item active" id="tabBtnInicio" onclick="switchTab('inicio')">
       <span class="sidebar-icon">🏠</span> Início
     </button>
-    <button class="sidebar-item active" id="tabBtnForm" onclick="switchTab('form')">
+    <button class="sidebar-item" id="tabBtnForm" onclick="switchTab('form')">
       <span class="sidebar-icon">📋</span> Registro
     </button>
     <button class="sidebar-item" id="tabBtnNotify" onclick="switchTab('notify')">
@@ -1666,11 +1666,9 @@
       </div>
     </div>
   </div>
-</div>
+</div><!-- /tabInicio -->
 
-<div id="tabForm">
-<!-- ── Hero ── -->
-
+<div id="tabForm" style="display:none;">
 <!-- ── Main ── -->
 <main>
 
@@ -1737,8 +1735,6 @@
               onblur="this.style.borderColor='var(--gray-200)';this.style.background='var(--gray-50)'">
           </div>
         </div>
-      </div>
-
       </div>
 
     </div>
@@ -1847,6 +1843,7 @@
   </div>
 
 <!-- ── PAINEL BANCO DE DADOS ── -->
+</main>
 </div><!-- /tabForm -->
 
 <!-- ── ABA NOTIFICAR ── -->
@@ -1974,9 +1971,7 @@
     </div>
     <div id="reuniaoList"></div>
   </div>
-</div>
-
-<!-- ── ABA CONFIGURAÇÃO ── -->
+</div><!-- /tabReuniao -->
 <div id="tabConfig" style="display:none;">
 <div id="configLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
   <div style="font-size:2.5rem;margin-bottom:1rem;">🔐</div>
@@ -2178,8 +2173,6 @@
       <div id="cfgImgMsg" style="font-size:0.78rem;margin-top:0.5rem;display:none;"></div>
     </div>
   </div>
-
-</div>
 </div><!-- /tabConfig -->
 
 <!-- ── MODAL RESUMO ── -->
