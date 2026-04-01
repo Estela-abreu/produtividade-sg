@@ -1584,10 +1584,6 @@
     <button class="sidebar-item" id="tabBtnNotify" onclick="switchTab('notify')">
       <span class="sidebar-icon">📨</span> Notificar
     </button>
-    <button class="sidebar-item" id="tabBtnRetorno" onclick="switchTab('retorno')">
-      <span class="sidebar-icon">✅</span> Justificativa
-      <span class="sidebar-badge" id="tabBadgeRetorno" style="display:none;">0</span>
-    </button>
     <button class="sidebar-item" id="tabBtnDB" onclick="switchTab('db')">
       <span class="sidebar-icon">📊</span> Banco de Dados
       <span class="sidebar-badge" id="tabBadge" style="display:none;background:var(--green);">0</span>
@@ -1694,7 +1690,7 @@
         </div>
         <div class="field">
           <label for="turno">Turno <span class="req">*</span></label>
-          <select id="turno" required onchange="onTurnoChange(this.value)">
+          <select id="turno" required>
             <option value="" disabled selected>Selecione o turno</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -1743,10 +1739,6 @@
         </div>
       </div>
 
-      <!-- Supervisor sugerido (exibição informativa) -->
-      <div class="field" style="margin-top:0.75rem;display:none;" id="supervisorField">
-        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);">👤 Supervisores do Turno</label>
-        <div id="supervisorDisplay" style="font-family:'Barlow',sans-serif;font-size:0.95rem;font-weight:600;color:var(--gray-800);background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.55rem 0.75rem;"></div>
       </div>
 
     </div>
@@ -1833,6 +1825,16 @@
 
   <!-- Submit bar -->
   <div class="card" style="margin-bottom:0;">
+    <!-- Comentários gerais -->
+    <div style="margin:0.75rem 1.1rem 0;">
+      <label style="font-size:0.78rem;font-weight:700;color:var(--gray-700);display:block;margin-bottom:0.35rem;">
+        💬 Comentários <span style="font-size:0.7rem;font-weight:500;color:var(--gray-400);">(opcional — contexto geral da ocorrência)</span>
+      </label>
+      <textarea id="comentariosReg" rows="2"
+        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.5rem 0.75rem;resize:vertical;outline:none;background:var(--gray-50);"
+        placeholder="Ex: Trânsito intenso na região · Equipe aguardando liberação · Chuva intensa..."></textarea>
+    </div>
+
     <div class="submit-area">
       <span class="submit-info">
         <strong>*</strong> Campos obrigatórios devem ser preenchidos antes de salvar.
@@ -1955,46 +1957,6 @@
 </div><!-- /tabDB -->
 
 <!-- ── ABA RETORNO ── -->
-<div id="tabRetorno" style="display:none;">
-<div style="max-width:960px;margin:0 auto;padding:0 2rem 3rem;">
-
-  <div class="db-header-bar">
-    <div>
-      <div class="db-title" style="color:#003087;">✅ Retorno</div>
-      <div class="db-subtitle" id="retornoSubtitle">Carregando...</div>
-    </div>
-    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-      <button class="db-btn-filter active" id="retFilterPending" onclick="filterRetorno('pending')">⚠️ Pendentes</button>
-      <button class="db-btn-filter" id="retFilterDone" onclick="filterRetorno('done')">✅ Concluídos</button>
-      <button class="db-btn-filter" id="retFilterAll" onclick="filterRetorno('all')">Todos</button>
-    </div>
-  </div>
-
-  <div class="db-search-bar">
-    <div class="db-search-field">
-      <label class="db-search-label">📅 Data</label>
-      <input type="date" id="retFilterData" oninput="renderRetorno()" class="db-search-input">
-    </div>
-    <div class="db-search-field">
-      <label class="db-search-label">🔄 Turno</label>
-      <select id="retFilterTurno" onchange="renderRetorno()" class="db-search-input">
-        <option value="">Todos</option>
-        <option value="A">Turno A</option>
-        <option value="B">Turno B</option>
-        <option value="C">Turno C</option>
-      </select>
-    </div>
-    <div class="db-search-field" style="flex:2;">
-      <label class="db-search-label">👷 Equipe</label>
-      <input type="text" id="retFilterEquipe" placeholder="Buscar equipe..." oninput="renderRetorno()" class="db-search-input">
-    </div>
-    <button class="db-btn-clear-filter" onclick="clearRetornoFilters()">✕ Limpar</button>
-  </div>
-
-  <div id="retornoList"></div>
-
-</div>
-</div><!-- /tabRetorno -->
 
 <!-- ── ABA COORDENAÇÃO ── -->
 
@@ -2715,6 +2677,12 @@
         <input type="hidden" id="m-${id}" value="0">
         `}
         <input type="hidden" id="txt-${id}" value="">
+        <!-- Campo justificativa — aparece dinamicamente quando fora do tempo -->
+        <div id="just-field-${id}" style="display:none;margin-top:0.65rem;padding:0.65rem 0.85rem;background:#FEF2F2;border-radius:8px;border:1.5px solid #FCA5A5;">
+          <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.4rem;">⚠️ FORA DO TEMPO — Justificativa obrigatória</div>
+          <textarea id="just-text-${id}" rows="2" placeholder="Descreva o motivo da ocorrência fora do tempo..."
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;resize:vertical;outline:none;background:white;"></textarea>
+        </div>
       </div>`;
 
     wrap.appendChild(item);
@@ -2929,6 +2897,12 @@
     if (cfg.plataforma   != null) PLATAFORMA_LIMITE_MIN = cfg.plataforma;
   }
 
+  // Show/hide the inline justificativa field based on desvio
+  function toggleJustField(id, isFora) {
+    const jf = document.getElementById('just-field-' + id);
+    if (jf) jf.style.display = isFora ? '' : 'none';
+  }
+
   function calcDeslocamento(id) {
     const inicioEl = document.getElementById('hinicio-' + id);
     const fimEl    = document.getElementById('hfim-'    + id);
@@ -2981,18 +2955,12 @@
     // Store status on hidden field for collectFormData
     const hiddenStatus = document.getElementById('desloc-status-val-' + id);
     if (hiddenStatus) hiddenStatus.value = dentroDoTempo ? 'dentro' : 'fora';
-
+    toggleJustField(id, !dentroDoTempo);
     updateTotal();
   }
 
-  function calcTimeRange(id, color) {
+  function calcOcioso(id) {
     const inicioEl  = document.getElementById('hinicio-' + id);
-    const fimEl     = document.getElementById('hfim-'    + id);
-    const hEl       = document.getElementById('h-'       + id);
-    const mEl       = document.getElementById('m-'       + id);
-    const tdEl      = document.getElementById('td-'      + id);
-    const sumEl     = document.getElementById('sum-'     + id);
-    const statusEl  = document.getElementById('ocioso-status-' + id);
     if (!inicioEl || !fimEl) return;
     const ini = inicioEl.value, fim = fimEl.value;
     if (!ini || !fim) {
@@ -3029,6 +2997,7 @@
       }
       const hiddenStatus = document.getElementById('ocioso-status-val-' + id);
       if (hiddenStatus) hiddenStatus.value = dentroDoTempo ? 'dentro' : 'fora';
+      toggleJustField(id, !dentroDoTempo);
     }
 
     updateTotal();
@@ -3082,18 +3051,13 @@
       }
       const hiddenStatus = document.getElementById('plat-status-val-' + id);
       if (hiddenStatus) hiddenStatus.value = dentroDoTempo ? 'dentro' : 'fora';
+      toggleJustField(id, !dentroDoTempo);
     }
     updateTotal();
   }
 
   function calcIncidencia(id) {
     const inicioEl  = document.getElementById('hinicio-'      + id);
-    const fimEl     = document.getElementById('hfim-'         + id);
-    const hEl       = document.getElementById('h-'            + id);
-    const mEl       = document.getElementById('m-'            + id);
-    const tdEl      = document.getElementById('td-'           + id);
-    const sumEl     = document.getElementById('sum-'          + id);
-    const statusEl  = document.getElementById('inc-status-'   + id);
     if (!inicioEl || !fimEl) return;
     const ini = inicioEl.value, fim = fimEl.value;
     if (!ini || !fim) {
@@ -3130,10 +3094,10 @@
       return;
     }
     if (limite === 0) {
-      // Causa with no time limit — "dentro do tempo" (no justificativa)
       statusEl.style.display = 'inline-flex';
       statusEl.textContent = '✅ Sem limite de tempo';
       statusEl.style.background = '#D1FAE5'; statusEl.style.color = '#065F46'; statusEl.style.borderColor = '#6EE7B7';
+      toggleJustField(id, false);
       return;
     }
     const dentroDoTempo = totalMin <= limite;
@@ -3145,6 +3109,7 @@
       statusEl.textContent = `⚠️ Fora do tempo (>${limite}min)`;
       statusEl.style.background = '#FEE2E2'; statusEl.style.color = '#991B1B'; statusEl.style.borderColor = '#FCA5A5';
     }
+    toggleJustField(id, !dentroDoTempo);
   }
 
   function updateMinutes(id) {
@@ -3758,7 +3723,6 @@
     updateBadgeReuniao();
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
-    if (activeBtn === 'tabBtnRetorno')  renderRetorno();
     if (activeBtn === 'tabBtnNotify')   renderNotifyTab();
     if (activeBtn === 'tabBtnReuniao')  renderReuniao();
   }
@@ -3941,14 +3905,16 @@
       const obsCausa = catKey === 'incidencia'
         ? (document.getElementById('obs-causa-' + id)?.value.trim() || '')
         : undefined;
+      const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
     const jornadaSaida   = document.getElementById('jornadaSaida')?.value || '';
+    const comentarios    = (document.getElementById('comentariosReg')?.value || '').trim();
 
-    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, entries, totalMin };
+    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentarios, entries, totalMin };
   }
 
   function saveRecord() {
@@ -4025,6 +3991,8 @@
     if (supSel) supSel.selectedIndex = 0;
     const supField = document.getElementById('supervisorField');
     if (supField) supField.style.display = 'none';
+    const coment = document.getElementById('comentariosReg');
+    if (coment) coment.value = '';
   }
 
   function applyDBFilters() {
@@ -4559,7 +4527,6 @@
     inicio:      '🏠 Início',
     form:        '📋 Registro',
     notify:      '📨 Notificar Supervisor',
-    retorno:     '✅ Justificativa',
     db:          '📊 Banco de Dados Produtividade',
     reuniao:     '📋 Painel de Reunião',
     config:      '⚙️ Configuração'
@@ -4577,18 +4544,16 @@
     document.getElementById('tabInicio').style.display      = tab === 'inicio'      ? 'block' : 'none';
     document.getElementById('tabForm').style.display        = tab === 'form'        ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'      ? 'block' : 'none';
-    document.getElementById('tabRetorno').style.display     = tab === 'retorno'     ? 'block' : 'none';
     document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
     document.getElementById('tabReuniao').style.display     = tab === 'reuniao'     ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','Retorno','DB','Reuniao','Config'].forEach(t => {
+    ['Inicio','Form','Notify','DB','Reuniao','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
     if (tab === 'db')          { applyDBFilters(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'retorno')     { renderRetorno();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')        { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -4867,15 +4832,6 @@
             </div>
 
             <div class="retorno-sup-row" style="margin-top:0.65rem;">
-              <!-- Supervisor responsável -->
-              <div class="ret-sup-field" style="grid-column:1/-1;margin-bottom:0.35rem;">
-                <label class="ret-sup-label">👤 Supervisor responsável <span class="req-star">*</span></label>
-                <select class="ret-sup-select" id="retSupSel_${r.id}_${idx}"
-                  onchange="checkRetornoEntry(${r.id},${idx})" ${isDone ? 'disabled' : ''}>
-                  <option value="">– Selecione o supervisor –</option>
-                  ${(()=>{ const all=[]; Object.values(getSupervisores()).forEach(a=>a.forEach(s=>{ if(!all.includes(s)) all.push(s); })); return all.map(s=>`<option value="${s}" ${supAns?.supervisorResp===s?'selected':''}>${s}</option>`).join(''); })()}
-                </select>
-              </div>
               <!-- Justificativa -->
               <div class="ret-sup-field">
                 <label class="ret-sup-label">✅ Justificativa</label>
@@ -6841,36 +6797,26 @@ entryLines.join('\n\n') + '\n' +
       // ── Timeline ──
 
 
-      // ── Ocorrências table ──
-      const ocRows = r.entries.map(e => {
+      // ── Ocorrências + Justificativa numa única tabela ──
+      const ocRows = r.entries.map((e, idx) => {
         const color = catColors[e.catKey]||'#888';
         const cat   = categorias[e.catKey];
         const desvio = entryNeedsJustificativa(e);
-        const limite = e.catKey==='plataforma' ? PLATAFORMA_LIMITE_MIN : e.catKey==='deslocamento' ? DESLOC_LIMITE_MIN : e.catKey==='ocioso' ? OCIOSO_LIMITE_MIN : e.catKey==='incidencia' ? (getIncidenciaLimite(e.causas)||0) : 0;
-        const tempoEsp = limite ? `${pad(Math.floor(limite/60))}:${pad(limite%60)}` : '—';
         const statusBadge = desvio
           ? `<span style="font-size:0.7rem;font-weight:800;background:#DC2626;color:white;padding:3px 10px;border-radius:99px;">⚠️ Fora do Tempo</span>`
           : `<span style="font-size:0.7rem;font-weight:800;background:#16A34A;color:white;padding:3px 10px;border-radius:99px;">✅ Dentro do Tempo</span>`;
+        const supAns = r.supervisorAnswers?.[idx];
+        const justCell = supAns?.just
+          ? `<span style="font-size:0.72rem;color:#374151;">${supAns.just}</span>`
+          : `<span style="font-size:0.72rem;color:#9CA3AF;">—</span>`;
         return `<tr style="border-bottom:1px solid #F3F4F6;">
           <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
           <td style="padding:0.55rem 0.75rem;color:#374151;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
           <td style="padding:0.55rem 0.75rem;text-align:center;font-weight:700;">${pad(Math.floor(e.mins/60))}:${pad(e.mins%60)}</td>
-          <td style="padding:0.55rem 0.75rem;text-align:center;color:#6B7280;">${tempoEsp}</td>
           <td style="padding:0.55rem 0.75rem;text-align:center;">${statusBadge}</td>
+          <td style="padding:0.55rem 0.75rem;">${justCell}</td>
         </tr>`;
       }).join('');
-
-      // ── Justificativas ──
-      const justRows = r.entries.map((e, idx) => {
-        const supAns = r.supervisorAnswers?.[idx];
-        if (!supAns) return '';
-        const cat = categorias[e.catKey];
-        return `<tr style="border-bottom:1px solid #F3F4F6;">
-          <td style="padding:0.55rem 0.75rem;font-weight:700;color:#374151;">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
-          <td style="padding:0.55rem 0.75rem;color:#374151;">${supAns.justSel||'—'}: ${supAns.just||'—'}</td>
-          <td style="padding:0.55rem 0.75rem;color:#374151;">${supAns.acao||'—'}</td>
-        </tr>`;
-      }).filter(Boolean).join('');
 
       const card = document.createElement('div');
       card.style.cssText = 'background:white;border-radius:10px;margin-bottom:1.75rem;box-shadow:0 2px 12px rgba(79,70,229,0.1);border:1px solid #C7D2FE;overflow:hidden;';
@@ -6896,7 +6842,7 @@ entryLines.join('\n\n') + '\n' +
         <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
 
         <!-- Ocorrências -->
-        <div style="padding:0 1.25rem;">
+        <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
           <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;">
             <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
           </div>
@@ -6906,31 +6852,13 @@ entryLines.join('\n\n') + '\n' +
                 <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
                 <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
                 <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
-                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Esperado</th>
                 <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Status</th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
               </tr>
             </thead>
             <tbody>${ocRows}</tbody>
           </table>
-        </div>
-
-        ${justRows ? `
-        <!-- Justificativas -->
-        <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
-          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0.75rem -1.25rem 0.25rem;">
-            <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Justificativas e Ações</span>
-          </div>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="background:#F8FAFF;">
-                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;width:18%;">Categoria</th>
-                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
-                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Ação Corretiva</th>
-              </tr>
-            </thead>
-            <tbody>${justRows}</tbody>
-          </table>
-        </div>` : ''}`;
+        </div>`;
 
       listEl.appendChild(card);
 
