@@ -3182,15 +3182,21 @@
     fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
       .then(r => r.json())
       .then(data => {
-        if (!data) return;
-        Object.entries(data).forEach(([k, v]) => {
-          _cfgCache[k] = v;
-          try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-        });
+        if (data) {
+          Object.entries(data).forEach(([k, v]) => {
+            _cfgCache[k] = v;
+            try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+          });
+        }
+        // Seed defaults if still missing after Firebase sync
+        initDefaults();
         if (document.getElementById(`configPanel`)?.style.display !== `none`) renderConfigPanel();
         renderContactChips();
         applyCatLimites();
-      }).catch(e => console.warn(`Config sync error:`, e));
+      }).catch(e => {
+        console.warn(`Config sync error:`, e);
+        initDefaults(); // seed even if Firebase fails
+      });
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
@@ -3198,6 +3204,12 @@
 
   function getCausas() { return getCfg(CFG_CAUSAS_KEY, [...CAUSAS_INCIDENCIA]); }
   function saveCausas(arr) { saveCfg(CFG_CAUSAS_KEY, [...new Set(arr)].sort()); }
+
+  // Seed defaults to Firebase/localStorage if not yet set
+  function initDefaults() {
+    if (!getCfg(CFG_EQUIPES_KEY, null)) saveEquipes([...EQUIPES_DEFAULT]);
+    if (!getCfg(CFG_CAUSAS_KEY,  null)) saveCausas([...CAUSAS_INCIDENCIA]);
+  }
 
   function getObsPlaceholder() { return getCfg(CFG_OBS_KEY, 'Descreva detalhes desta ocorrência...'); }
   function getConfigPass()     { return getCfg(CFG_PASS_KEY, 'admin123'); }
@@ -6345,6 +6357,8 @@ entryLines.join('\n\n') + '\n' +
   const _inicioImg = document.querySelector('.inicio-img');
   if (_inicioImg) _inicioImg.dataset.origSrc = _inicioImg.src;
   applyInicioImage();
+  // Seed default equipes/causas if not yet in storage
+  initDefaults();
   // Start Firebase real-time sync
   initFirebaseSync();
   initConfigSync();
