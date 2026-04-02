@@ -6376,20 +6376,20 @@ entryLines.join('\n\n') + '\n' +
       const now = new Date();
       const todayStr = now.toISOString().slice(0,10);
 
-      // Read records — cache first, localStorage fallback
       let records = [];
       try {
-        if (_dbCache && _dbCache.length > 0) {
-          records = _dbCache;
-        } else {
-          records = JSON.parse(localStorage.getItem('enel_prod_records') || '[]');
-        }
+        const raw = localStorage.getItem('enel_prod_records');
+        if (raw) records = JSON.parse(raw);
+        if (!Array.isArray(records)) records = [];
       } catch(e) { records = []; }
 
+      // Use cache if larger (more up to date)
+      if (Array.isArray(_dbCache) && _dbCache.length > records.length) {
+        records = _dbCache;
+      }
+
       const todayCount = records.filter(r => r && r.data === todayStr).length;
-      const pending = records.filter(r => {
-        try { return needsJustificativa(r) && r.status !== 'revisado'; } catch(e) { return false; }
-      }).length;
+      const pending = records.filter(r => r && r.status !== 'revisado' && needsJust(r)).length;
 
       const tc = document.getElementById('topbarTodayCount');
       const tt = document.getElementById('topbarTotalCount');
@@ -6398,6 +6398,21 @@ entryLines.join('\n\n') + '\n' +
       if (tt) tt.textContent = records.length;
       if (tp) tp.textContent = pending;
     } catch(e) {}
+  }
+
+  // Safe wrapper for needsJustificativa — never throws
+  function needsJust(r) {
+    try {
+      if (!r || !Array.isArray(r.entries) || r.entries.length === 0) return false;
+      return r.entries.some(e => {
+        if (!e || !e.catKey) return false;
+        if (e.catKey === 'intervalo') return false;
+        if (e.catKey === 'deslocamento') return (e.mins || 0) > (DESLOC_LIMITE_MIN || 30);
+        if (e.catKey === 'ocioso')       return (e.mins || 0) > (OCIOSO_LIMITE_MIN || 10);
+        if (e.catKey === 'plataforma')   return (e.mins || 0) > (PLATAFORMA_LIMITE_MIN || 25);
+        return false;
+      });
+    } catch(e) { return false; }
   }
 
   // ── Verificação de autenticação (roda primeiro) ──
