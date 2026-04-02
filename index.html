@@ -3548,9 +3548,17 @@ if (localStorage.getItem('enel_auth') === '1') {
             </div>
           </div>
           <div class="r-entry-fields" style="grid-template-columns:1fr;">
+            ${e.catKey === 'incidencia' && e.numinc ? `<div class="r-entry-field-block" style="background:#FFFBEB;border:1px solid #FCD34D;">
+              <div class="r-entry-field-label" style="color:#92400E;">🔢 Nº Incidência</div>
+              <div class="r-entry-just" style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;letter-spacing:0.06em;color:#78350F;">${e.numinc}</div>
+            </div>` : ''}
             ${e.obs ? `<div class="r-entry-field-block">
               <div class="r-entry-field-label">📋 Observação</div>
               <div class="r-entry-just">${e.obs}</div>
+            </div>` : ''}
+            ${e.catKey === 'incidencia' && e.obsCausa ? `<div class="r-entry-field-block" style="background:#FFFBEB;border:1px solid #FCD34D;">
+              <div class="r-entry-field-label" style="color:#92400E;">📝 Obs. da Causa</div>
+              <div class="r-entry-just">${e.obsCausa}</div>
             </div>` : ''}
             ${e.justificativa ? `<div class="r-entry-field-block" style="background:#FEF2F2;border:1px solid #FCA5A5;">
               <div class="r-entry-field-label" style="color:#991B1B;">⚠️ Justificativa</div>
@@ -6779,9 +6787,13 @@ entryLines.join('\n\n') + '\n' +
           ? `<span style="font-size:0.72rem;color:#374151;">${justText}</span>`
           : `<span style="font-size:0.72rem;color:#9CA3AF;">—</span>`;
         return `<tr style="border-bottom:1px solid #F3F4F6;">
-          <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
+          <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">
+            ${cat?.icon||''} ${cat?.nome||e.catKey}
+            ${e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.68rem;font-weight:800;color:#92400E;margin-top:2px;">🔢 Nº ${e.numinc}</div>` : ''}
+          </td>
           <td style="padding:0.55rem 0.75rem;color:#374151;">
             ${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}
+            ${e.obsCausa ? `<div style="font-size:0.68rem;color:#92400E;margin-top:2px;">📝 ${e.obsCausa}</div>` : ''}
             ${e.endereco ? `<div style="font-size:0.68rem;color:#1E4DA1;margin-top:2px;">📍 ${e.endereco}${e.lat&&e.lon?` <a href="https://www.google.com/maps?q=${e.lat},${e.lon}" target="_blank" style="color:#1E4DA1;">🗺️</a>`:''}</div>` : ''}
           </td>
           <td style="padding:0.55rem 0.75rem;text-align:center;font-weight:700;">${pad(Math.floor(e.mins/60))}:${pad(e.mins%60)}</td>
