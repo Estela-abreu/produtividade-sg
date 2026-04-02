@@ -1655,6 +1655,26 @@ if (localStorage.getItem('enel_auth') === '1') {
     </div>
   </div>
 
+<script>
+// ── Relógio independente — imune a erros do resto do JS ──
+(function() {
+  function tick() {
+    try {
+      const now = new Date();
+      const p = n => String(n).padStart(2,'0');
+      const clk = document.getElementById('topbarClock');
+      const dte = document.getElementById('topbarDate');
+      if (clk) clk.textContent = p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+      if (dte) {
+        const d = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+        dte.textContent = d[now.getDay()]+', '+now.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      }
+    } catch(e) {}
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
 
 <!-- ── ABA INÍCIO ── -->
 <div id="tabInicio" style="display:none;">
@@ -6352,38 +6372,20 @@ entryLines.join('\n\n') + '\n' +
 
   // ── Topbar Metrics ──
   function updateTopbarMetrics() {
-    // Clock
-    const now = new Date();
-    const hh = now.getHours().toString().padStart(2,'0');
-    const mm = now.getMinutes().toString().padStart(2,'0');
-    const ss = now.getSeconds().toString().padStart(2,'0');
-    const clk = document.getElementById('topbarClock');
-    if (clk) clk.textContent = hh + ':' + mm + ':' + ss;
+    try {
+      const now = new Date();
+      const records = loadDB();
+      const todayStr = now.toISOString().slice(0,10);
+      const todayCount = records.filter(r => r.data === todayStr).length;
+      const pending    = records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length;
 
-    const dateEl = document.getElementById('topbarDate');
-    if (dateEl) {
-      const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-      dateEl.textContent = dias[now.getDay()] + ', ' +
-        now.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
-    }
-
-    // DB stats
-    const records = loadDB();
-    const todayStr = now.toISOString().slice(0,10);
-    const todayCount = records.filter(r => r.data === todayStr).length;
-    // Pendentes = only records that actually need justificativa AND haven't been reviewed
-    const pending    = records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length;
-    const reviewed   = records.filter(r => r.status === 'revisado').length;
-    const rate       = records.length ? Math.round(reviewed / records.length * 100) : 0;
-
-    const tc = document.getElementById('topbarTodayCount');
-    const tt = document.getElementById('topbarTotalCount');
-    const tp = document.getElementById('topbarPending');
-    const tr = document.getElementById('topbarRate');
-    if (tc) tc.textContent = todayCount;
-    if (tt) tt.textContent = records.length;
-    if (tp) tp.textContent = pending;
-    if (tr) tr.textContent = rate + '%';
+      const tc = document.getElementById('topbarTodayCount');
+      const tt = document.getElementById('topbarTotalCount');
+      const tp = document.getElementById('topbarPending');
+      if (tc) tc.textContent = todayCount;
+      if (tt) tt.textContent = records.length;
+      if (tp) tp.textContent = pending;
+    } catch(e) {}
   }
 
   // ── Verificação de autenticação (roda primeiro) ──
@@ -6396,24 +6398,26 @@ entryLines.join('\n\n') + '\n' +
     }
   })();
 
+  // ── Registra intervalos PRIMEIRO — antes de qualquer código que possa falhar ──
   setInterval(updateTopbarMetrics, 1000);
   updateTopbarMetrics();
-  // Apply stored inicio image if exists
-  const _inicioImg = document.querySelector('.inicio-img');
-  if (_inicioImg) _inicioImg.dataset.origSrc = _inicioImg.src;
-  applyInicioImage();
-  // Seed default equipes/causas if not yet in storage
-  initDefaults();
-  // Start Firebase real-time sync
-  initFirebaseSync();
-  initConfigSync();
-  // Apply admin-configured limits
-  applyCatLimites();
-  (function applyCustomLimites() {
-    const custom = getCustomLimites();
-    Object.entries(custom).forEach(([k,v]) => { INCIDENCIA_LIMITES[k] = v; });
-  })();
-  switchTab('inicio');
+
+  // ── Inicialização ──
+  try {
+    const _inicioImg = document.querySelector('.inicio-img');
+    if (_inicioImg) _inicioImg.dataset.origSrc = _inicioImg.src;
+    applyInicioImage();
+    initDefaults();
+    initFirebaseSync();
+    initConfigSync();
+    applyCatLimites();
+    const _custom = getCustomLimites();
+    Object.entries(_custom).forEach(([k,v]) => { INCIDENCIA_LIMITES[k] = v; });
+    switchTab('inicio');
+  } catch(e) {
+    console.error('Erro na inicialização:', e);
+    try { switchTab('inicio'); } catch(e2) {}
+  }
 
   // ══════════════════════════════════════════
   //  ABA COORDENAÇÃO
