@@ -4670,7 +4670,8 @@ if (localStorage.getItem('enel_auth') === '1') {
   }
 
   function renderRetorno() {
-    const dataVal   = document.getElementById('retFilterData')?.value || '';
+    // Aba Justificativa foi removida — elementos DOM não existem mais
+    if (!document.getElementById('retornoSubtitle')) return;
     const turnoVal  = document.getElementById('retFilterTurno')?.value || '';
     const equipeVal = (document.getElementById('retFilterEquipe')?.value || '').trim().toUpperCase();
 
