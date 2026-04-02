@@ -2092,87 +2092,6 @@
 
   </div>
 
-  <!-- Seção 6: Imagem da Tela de Início -->
-  <div class="cfg-card">
-    <div class="cfg-card-header">🖼️ Imagem da Tela de Início</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Altere a foto de boas-vindas exibida na aba Início.</div>
-      <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
-        <div id="cfgInicioPreview" style="width:200px;height:120px;border-radius:var(--radius-sm);overflow:hidden;border:1.5px solid var(--gray-200);background:var(--gray-100);flex-shrink:0;">
-          <img id="cfgInicioThumb" src="" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:none;">
-          <div id="cfgInicioPlaceholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Imagem atual</div>
-        </div>
-        <div style="flex:1;min-width:200px;">
-          <label class="cfg-input" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;padding:0.6rem 1rem;border-style:dashed;border-color:#7C3AED;color:#7C3AED;background:#F5F3FF;font-weight:700;justify-content:center;">
-            📁 Escolher nova imagem
-            <input type="file" id="cfgInicioFile" accept="image/*" style="display:none;" onchange="cfgLoadInicioImage(this)">
-          </label>
-          <div style="font-size:0.72rem;color:var(--gray-400);margin-top:0.5rem;">Formatos: JPG, PNG, WEBP · Recomendado: paisagem</div>
-          <button class="cfg-btn-save" id="cfgInicioSaveBtn" onclick="cfgSaveInicioImage()" style="margin-top:0.65rem;display:none;">💾 Aplicar imagem</button>
-          <button onclick="cfgResetInicioImage()" style="margin-top:0.5rem;font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:0.4rem 0.85rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;display:block;">↩ Restaurar imagem padrão</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Seção 7: Gestão de Registros -->
-  <div class="cfg-card">
-    <div class="cfg-card-header">📂 Gestão de Registros</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Visualize, edite ou exclua qualquer registro lançado na plataforma.</div>
-
-      <!-- Filtros -->
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end;">
-        <div>
-          <label style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;display:block;margin-bottom:3px;">📅 Data</label>
-          <input type="date" id="cfgRegFilterData" class="cfg-input" style="max-width:160px;" onchange="renderCfgRegistros()">
-        </div>
-        <div>
-          <label style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;display:block;margin-bottom:3px;">🔄 Turno</label>
-          <select id="cfgRegFilterTurno" class="cfg-input" style="max-width:120px;" onchange="renderCfgRegistros()">
-            <option value="">Todos</option>
-            <option value="A">Turno A</option>
-            <option value="B">Turno B</option>
-            <option value="C">Turno C</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;display:block;margin-bottom:3px;">👷 Equipe</label>
-          <input type="text" id="cfgRegFilterEquipe" placeholder="Buscar..." class="cfg-input" style="max-width:150px;" oninput="renderCfgRegistros()">
-        </div>
-        <button class="cfg-btn-add" onclick="renderCfgRegistros()" style="background:#6366F1;">🔍 Buscar</button>
-        <button onclick="cfgRegClearFilters()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 0.9rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;">✕ Limpar</button>
-      </div>
-
-      <div id="cfgRegistrosList"></div>
-    </div>
-  </div>
-
-  <!-- Seção 7: Imagem da Tela Inicial -->
-  <div class="cfg-card">
-    <div class="cfg-card-header">🖼️ Imagem da Tela Inicial</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.85rem;">Substitua a foto exibida na aba Início.</div>
-
-      <!-- Preview atual -->
-      <div style="margin-bottom:1rem;">
-        <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-400);margin-bottom:0.4rem;">Prévia atual</div>
-        <img id="cfgImgPreview" src="" alt="Prévia" style="width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);display:block;">
-      </div>
-
-      <!-- Upload -->
-      <div class="cfg-add-row" style="align-items:center;">
-        <label style="display:inline-flex;align-items:center;gap:0.5rem;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:0.5rem 1.1rem;border-radius:var(--radius-sm);border:1.5px solid #7C3AED;color:#7C3AED;background:white;cursor:pointer;transition:all 0.15s;"
-          onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background='white'">
-          📁 Escolher imagem
-          <input type="file" accept="image/*" style="display:none;" onchange="cfgLoadImage(this)">
-        </label>
-        <button class="cfg-btn-save" id="cfgImgSaveBtn" onclick="cfgSaveImage()" style="display:none;">💾 Aplicar imagem</button>
-        <button onclick="cfgResetImage()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 0.9rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;">↩ Restaurar padrão</button>
-      </div>
-      <div id="cfgImgMsg" style="font-size:0.78rem;margin-top:0.5rem;display:none;"></div>
-    </div>
-  </div>
 </div><!-- /tabConfig -->
 
 <!-- ── MODAL RESUMO ── -->
@@ -3639,7 +3558,6 @@
     updateTabBadge();
     updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     applyDBFilters();
-    renderCfgRegistros();
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
 
@@ -4267,11 +4185,7 @@
         })();
 
         const supBlock = isRevisado && supAns ? `
-          ${supAns.supervisorResp ? `<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
-            <div class="r-entry-field-label" style="color:#1E4DA1;">👤 Supervisor responsável</div>
-            <div class="r-entry-just"><strong>${supAns.supervisorResp}</strong></div>
-          </div>` : ''}
-          <div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
+          ${supAns.justSel ? '' : ''}<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
             <div class="r-entry-field-label" style="color:#1E4DA1;">✅ Justificativa</div>
             <div class="r-entry-just">${supAns.justSel ? '<strong>'+supAns.justSel+'</strong> · ' : ''}${supAns.just || '—'}</div>
           </div>
@@ -5797,146 +5711,6 @@ entryLines.join('\n\n') + '\n' +
   // ── Imagem Início ──
   const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
 
-  function cfgLoadInicioImage(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      const thumb = document.getElementById('cfgInicioThumb');
-      const ph    = document.getElementById('cfgInicioPlaceholder');
-      const btn   = document.getElementById('cfgInicioSaveBtn');
-      if (thumb) { thumb.src = e.target.result; thumb.style.display = 'block'; }
-      if (ph)    ph.style.display = 'none';
-      if (btn)   btn.style.display = 'block';
-      // store pending in memory
-      window._pendingInicioImg = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function cfgSaveInicioImage() {
-    if (!window._pendingInicioImg) return;
-    localStorage.setItem(CFG_INICIO_IMG_KEY, window._pendingInicioImg);
-    applyInicioImage();
-    showCopyToast('✅ Imagem atualizada!');
-    document.getElementById('cfgInicioSaveBtn').style.display = 'none';
-    window._pendingInicioImg = null;
-  }
-
-  function cfgResetInicioImage() {
-    localStorage.removeItem(CFG_INICIO_IMG_KEY);
-    window._pendingInicioImg = null;
-    applyInicioImage();
-    renderCfgInicioThumb();
-    showCopyToast('↩ Imagem padrão restaurada!');
-  }
-
-  function applyInicioImage() {
-    const stored = localStorage.getItem(CFG_INICIO_IMG_KEY);
-    const img = document.getElementById('inicioMainImg');
-    if (!img) return;
-    if (stored) {
-      img.src = stored;
-    } else {
-      // restore original src stored in data attribute
-      img.src = img.dataset.original || img.src;
-    }
-  }
-
-  function renderCfgInicioThumb() {
-    const stored = localStorage.getItem(CFG_INICIO_IMG_KEY);
-    const thumb = document.getElementById('cfgInicioThumb');
-    const ph    = document.getElementById('cfgInicioPlaceholder');
-    if (stored && thumb) {
-      thumb.src = stored; thumb.style.display = 'block';
-      if (ph) ph.style.display = 'none';
-    } else if (thumb) {
-      thumb.style.display = 'none';
-      if (ph) ph.style.display = 'flex';
-    }
-  }
-
-  function renderConfigPanel() {
-    renderCfgEquipes();
-    renderCfgCausas();
-    renderCfgLimites();
-    renderCfgCatLimites();
-    renderCfgSupervisores();
-    renderCfgContacts();
-    renderCfgRegistros();
-    renderCfgImagePreview();
-    const obsEl = document.getElementById('cfgObsPlaceholder');
-    if (obsEl) obsEl.value = getObsPlaceholder();
-  }
-
-  // ── Imagem da Tela Inicial ──
-  const CFG_IMG_KEY = 'enel_cfg_inicio_img';
-  let _cfgImgPending = null;
-
-  function applyInicioImage() {
-    const stored = localStorage.getItem(CFG_IMG_KEY);
-    const imgEl = document.querySelector('.inicio-img');
-    if (imgEl && stored) imgEl.src = stored;
-  }
-
-  function renderCfgImagePreview() {
-    const stored = localStorage.getItem(CFG_IMG_KEY);
-    const preview = document.getElementById('cfgImgPreview');
-    if (!preview) return;
-    const imgEl = document.querySelector('.inicio-img');
-    preview.src = stored || (imgEl?.src) || '';
-    _cfgImgPending = null;
-    const saveBtn = document.getElementById('cfgImgSaveBtn');
-    if (saveBtn) saveBtn.style.display = 'none';
-  }
-
-  function cfgLoadImage(input) {
-    const file = input.files[0];
-    if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      const msg = document.getElementById('cfgImgMsg');
-      if (msg) { msg.textContent = '⚠️ Imagem muito grande. Máximo 4MB.'; msg.style.color = '#DC2626'; msg.style.display = 'block'; }
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = e => {
-      _cfgImgPending = e.target.result;
-      const preview = document.getElementById('cfgImgPreview');
-      if (preview) preview.src = _cfgImgPending;
-      const saveBtn = document.getElementById('cfgImgSaveBtn');
-      if (saveBtn) saveBtn.style.display = 'inline-flex';
-      const msg = document.getElementById('cfgImgMsg');
-      if (msg) { msg.textContent = '✅ Imagem carregada. Clique em Aplicar para salvar.'; msg.style.color = 'var(--green-dark)'; msg.style.display = 'block'; }
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function cfgSaveImage() {
-    if (!_cfgImgPending) return;
-    try {
-      localStorage.setItem(CFG_IMG_KEY, _cfgImgPending);
-      applyInicioImage();
-      const saveBtn = document.getElementById('cfgImgSaveBtn');
-      if (saveBtn) saveBtn.style.display = 'none';
-      const msg = document.getElementById('cfgImgMsg');
-      if (msg) { msg.textContent = '✅ Imagem aplicada com sucesso!'; msg.style.color = 'var(--green-dark)'; msg.style.display = 'block'; }
-      _cfgImgPending = null;
-      setTimeout(() => { const m = document.getElementById('cfgImgMsg'); if(m) m.style.display = 'none'; }, 3000);
-    } catch(e) {
-      const msg = document.getElementById('cfgImgMsg');
-      if (msg) { msg.textContent = '⚠️ Erro ao salvar. Tente uma imagem menor.'; msg.style.color = '#DC2626'; msg.style.display = 'block'; }
-    }
-  }
-
-  function cfgResetImage() {
-    localStorage.removeItem(CFG_IMG_KEY);
-    _cfgImgPending = null;
-    const imgEl = document.querySelector('.inicio-img');
-    if (imgEl && imgEl.dataset.origSrc) { imgEl.src = imgEl.dataset.origSrc; }
-    renderCfgImagePreview();
-    showCopyToast('↩ Imagem restaurada ao padrão.');
-  }
-
   // ── Equipes ──
   function renderCfgEquipes() {
     const list = document.getElementById('cfgEquipeList');
@@ -6195,68 +5969,7 @@ entryLines.join('\n\n') + '\n' +
   // ── Gestão de Registros (Config) ──
   let _editingRecordId = null;
 
-  function renderCfgRegistros() {
-    const dataVal   = document.getElementById('cfgRegFilterData')?.value || '';
-    const turnoVal  = document.getElementById('cfgRegFilterTurno')?.value || '';
-    const equipeVal = (document.getElementById('cfgRegFilterEquipe')?.value || '').trim().toUpperCase();
-    const all = loadDB();
-    const records = all.filter(r => {
-      if (dataVal   && r.data  !== dataVal)                          return false;
-      if (turnoVal  && r.turno !== turnoVal)                         return false;
-      if (equipeVal && !r.equipe.toUpperCase().includes(equipeVal))  return false;
-      return true;
-    });
-    const listEl = document.getElementById('cfgRegistrosList');
-    if (!listEl) return;
-    listEl.innerHTML = '';
-    if (!records.length) {
-      listEl.innerHTML = '<div class="cfg-empty">📭 Nenhum registro encontrado.</div>';
-      return;
-    }
-    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    records.forEach(r => {
-      const [ry,rm,rd] = r.data.split('-');
-      const dataBR = rd+'/'+rm+'/'+ry;
-      const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
-      const rh = Math.floor(r.totalMin/60), rmn = r.totalMin%60;
-      const statusBadge = r.status === 'revisado'
-        ? '<span style="font-size:0.68rem;font-weight:800;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:99px;">✅ Revisado</span>'
-        : '<span style="font-size:0.68rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:99px;">⏳ Pendente</span>';
 
-      const entryPills = r.entries.map(e =>
-        '<span class="cfg-reg-entry-pill">' + categorias[e.catKey]?.icon + ' ' + categorias[e.catKey]?.nome + '</span>'
-      ).join('');
-
-      const card = document.createElement('div');
-      card.className = 'cfg-registro';
-      card.innerHTML = `
-        <div class="cfg-registro-header">
-          <div class="cfg-registro-info">
-            <span class="cfg-registro-date">📅 ${diaSem}, ${dataBR}</span>${r.registroId ? ` <span style="font-size:0.7rem;font-weight:800;background:#1E4DA1;color:white;padding:1px 8px;border-radius:99px;">${r.registroId}</span>` : ''}
-            <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
-            <span class="db-meta-pill">👷 ${r.equipe}</span>
-            <span class="db-meta-pill">⏱ ${pad(rh)}h${pad(rmn)}min</span>
-            ${statusBadge}
-          </div>
-          <div class="cfg-registro-actions">
-            <button class="cfg-reg-btn edit" data-id="${r.id}">✏️ Editar</button>
-            <button class="cfg-reg-btn del" data-id="${r.id}">🗑 Excluir</button>
-          </div>
-        </div>
-        <div class="cfg-reg-entries">${entryPills}</div>`;
-
-      card.querySelector('.cfg-reg-btn.edit').addEventListener('click', () => openEditModal(r.id));
-      card.querySelector('.cfg-reg-btn.del').addEventListener('click',  () => cfgDeleteRecord(r.id));
-      listEl.appendChild(card);
-    });
-  }
-
-  function cfgRegClearFilters() {
-    document.getElementById('cfgRegFilterData').value = '';
-    document.getElementById('cfgRegFilterTurno').value = '';
-    document.getElementById('cfgRegFilterEquipe').value = '';
-    renderCfgRegistros();
-  }
 
   // Called from Banco de Dados tab — btn element passed directly
   function deleteRecordConfirm(id, btn) {
@@ -6274,33 +5987,6 @@ entryLines.join('\n\n') + '\n' +
           btn.style.background = '';
           btn.style.color = '';
           btn.style.border = '';
-        }
-      }, 4000);
-      return;
-    }
-    btn.dataset.confirming = 'false';
-    doDeleteRecord(id);
-  }
-
-  // Core deletion logic shared by both DB tab and Config tab
-  function cfgDeleteRecord(id) {
-    const idStr = String(id);
-    const btn = document.querySelector(`.cfg-reg-btn.del[data-id="${idStr}"]`);
-    if (!btn) { doDeleteRecord(id); return; }
-
-    if (btn.dataset.confirming !== 'true') {
-      btn.dataset.confirming = 'true';
-      btn.textContent = '⚠️ Confirmar exclusão';
-      btn.style.background = '#DC2626';
-      btn.style.color = 'white';
-      btn.style.borderColor = '#DC2626';
-      setTimeout(() => {
-        if (btn.dataset.confirming === 'true') {
-          btn.dataset.confirming = 'false';
-          btn.textContent = '🗑 Excluir';
-          btn.style.background = 'white';
-          btn.style.color = '#EF4444';
-          btn.style.borderColor = '#EF4444';
         }
       }, 4000);
       return;
@@ -6785,7 +6471,7 @@ entryLines.join('\n\n') + '\n' +
       const dataBR = rd+'/'+rm+'/'+ry;
       const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
       const totalH = Math.floor(r.totalMin/60), totalM = r.totalMin%60;
-      const supervisorStr = (()=>{ const s=getSupervisores(); return (s[r.turno]||[]).join(', ')||'—'; })();
+      const supervisorStr = ''; // removed
 
       // ── Timeline ──
 
@@ -6821,7 +6507,6 @@ entryLines.join('\n\n') + '\n' +
               <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:white;">👷 Equipe: <strong>${r.equipe}</strong></span>
               <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong style="color:white;">${r.turno}</strong></span>
               <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong style="color:white;">${diaSem}, ${dataBR}</strong></span>
-              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Supervisor: <strong style="color:white;">${supervisorStr}</strong></span>
             </div>
             ${r.jornadaEntrada ? `<div style="font-size:0.78rem;color:#93C5FD;">🕐 Jornada: <strong style="color:white;">${r.jornadaEntrada}</strong> às <strong style="color:white;">${r.jornadaSaida||'—'}</strong></div>` : ''}
           </div>
