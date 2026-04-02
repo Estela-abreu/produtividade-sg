@@ -2602,13 +2602,13 @@ if (localStorage.getItem('enel_auth') === '1') {
           <div class="inc-time-field">
             <label class="inc-label" style="color:#9F1239;">🕐 Hora início</label>
             <input type="time" id="hinicio-${id}" class="inc-time-input" style="border-color:#FDA4AF;background:#FFF1F2;"
-              oninput="calcTimeRange('${id}','#9F1239')">
+              oninput="calcOcioso('${id}')">
           </div>
           <div class="inc-time-sep" style="color:#9F1239;">→</div>
           <div class="inc-time-field">
             <label class="inc-label" style="color:#9F1239;">🕐 Hora fim</label>
             <input type="time" id="hfim-${id}" class="inc-time-input" style="border-color:#FDA4AF;background:#FFF1F2;"
-              oninput="calcTimeRange('${id}','#9F1239')">
+              oninput="calcOcioso('${id}')">
           </div>
           <div class="inc-duration" id="td-${id}" style="color:#9F1239;">⏱ —</div>
         </div>
@@ -2936,7 +2936,14 @@ if (localStorage.getItem('enel_auth') === '1') {
   }
 
   function calcOcioso(id) {
-    const inicioEl  = document.getElementById('hinicio-' + id);
+    const inicioEl  = document.getElementById('hinicio-'      + id);
+    const fimEl     = document.getElementById('hfim-'         + id);
+    const hEl       = document.getElementById('h-'            + id);
+    const mEl       = document.getElementById('m-'            + id);
+    const tdEl      = document.getElementById('td-'           + id);
+    const sumEl     = document.getElementById('sum-'          + id);
+    const statusEl  = document.getElementById('ocioso-status-'+ id);
+    const color     = '#9F1239';
     if (!inicioEl || !fimEl) return;
     const ini = inicioEl.value, fim = fimEl.value;
     if (!ini || !fim) {
@@ -3092,6 +3099,30 @@ if (localStorage.getItem('enel_auth') === '1') {
       statusEl.style.background = '#FEE2E2'; statusEl.style.color = '#991B1B'; statusEl.style.borderColor = '#FCA5A5';
     }
     toggleJustField(id, !dentroDoTempo);
+  }
+
+  // Generic time range calculator for reparo and intervalo (no limit badge)
+  function calcTimeRange(id, color) {
+    const inicioEl = document.getElementById('hinicio-' + id);
+    const fimEl    = document.getElementById('hfim-'    + id);
+    const hEl      = document.getElementById('h-'       + id);
+    const mEl      = document.getElementById('m-'       + id);
+    const tdEl     = document.getElementById('td-'      + id);
+    const sumEl    = document.getElementById('sum-'     + id);
+    if (!inicioEl || !fimEl) return;
+    const ini = inicioEl.value, fim = fimEl.value;
+    if (!ini || !fim) { if (tdEl) tdEl.textContent = '⏱ —'; return; }
+    const [ih, im] = ini.split(':').map(Number);
+    const [fh, fm] = fim.split(':').map(Number);
+    let totalMin = (fh * 60 + fm) - (ih * 60 + im);
+    if (totalMin < 0) totalMin += 24 * 60;
+    const h = Math.floor(totalMin / 60), m = totalMin % 60;
+    if (hEl) hEl.value = h;
+    if (mEl) mEl.value = m;
+    const label = pad(h) + 'h ' + pad(m) + 'min';
+    if (tdEl) { tdEl.textContent = '⏱ ' + label; if (color) tdEl.style.color = color; }
+    if (sumEl) { sumEl.textContent = label; sumEl.style.opacity = totalMin > 0 ? '1' : '0.3'; }
+    updateTotal();
   }
 
   function updateMinutes(id) {
