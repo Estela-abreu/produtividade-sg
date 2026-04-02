@@ -5801,6 +5801,15 @@ entryLines.join('\n\n') + '\n' +
   // ── Imagem Início ──
   const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
 
+  function renderConfigPanel() {
+    renderCfgEquipes();
+    renderCfgCausas();
+    renderCfgLimites();
+    renderCfgCatLimites();
+    renderCfgSupervisores();
+    renderCfgContacts();
+  }
+
   // ── Equipes ──
   function renderCfgEquipes() {
     const list = document.getElementById('cfgEquipeList');
@@ -6389,9 +6398,7 @@ entryLines.join('\n\n') + '\n' +
     if (e.target === document.getElementById('editRecordModal')) closeEditModal();
   }
 
-  // Hook renderConfigPanel to also render registros
-  const _origRenderConfigPanel = renderConfigPanel;
-  // (renderConfigPanel already defined above — patch it to include registros)
+  // renderConfigPanel defined above — includes all config sections
 
   // ── Topbar Metrics ──
   function updateTopbarMetrics() {
