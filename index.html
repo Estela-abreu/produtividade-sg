@@ -3702,13 +3702,16 @@ if (localStorage.getItem('enel_auth') === '1') {
       records.filter(r => _deletedIds.has(String(r.id))).forEach(r => {
         fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
       });
-      // Firebase é a fonte de verdade — aceita mesmo se vazio
-      _dbCache = filtered;
-      try { localStorage.setItem(DB_KEY, JSON.stringify(filtered)); } catch(e) {}
-      refreshAllUI(filtered);
-      setFbStatus(true);
-      // Se Firebase vazio mas temos dados locais sem tombstone, sobe ao Firebase
-      if (filtered.length === 0 && _dbCache.length === 0) {
+
+      // NUNCA sobrescrever cache local com Firebase vazio — só atualiza se Firebase tem dados
+      // OU se Firebase está explicitamente vazio e não temos dados locais
+      if (filtered.length > 0) {
+        _dbCache = filtered;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(filtered)); } catch(e) {}
+        refreshAllUI(filtered);
+        setFbStatus(true);
+      } else if (_dbCache.length === 0) {
+        // Firebase vazio E sem cache local — sobe dados locais se existirem
         const localBackup = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch{return [];} })();
         const validLocal = localBackup.filter(r => !_deletedIds.has(String(r.id)));
         if (validLocal.length > 0) {
@@ -3720,6 +3723,10 @@ if (localStorage.getItem('enel_auth') === '1') {
           _dbCache = validLocal;
           refreshAllUI(validLocal);
         }
+        setFbStatus(true);
+      } else {
+        // Firebase vazio mas cache local tem dados — mantém cache e marca sincronizado
+        setFbStatus(true);
       }
     }).catch(e => { console.warn('[REST] Erro inicial:', e.message); setFbStatus(false); });
 
@@ -3748,9 +3755,13 @@ if (localStorage.getItem('enel_auth') === '1') {
           }
         });
 
-        // Compara com cache atual — se diferente, atualiza (inclusive se ficou vazio)
-        const fbCount  = records.length;
+        // Compara com cache atual — só atualiza se Firebase tem dados OU se cache também está vazio
+        const fbCount    = records.length;
         const cacheCount = _dbCache.length;
+
+        // PROTEÇÃO: nunca sobrescrever dados locais com Firebase vazio
+        if (fbCount === 0 && cacheCount > 0) return;
+
         const changed =
           fbCount !== cacheCount ||
           records.some(fr => {
@@ -3759,7 +3770,7 @@ if (localStorage.getItem('enel_auth') === '1') {
           });
 
         if (changed) {
-                _dbCache = records;
+          _dbCache = records;
           try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
           refreshAllUI(records);
         }
