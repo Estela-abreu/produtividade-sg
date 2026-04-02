@@ -88,9 +88,7 @@
     background: var(--gray-50);
     min-height: 100vh;
     color: var(--gray-800);
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
+    display: flex;
   }
 
   /* ── Sidebar ── */
@@ -193,10 +191,10 @@
   /* ── Main content area ── */
   .main-content {
     margin-left: 220px;
+    flex: 1;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
   }
 
   .topbar {
@@ -210,8 +208,6 @@
     top: 0;
     z-index: 100;
     box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-    min-width: 0;
-    overflow: hidden;
   }
   .topbar-title {
     font-family: 'Barlow Condensed', sans-serif;
@@ -1575,22 +1571,26 @@
   </div>
 
   <div class="sidebar-nav">
-    <button class="sidebar-item active" id="tabBtnInicio" onclick="switchTab('inicio')">
+    <button class="sidebar-item" id="tabBtnInicio" onclick="switchTab('inicio')">
       <span class="sidebar-icon">🏠</span> Início
     </button>
-    <button class="sidebar-item" id="tabBtnForm" onclick="switchTab('form')">
+    <button class="sidebar-item active" id="tabBtnForm" onclick="switchTab('form')">
       <span class="sidebar-icon">📋</span> Registro
     </button>
     <button class="sidebar-item" id="tabBtnNotify" onclick="switchTab('notify')">
       <span class="sidebar-icon">📨</span> Notificar
     </button>
+    <button class="sidebar-item" id="tabBtnRetorno" onclick="switchTab('retorno')">
+      <span class="sidebar-icon">✅</span> Justificativa
+      <span class="sidebar-badge" id="tabBadgeRetorno" style="display:none;">0</span>
+    </button>
+    <button class="sidebar-item" id="tabBtnCoordenacao" onclick="switchTab('coordenacao')" style="color:#6366F1;">
+      <span class="sidebar-icon">🎯</span> Coordenação
+      <span class="sidebar-badge" id="tabBadgeCoordenacao" style="display:none;background:#6366F1;">0</span>
+    </button>
     <button class="sidebar-item" id="tabBtnDB" onclick="switchTab('db')">
       <span class="sidebar-icon">📊</span> Banco de Dados
       <span class="sidebar-badge" id="tabBadge" style="display:none;background:var(--green);">0</span>
-    </button>
-    <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:#818CF8;">
-      <span class="sidebar-icon">📋</span> Reunião
-      <span class="sidebar-badge" id="tabBadgeReuniao" style="display:none;background:#6366F1;">0</span>
     </button>
     <button class="sidebar-item config-item" id="tabBtnConfig" onclick="switchTab('config')" title="Acesso restrito ao administrador">
       <span class="sidebar-icon">⚙️</span> Configuração
@@ -1666,9 +1666,11 @@
       </div>
     </div>
   </div>
-</div><!-- /tabInicio -->
+</div>
 
-<div id="tabForm" style="display:none;">
+<div id="tabForm">
+<!-- ── Hero ── -->
+
 <!-- ── Main ── -->
 <main>
 
@@ -1688,7 +1690,7 @@
         </div>
         <div class="field">
           <label for="turno">Turno <span class="req">*</span></label>
-          <select id="turno" required>
+          <select id="turno" required onchange="onTurnoChange(this.value)">
             <option value="" disabled selected>Selecione o turno</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -1735,6 +1737,12 @@
               onblur="this.style.borderColor='var(--gray-200)';this.style.background='var(--gray-50)'">
           </div>
         </div>
+      </div>
+
+      <!-- Supervisor sugerido (exibição informativa) -->
+      <div class="field" style="margin-top:0.75rem;display:none;" id="supervisorField">
+        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);">👤 Supervisores do Turno</label>
+        <div id="supervisorDisplay" style="font-family:'Barlow',sans-serif;font-size:0.95rem;font-weight:600;color:var(--gray-800);background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.55rem 0.75rem;"></div>
       </div>
 
     </div>
@@ -1821,16 +1829,6 @@
 
   <!-- Submit bar -->
   <div class="card" style="margin-bottom:0;">
-    <!-- Comentários gerais -->
-    <div style="margin:0.75rem 1.1rem 0;">
-      <label style="font-size:0.78rem;font-weight:700;color:var(--gray-700);display:block;margin-bottom:0.35rem;">
-        💬 Comentários <span style="font-size:0.7rem;font-weight:500;color:var(--gray-400);">(opcional — contexto geral da ocorrência)</span>
-      </label>
-      <textarea id="comentariosReg" rows="2"
-        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.5rem 0.75rem;resize:vertical;outline:none;background:var(--gray-50);"
-        placeholder="Ex: Trânsito intenso na região · Equipe aguardando liberação · Chuva intensa..."></textarea>
-    </div>
-
     <div class="submit-area">
       <span class="submit-info">
         <strong>*</strong> Campos obrigatórios devem ser preenchidos antes de salvar.
@@ -1843,7 +1841,6 @@
   </div>
 
 <!-- ── PAINEL BANCO DE DADOS ── -->
-</main>
 </div><!-- /tabForm -->
 
 <!-- ── ABA NOTIFICAR ── -->
@@ -1954,24 +1951,90 @@
 </div><!-- /tabDB -->
 
 <!-- ── ABA RETORNO ── -->
+<div id="tabRetorno" style="display:none;">
+<div style="max-width:960px;margin:0 auto;padding:0 2rem 3rem;">
+
+  <div class="db-header-bar">
+    <div>
+      <div class="db-title" style="color:#003087;">✅ Retorno</div>
+      <div class="db-subtitle" id="retornoSubtitle">Carregando...</div>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+      <button class="db-btn-filter active" id="retFilterPending" onclick="filterRetorno('pending')">⚠️ Pendentes</button>
+      <button class="db-btn-filter" id="retFilterDone" onclick="filterRetorno('done')">✅ Concluídos</button>
+      <button class="db-btn-filter" id="retFilterAll" onclick="filterRetorno('all')">Todos</button>
+    </div>
+  </div>
+
+  <div class="db-search-bar">
+    <div class="db-search-field">
+      <label class="db-search-label">📅 Data</label>
+      <input type="date" id="retFilterData" oninput="renderRetorno()" class="db-search-input">
+    </div>
+    <div class="db-search-field">
+      <label class="db-search-label">🔄 Turno</label>
+      <select id="retFilterTurno" onchange="renderRetorno()" class="db-search-input">
+        <option value="">Todos</option>
+        <option value="A">Turno A</option>
+        <option value="B">Turno B</option>
+        <option value="C">Turno C</option>
+      </select>
+    </div>
+    <div class="db-search-field" style="flex:2;">
+      <label class="db-search-label">👷 Equipe</label>
+      <input type="text" id="retFilterEquipe" placeholder="Buscar equipe..." oninput="renderRetorno()" class="db-search-input">
+    </div>
+    <button class="db-btn-clear-filter" onclick="clearRetornoFilters()">✕ Limpar</button>
+  </div>
+
+  <div id="retornoList"></div>
+
+</div>
+</div><!-- /tabRetorno -->
 
 <!-- ── ABA COORDENAÇÃO ── -->
+<div id="tabCoordenacao" style="display:none;">
 
-<!-- ── ABA REUNIÃO ── -->
-<div id="tabReuniao" style="display:none;">
-  <div style="max-width:1100px;margin:0 auto;padding:1.5rem 2rem 3rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+  <!-- Lock screen -->
+  <div id="coordLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">🎯</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:800;color:#6366F1;margin-bottom:0.5rem;">Coordenação</div>
+    <div style="font-size:0.88rem;color:var(--gray-500);margin-bottom:1.5rem;">Acesso restrito. Informe a senha para validar as justificativas.</div>
+    <div style="display:flex;gap:0.5rem;justify-content:center;">
+      <input type="password" id="coordPassInput" placeholder="Senha da coordenação"
+        style="font-family:'Barlow',sans-serif;font-size:0.95rem;border:1.5px solid #6366F1;border-radius:var(--radius-sm);padding:0.6rem 1rem;outline:none;width:220px;color:#312E81;background:#EEF2FF;"
+        onkeydown="if(event.key==='Enter')checkCoordPass()">
+      <button onclick="checkCoordPass()"
+        style="font-family:'Barlow',sans-serif;font-size:0.9rem;font-weight:800;padding:0.6rem 1.3rem;border-radius:var(--radius-sm);border:none;background:#6366F1;color:white;cursor:pointer;">
+        Entrar
+      </button>
+    </div>
+    <div id="coordPassErr" style="font-size:0.8rem;color:#DC2626;margin-top:0.5rem;display:none;">Senha incorreta.</div>
+  </div>
+
+  <!-- Panel -->
+  <div id="coordPanel" style="display:none;max-width:960px;margin:0 auto;padding:1.5rem 2rem 3rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem;">
       <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Painel de Reunião</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);">Registros selecionados para apresentação · Visão gerencial</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;color:#6366F1;text-transform:uppercase;letter-spacing:0.05em;">🎯 Coordenação</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);">Validação final das justificativas · Acesso restrito</div>
       </div>
-      <div style="display:flex;gap:0.5rem;align-items:center;">
-        <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🖨️ Imprimir</button>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;gap:0.35rem;">
+          <button class="db-btn-filter active" id="coordFilterPending" onclick="filterCoordenacao('pending')">⏳ Aguardando</button>
+          <button class="db-btn-filter" id="coordFilterApproved" onclick="filterCoordenacao('approved')">✅ Aprovados</button>
+          <button class="db-btn-filter" id="coordFilterRejected" onclick="filterCoordenacao('rejected')">❌ Reprovados</button>
+          <button class="db-btn-filter" id="coordFilterAll" onclick="filterCoordenacao('all')">Todos</button>
+        </div>
+        <button onclick="lockCoordenacao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🔒 Sair</button>
       </div>
     </div>
-    <div id="reuniaoList"></div>
+    <div id="coordSubtitle" style="font-size:0.8rem;color:var(--gray-400);margin-bottom:1rem;"></div>
+    <div id="coordList"></div>
   </div>
-</div><!-- /tabReuniao -->
+</div><!-- /tabCoordenacao -->
+
+<!-- ── ABA CONFIGURAÇÃO ── -->
 <div id="tabConfig" style="display:none;">
 <div id="configLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
   <div style="font-size:2.5rem;margin-bottom:1rem;">🔐</div>
@@ -2090,8 +2153,102 @@
     </div>
   </div>
 
+  <div class="cfg-card">
+    <div class="cfg-card-header" style="color:#6366F1;background:#EEF2FF;border-color:#C7D2FE;">🎯 Senha da Aba Coordenação</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Senha padrão inicial: <strong>coord123</strong></div>
+      <div class="cfg-add-row">
+        <input type="password" id="cfgCoordPass1" placeholder="Nova senha" class="cfg-input" style="max-width:180px;">
+        <input type="password" id="cfgCoordPass2" placeholder="Confirmar senha" class="cfg-input" style="max-width:180px;">
+        <button class="cfg-btn-save" onclick="cfgChangeCoordPass()">💾 Alterar</button>
+      </div>
+      <div id="cfgCoordPassMsg" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+    </div>
   </div>
 
+  <!-- Seção 6: Imagem da Tela de Início -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">🖼️ Imagem da Tela de Início</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Altere a foto de boas-vindas exibida na aba Início.</div>
+      <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+        <div id="cfgInicioPreview" style="width:200px;height:120px;border-radius:var(--radius-sm);overflow:hidden;border:1.5px solid var(--gray-200);background:var(--gray-100);flex-shrink:0;">
+          <img id="cfgInicioThumb" src="" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:none;">
+          <div id="cfgInicioPlaceholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Imagem atual</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <label class="cfg-input" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;padding:0.6rem 1rem;border-style:dashed;border-color:#7C3AED;color:#7C3AED;background:#F5F3FF;font-weight:700;justify-content:center;">
+            📁 Escolher nova imagem
+            <input type="file" id="cfgInicioFile" accept="image/*" style="display:none;" onchange="cfgLoadInicioImage(this)">
+          </label>
+          <div style="font-size:0.72rem;color:var(--gray-400);margin-top:0.5rem;">Formatos: JPG, PNG, WEBP · Recomendado: paisagem</div>
+          <button class="cfg-btn-save" id="cfgInicioSaveBtn" onclick="cfgSaveInicioImage()" style="margin-top:0.65rem;display:none;">💾 Aplicar imagem</button>
+          <button onclick="cfgResetInicioImage()" style="margin-top:0.5rem;font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:0.4rem 0.85rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;display:block;">↩ Restaurar imagem padrão</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção 7: Gestão de Registros -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">📂 Gestão de Registros</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Visualize, edite ou exclua qualquer registro lançado na plataforma.</div>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end;">
+        <div>
+          <label style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;display:block;margin-bottom:3px;">📅 Data</label>
+          <input type="date" id="cfgRegFilterData" class="cfg-input" style="max-width:160px;" onchange="renderCfgRegistros()">
+        </div>
+        <div>
+          <label style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;display:block;margin-bottom:3px;">🔄 Turno</label>
+          <select id="cfgRegFilterTurno" class="cfg-input" style="max-width:120px;" onchange="renderCfgRegistros()">
+            <option value="">Todos</option>
+            <option value="A">Turno A</option>
+            <option value="B">Turno B</option>
+            <option value="C">Turno C</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;display:block;margin-bottom:3px;">👷 Equipe</label>
+          <input type="text" id="cfgRegFilterEquipe" placeholder="Buscar..." class="cfg-input" style="max-width:150px;" oninput="renderCfgRegistros()">
+        </div>
+        <button class="cfg-btn-add" onclick="renderCfgRegistros()" style="background:#6366F1;">🔍 Buscar</button>
+        <button onclick="cfgRegClearFilters()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 0.9rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;">✕ Limpar</button>
+      </div>
+
+      <div id="cfgRegistrosList"></div>
+    </div>
+  </div>
+
+  <!-- Seção 7: Imagem da Tela Inicial -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">🖼️ Imagem da Tela Inicial</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.85rem;">Substitua a foto exibida na aba Início.</div>
+
+      <!-- Preview atual -->
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-400);margin-bottom:0.4rem;">Prévia atual</div>
+        <img id="cfgImgPreview" src="" alt="Prévia" style="width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);display:block;">
+      </div>
+
+      <!-- Upload -->
+      <div class="cfg-add-row" style="align-items:center;">
+        <label style="display:inline-flex;align-items:center;gap:0.5rem;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:0.5rem 1.1rem;border-radius:var(--radius-sm);border:1.5px solid #7C3AED;color:#7C3AED;background:white;cursor:pointer;transition:all 0.15s;"
+          onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background='white'">
+          📁 Escolher imagem
+          <input type="file" accept="image/*" style="display:none;" onchange="cfgLoadImage(this)">
+        </label>
+        <button class="cfg-btn-save" id="cfgImgSaveBtn" onclick="cfgSaveImage()" style="display:none;">💾 Aplicar imagem</button>
+        <button onclick="cfgResetImage()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 0.9rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);cursor:pointer;">↩ Restaurar padrão</button>
+      </div>
+      <div id="cfgImgMsg" style="font-size:0.78rem;margin-top:0.5rem;display:none;"></div>
+    </div>
+  </div>
+
+</div>
 </div><!-- /tabConfig -->
 
 <!-- ── MODAL RESUMO ── -->
@@ -2279,7 +2436,7 @@
   </div>
 </div>
 
-<footer style="text-align:center;font-size:0.72rem;color:var(--gray-400);padding:1.5rem 1rem;margin-top:auto;border-top:1px solid var(--gray-100);">
+<footer>
   © 2026 Enel Brasil · Sistema de Análise de Produtividade · Uso interno · Criado por Estela Abreu
 </footer>
 
@@ -2589,12 +2746,6 @@
         <input type="hidden" id="m-${id}" value="0">
         `}
         <input type="hidden" id="txt-${id}" value="">
-        <!-- Campo justificativa — aparece dinamicamente quando fora do tempo -->
-        <div id="just-field-${id}" style="display:none;margin-top:0.65rem;padding:0.65rem 0.85rem;background:#FEF2F2;border-radius:8px;border:1.5px solid #FCA5A5;">
-          <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.4rem;">⚠️ FORA DO TEMPO — Justificativa obrigatória</div>
-          <textarea id="just-text-${id}" rows="2" placeholder="Descreva o motivo da ocorrência fora do tempo..."
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;resize:vertical;outline:none;background:white;"></textarea>
-        </div>
       </div>`;
 
     wrap.appendChild(item);
@@ -2809,12 +2960,6 @@
     if (cfg.plataforma   != null) PLATAFORMA_LIMITE_MIN = cfg.plataforma;
   }
 
-  // Show/hide the inline justificativa field based on desvio
-  function toggleJustField(id, isFora) {
-    const jf = document.getElementById('just-field-' + id);
-    if (jf) jf.style.display = isFora ? '' : 'none';
-  }
-
   function calcDeslocamento(id) {
     const inicioEl = document.getElementById('hinicio-' + id);
     const fimEl    = document.getElementById('hfim-'    + id);
@@ -2867,12 +3012,18 @@
     // Store status on hidden field for collectFormData
     const hiddenStatus = document.getElementById('desloc-status-val-' + id);
     if (hiddenStatus) hiddenStatus.value = dentroDoTempo ? 'dentro' : 'fora';
-    toggleJustField(id, !dentroDoTempo);
+
     updateTotal();
   }
 
-  function calcOcioso(id) {
+  function calcTimeRange(id, color) {
     const inicioEl  = document.getElementById('hinicio-' + id);
+    const fimEl     = document.getElementById('hfim-'    + id);
+    const hEl       = document.getElementById('h-'       + id);
+    const mEl       = document.getElementById('m-'       + id);
+    const tdEl      = document.getElementById('td-'      + id);
+    const sumEl     = document.getElementById('sum-'     + id);
+    const statusEl  = document.getElementById('ocioso-status-' + id);
     if (!inicioEl || !fimEl) return;
     const ini = inicioEl.value, fim = fimEl.value;
     if (!ini || !fim) {
@@ -2909,7 +3060,6 @@
       }
       const hiddenStatus = document.getElementById('ocioso-status-val-' + id);
       if (hiddenStatus) hiddenStatus.value = dentroDoTempo ? 'dentro' : 'fora';
-      toggleJustField(id, !dentroDoTempo);
     }
 
     updateTotal();
@@ -2963,13 +3113,18 @@
       }
       const hiddenStatus = document.getElementById('plat-status-val-' + id);
       if (hiddenStatus) hiddenStatus.value = dentroDoTempo ? 'dentro' : 'fora';
-      toggleJustField(id, !dentroDoTempo);
     }
     updateTotal();
   }
 
   function calcIncidencia(id) {
     const inicioEl  = document.getElementById('hinicio-'      + id);
+    const fimEl     = document.getElementById('hfim-'         + id);
+    const hEl       = document.getElementById('h-'            + id);
+    const mEl       = document.getElementById('m-'            + id);
+    const tdEl      = document.getElementById('td-'           + id);
+    const sumEl     = document.getElementById('sum-'          + id);
+    const statusEl  = document.getElementById('inc-status-'   + id);
     if (!inicioEl || !fimEl) return;
     const ini = inicioEl.value, fim = fimEl.value;
     if (!ini || !fim) {
@@ -3006,10 +3161,10 @@
       return;
     }
     if (limite === 0) {
+      // Causa with no time limit — "dentro do tempo" (no justificativa)
       statusEl.style.display = 'inline-flex';
       statusEl.textContent = '✅ Sem limite de tempo';
       statusEl.style.background = '#D1FAE5'; statusEl.style.color = '#065F46'; statusEl.style.borderColor = '#6EE7B7';
-      toggleJustField(id, false);
       return;
     }
     const dentroDoTempo = totalMin <= limite;
@@ -3021,7 +3176,6 @@
       statusEl.textContent = `⚠️ Fora do tempo (>${limite}min)`;
       statusEl.style.background = '#FEE2E2'; statusEl.style.color = '#991B1B'; statusEl.style.borderColor = '#FCA5A5';
     }
-    toggleJustField(id, !dentroDoTempo);
   }
 
   function updateMinutes(id) {
@@ -3182,21 +3336,15 @@
     fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
       .then(r => r.json())
       .then(data => {
-        if (data) {
-          Object.entries(data).forEach(([k, v]) => {
-            _cfgCache[k] = v;
-            try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-          });
-        }
-        // Seed defaults if still missing after Firebase sync
-        initDefaults();
+        if (!data) return;
+        Object.entries(data).forEach(([k, v]) => {
+          _cfgCache[k] = v;
+          try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+        });
         if (document.getElementById(`configPanel`)?.style.display !== `none`) renderConfigPanel();
         renderContactChips();
         applyCatLimites();
-      }).catch(e => {
-        console.warn(`Config sync error:`, e);
-        initDefaults(); // seed even if Firebase fails
-      });
+      }).catch(e => console.warn(`Config sync error:`, e));
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
@@ -3204,12 +3352,6 @@
 
   function getCausas() { return getCfg(CFG_CAUSAS_KEY, [...CAUSAS_INCIDENCIA]); }
   function saveCausas(arr) { saveCfg(CFG_CAUSAS_KEY, [...new Set(arr)].sort()); }
-
-  // Seed defaults to Firebase/localStorage if not yet set
-  function initDefaults() {
-    if (!getCfg(CFG_EQUIPES_KEY, null)) saveEquipes([...EQUIPES_DEFAULT]);
-    if (!getCfg(CFG_CAUSAS_KEY,  null)) saveCausas([...CAUSAS_INCIDENCIA]);
-  }
 
   function getObsPlaceholder() { return getCfg(CFG_OBS_KEY, 'Descreva detalhes desta ocorrência...'); }
   function getConfigPass()     { return getCfg(CFG_PASS_KEY, 'admin123'); }
@@ -3569,7 +3711,9 @@
     // Atualiza UI imediatamente
     updateTabBadge();
     updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
+    updateCoordenacaoBadge();
     applyDBFilters();
+    renderCfgRegistros();
     renderRetorno();
     showCopyToast('🗑 Registro excluído com sucesso.');
 
@@ -3642,12 +3786,15 @@
   function refreshAllUI(records) {
     updateTabBadge();
     updateTabBadgeRetorno(records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
+    updateCoordenacaoBadge();
     updateTopbarMetrics();
-    updateBadgeReuniao();
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
-    if (activeBtn === 'tabBtnNotify')   renderNotifyTab();
-    if (activeBtn === 'tabBtnReuniao')  renderReuniao();
+    if (activeBtn === 'tabBtnRetorno')     renderRetorno();
+    if (activeBtn === 'tabBtnNotify')      renderNotifyTab();
+    if (activeBtn === 'tabBtnCoordenacao') {
+      if (document.getElementById('coordPanel')?.style.display !== 'none') renderCoordenacao();
+    }
   }
 
   function setFbStatus(connected) {
@@ -3828,16 +3975,14 @@
       const obsCausa = catKey === 'incidencia'
         ? (document.getElementById('obs-causa-' + id)?.value.trim() || '')
         : undefined;
-      const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
     const jornadaSaida   = document.getElementById('jornadaSaida')?.value || '';
-    const comentarios    = (document.getElementById('comentariosReg')?.value || '').trim();
 
-    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentarios, entries, totalMin };
+    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, entries, totalMin };
   }
 
   function saveRecord() {
@@ -3914,8 +4059,6 @@
     if (supSel) supSel.selectedIndex = 0;
     const supField = document.getElementById('supervisorField');
     if (supField) supField.style.display = 'none';
-    const coment = document.getElementById('comentariosReg');
-    if (coment) coment.value = '';
   }
 
   function applyDBFilters() {
@@ -4067,8 +4210,6 @@
             <div class="db-record-actions">
               <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
               <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
-              <button class="db-action-btn" data-action="meeting" data-id="${r.id}" title="${r.reuniao ? 'Remover da reunião' : 'Incluir na reunião'}"
-                style="color:${r.reuniao ? '#6366F1' : 'var(--gray-400)'};font-size:0.9rem;">${r.reuniao ? '📋' : '📋'}</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -4082,10 +4223,6 @@
       listEl.appendChild(card);
 
       // Direct event listeners — most reliable approach
-      card.querySelector('[data-action="meeting"]')?.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleReuniao(r.id);
-      });
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
@@ -4197,7 +4334,11 @@
         })();
 
         const supBlock = isRevisado && supAns ? `
-          ${supAns.justSel ? '' : ''}<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
+          ${supAns.supervisorResp ? `<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
+            <div class="r-entry-field-label" style="color:#1E4DA1;">👤 Supervisor responsável</div>
+            <div class="r-entry-just"><strong>${supAns.supervisorResp}</strong></div>
+          </div>` : ''}
+          <div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
             <div class="r-entry-field-label" style="color:#1E4DA1;">✅ Justificativa</div>
             <div class="r-entry-just">${supAns.justSel ? '<strong>'+supAns.justSel+'</strong> · ' : ''}${supAns.just || '—'}</div>
           </div>
@@ -4302,28 +4443,43 @@
     modal.scrollTop = 0;
   }
 
-  // Shared timeline builder — returns a container div (used by resumo modal AND reunião)
-  function buildTimelineEl(r) {
+  function buildTimeline(r) {
+    const section = document.getElementById('rTimelineSection');
+    const container = document.getElementById('rTimeline');
+    if (!section || !container) return;
+
     const entrada = r.jornadaEntrada;
     const saida   = r.jornadaSaida;
-    if (!entrada) return null;
+
+    // Need at least entrada to build timeline
+    if (!entrada) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    container.innerHTML = '';
 
     const toMins = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
     const startMin = toMins(entrada);
     const endMin   = saida ? toMins(saida) : startMin + (r.totalMin || 480);
     const totalSpan = Math.max(endMin - startMin, 1);
 
+    // Build entries with time positions
+    // For non-incidencia: distribute sequentially starting from entrada
+    // For incidencia: use hinicio/hfim if available
     const segments = [];
     let cursor = startMin;
+
     r.entries.forEach(e => {
       const color = catColors[e.catKey] || '#888';
       const cat   = categorias[e.catKey];
       const mins  = e.mins || 0;
       let segStart, segEnd;
+
       if ((e.catKey === 'incidencia' || e.catKey === 'deslocamento' || e.catKey === 'plataforma' || e.catKey === 'reparo' || e.catKey === 'ocioso' || e.catKey === 'intervalo') && e.hinicio && e.hfim) {
         segStart = toMins(e.hinicio);
         segEnd   = toMins(e.hfim);
-        if (segEnd <= segStart) segEnd += 24*60;
+        if (segEnd <= segStart) segEnd += 24*60; // overnight
       } else {
         segStart = cursor;
         segEnd   = cursor + mins;
@@ -4332,13 +4488,13 @@
       segments.push({ e, cat, color, segStart, segEnd, mins });
     });
 
-    const wrap = document.createElement('div');
-
+    // Create track
     const track = document.createElement('div');
     track.className = 'timeline-track';
 
+    // Subtle hour tick lines on track
     const firstHour = Math.ceil(startMin / 60);
-    const lastHour  = Math.floor(endMin / 60);
+    const lastHour  = Math.floor(endMin   / 60);
     for (let hh = firstHour; hh <= lastHour; hh++) {
       const pct = ((hh * 60 - startMin) / totalSpan * 100).toFixed(2);
       if (pct <= 0 || pct >= 100) continue;
@@ -4352,26 +4508,32 @@
       const left  = Math.max(0, (s.segStart - startMin) / totalSpan * 100);
       const width = Math.min(100 - left, (s.segEnd - s.segStart) / totalSpan * 100);
       if (width < 0.3) return;
+
       const bar = document.createElement('div');
       bar.className = 'timeline-bar';
       bar.style.cssText = `left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${s.color};`;
+
       const h = Math.floor(s.mins/60), m = s.mins%60;
       const timeStr = pad(h)+'h'+pad(m);
       const startLabel = Math.floor(s.segStart/60)+':'+(s.segStart%60).toString().padStart(2,'0');
       const endLabel   = Math.floor(s.segEnd/60)+':'+(s.segEnd%60).toString().padStart(2,'0');
+
       bar.innerHTML = `
         <div class="timeline-bar-label">${width > 8 ? s.cat.icon+' '+s.cat.nome : s.cat.icon}</div>
         <div class="timeline-tooltip">${s.cat.icon} ${s.cat.nome}<br>${startLabel} → ${endLabel} · ${timeStr}</div>`;
       track.appendChild(bar);
     });
 
+    // Empty space indicator
     if (!segments.length) {
       track.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Sem ocorrências posicionadas</div>';
     }
 
+    // Labels row — intervalos de 30 em 30 minutos, alinhados horizontalmente
     const labelsWrap = document.createElement('div');
     labelsWrap.style.cssText = 'position:relative;margin-top:0.4rem;height:18px;overflow:visible;';
 
+    // Gera todos os marcos: início, cada 30min, fim
     const allMarks = [];
     allMarks.push({ min: startMin, label: entrada, isEdge: true });
     const step = 30;
@@ -4397,6 +4559,7 @@
       labelsWrap.appendChild(el);
     });
 
+    // Legend chips
     const legend = document.createElement('div');
     legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;';
     const seen = new Set();
@@ -4409,21 +4572,9 @@
       legend.appendChild(chip);
     });
 
-    wrap.appendChild(track);
-    wrap.appendChild(labelsWrap);
-    if (seen.size > 1) wrap.appendChild(legend);
-    return wrap;
-  }
-
-  function buildTimeline(r) {
-    const section = document.getElementById('rTimelineSection');
-    const container = document.getElementById('rTimeline');
-    if (!section || !container) return;
-    if (!r.jornadaEntrada) { section.style.display = 'none'; return; }
-    section.style.display = 'block';
-    container.innerHTML = '';
-    const el = buildTimelineEl(r);
-    if (el) container.appendChild(el);
+    container.appendChild(track);
+    container.appendChild(labelsWrap);
+    if (seen.size > 1) container.appendChild(legend);
   }
 
   function clearAllDB() {
@@ -4446,8 +4597,9 @@
     inicio:      '🏠 Início',
     form:        '📋 Registro',
     notify:      '📨 Notificar Supervisor',
+    retorno:     '✅ Justificativa',
+    coordenacao: '🎯 Coordenação',
     db:          '📊 Banco de Dados Produtividade',
-    reuniao:     '📋 Painel de Reunião',
     config:      '⚙️ Configuração'
   };
 
@@ -4457,24 +4609,27 @@
     if (_currentTab === 'form' && tab !== 'form') saveDraft();
 
     // Lock protected tabs when navigating away
+    if (_currentTab === 'coordenacao' && tab !== 'coordenacao') lockCoordenacao();
     if (_currentTab === 'config'      && tab !== 'config')      lockConfig();
 
     _currentTab = tab;
     document.getElementById('tabInicio').style.display      = tab === 'inicio'      ? 'block' : 'none';
     document.getElementById('tabForm').style.display        = tab === 'form'        ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'      ? 'block' : 'none';
+    document.getElementById('tabRetorno').style.display     = tab === 'retorno'     ? 'block' : 'none';
+    document.getElementById('tabCoordenacao').style.display = tab === 'coordenacao' ? 'block' : 'none';
     document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
-    document.getElementById('tabReuniao').style.display     = tab === 'reuniao'     ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','DB','Reuniao','Config'].forEach(t => {
+    ['Inicio','Form','Notify','Retorno','Coordenacao','DB','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
     if (tab === 'db')          { applyDBFilters(); window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'retorno')     { renderRetorno();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'coordenacao') { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')        { window.scrollTo({ top:0, behavior:'smooth' }); }
   }
 
@@ -4751,6 +4906,15 @@
             </div>
 
             <div class="retorno-sup-row" style="margin-top:0.65rem;">
+              <!-- Supervisor responsável -->
+              <div class="ret-sup-field" style="grid-column:1/-1;margin-bottom:0.35rem;">
+                <label class="ret-sup-label">👤 Supervisor responsável <span class="req-star">*</span></label>
+                <select class="ret-sup-select" id="retSupSel_${r.id}_${idx}"
+                  onchange="checkRetornoEntry(${r.id},${idx})" ${isDone ? 'disabled' : ''}>
+                  <option value="">– Selecione o supervisor –</option>
+                  ${(()=>{ const all=[]; Object.values(getSupervisores()).forEach(a=>a.forEach(s=>{ if(!all.includes(s)) all.push(s); })); return all.map(s=>`<option value="${s}" ${supAns?.supervisorResp===s?'selected':''}>${s}</option>`).join(''); })()}
+                </select>
+              </div>
               <!-- Justificativa -->
               <div class="ret-sup-field">
                 <label class="ret-sup-label">✅ Justificativa</label>
@@ -5134,10 +5298,13 @@
     const allRealizada = supAnswers.filter(a => a !== null).every(a => a.acaoStatus === 'realizada');
     records[rIdx].status = allRealizada ? 'revisado' : 'parcial';
     // Reset coord status so it goes back to coordination queue
+    records[rIdx].coordStatus = undefined;
+    records[rIdx].coordMotivo = undefined;
     saveDB(records);
     updateTabBadge();
     updateTabBadgeRetorno(loadDB().filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
-    showCopyToast('💾 Justificativas salvas com sucesso!');
+    updateCoordenacaoBadge();
+    showCopyToast('💾 Justificativas salvas! Enviado para Coordenação.');
     renderRetorno();
   }
 
@@ -5723,6 +5890,146 @@ entryLines.join('\n\n') + '\n' +
   // ── Imagem Início ──
   const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
 
+  function cfgLoadInicioImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const thumb = document.getElementById('cfgInicioThumb');
+      const ph    = document.getElementById('cfgInicioPlaceholder');
+      const btn   = document.getElementById('cfgInicioSaveBtn');
+      if (thumb) { thumb.src = e.target.result; thumb.style.display = 'block'; }
+      if (ph)    ph.style.display = 'none';
+      if (btn)   btn.style.display = 'block';
+      // store pending in memory
+      window._pendingInicioImg = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function cfgSaveInicioImage() {
+    if (!window._pendingInicioImg) return;
+    localStorage.setItem(CFG_INICIO_IMG_KEY, window._pendingInicioImg);
+    applyInicioImage();
+    showCopyToast('✅ Imagem atualizada!');
+    document.getElementById('cfgInicioSaveBtn').style.display = 'none';
+    window._pendingInicioImg = null;
+  }
+
+  function cfgResetInicioImage() {
+    localStorage.removeItem(CFG_INICIO_IMG_KEY);
+    window._pendingInicioImg = null;
+    applyInicioImage();
+    renderCfgInicioThumb();
+    showCopyToast('↩ Imagem padrão restaurada!');
+  }
+
+  function applyInicioImage() {
+    const stored = localStorage.getItem(CFG_INICIO_IMG_KEY);
+    const img = document.getElementById('inicioMainImg');
+    if (!img) return;
+    if (stored) {
+      img.src = stored;
+    } else {
+      // restore original src stored in data attribute
+      img.src = img.dataset.original || img.src;
+    }
+  }
+
+  function renderCfgInicioThumb() {
+    const stored = localStorage.getItem(CFG_INICIO_IMG_KEY);
+    const thumb = document.getElementById('cfgInicioThumb');
+    const ph    = document.getElementById('cfgInicioPlaceholder');
+    if (stored && thumb) {
+      thumb.src = stored; thumb.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+    } else if (thumb) {
+      thumb.style.display = 'none';
+      if (ph) ph.style.display = 'flex';
+    }
+  }
+
+  function renderConfigPanel() {
+    renderCfgEquipes();
+    renderCfgCausas();
+    renderCfgLimites();
+    renderCfgCatLimites();
+    renderCfgSupervisores();
+    renderCfgContacts();
+    renderCfgRegistros();
+    renderCfgImagePreview();
+    const obsEl = document.getElementById('cfgObsPlaceholder');
+    if (obsEl) obsEl.value = getObsPlaceholder();
+  }
+
+  // ── Imagem da Tela Inicial ──
+  const CFG_IMG_KEY = 'enel_cfg_inicio_img';
+  let _cfgImgPending = null;
+
+  function applyInicioImage() {
+    const stored = localStorage.getItem(CFG_IMG_KEY);
+    const imgEl = document.querySelector('.inicio-img');
+    if (imgEl && stored) imgEl.src = stored;
+  }
+
+  function renderCfgImagePreview() {
+    const stored = localStorage.getItem(CFG_IMG_KEY);
+    const preview = document.getElementById('cfgImgPreview');
+    if (!preview) return;
+    const imgEl = document.querySelector('.inicio-img');
+    preview.src = stored || (imgEl?.src) || '';
+    _cfgImgPending = null;
+    const saveBtn = document.getElementById('cfgImgSaveBtn');
+    if (saveBtn) saveBtn.style.display = 'none';
+  }
+
+  function cfgLoadImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      const msg = document.getElementById('cfgImgMsg');
+      if (msg) { msg.textContent = '⚠️ Imagem muito grande. Máximo 4MB.'; msg.style.color = '#DC2626'; msg.style.display = 'block'; }
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      _cfgImgPending = e.target.result;
+      const preview = document.getElementById('cfgImgPreview');
+      if (preview) preview.src = _cfgImgPending;
+      const saveBtn = document.getElementById('cfgImgSaveBtn');
+      if (saveBtn) saveBtn.style.display = 'inline-flex';
+      const msg = document.getElementById('cfgImgMsg');
+      if (msg) { msg.textContent = '✅ Imagem carregada. Clique em Aplicar para salvar.'; msg.style.color = 'var(--green-dark)'; msg.style.display = 'block'; }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function cfgSaveImage() {
+    if (!_cfgImgPending) return;
+    try {
+      localStorage.setItem(CFG_IMG_KEY, _cfgImgPending);
+      applyInicioImage();
+      const saveBtn = document.getElementById('cfgImgSaveBtn');
+      if (saveBtn) saveBtn.style.display = 'none';
+      const msg = document.getElementById('cfgImgMsg');
+      if (msg) { msg.textContent = '✅ Imagem aplicada com sucesso!'; msg.style.color = 'var(--green-dark)'; msg.style.display = 'block'; }
+      _cfgImgPending = null;
+      setTimeout(() => { const m = document.getElementById('cfgImgMsg'); if(m) m.style.display = 'none'; }, 3000);
+    } catch(e) {
+      const msg = document.getElementById('cfgImgMsg');
+      if (msg) { msg.textContent = '⚠️ Erro ao salvar. Tente uma imagem menor.'; msg.style.color = '#DC2626'; msg.style.display = 'block'; }
+    }
+  }
+
+  function cfgResetImage() {
+    localStorage.removeItem(CFG_IMG_KEY);
+    _cfgImgPending = null;
+    const imgEl = document.querySelector('.inicio-img');
+    if (imgEl && imgEl.dataset.origSrc) { imgEl.src = imgEl.dataset.origSrc; }
+    renderCfgImagePreview();
+    showCopyToast('↩ Imagem restaurada ao padrão.');
+  }
+
   // ── Equipes ──
   function renderCfgEquipes() {
     const list = document.getElementById('cfgEquipeList');
@@ -5981,7 +6288,68 @@ entryLines.join('\n\n') + '\n' +
   // ── Gestão de Registros (Config) ──
   let _editingRecordId = null;
 
+  function renderCfgRegistros() {
+    const dataVal   = document.getElementById('cfgRegFilterData')?.value || '';
+    const turnoVal  = document.getElementById('cfgRegFilterTurno')?.value || '';
+    const equipeVal = (document.getElementById('cfgRegFilterEquipe')?.value || '').trim().toUpperCase();
+    const all = loadDB();
+    const records = all.filter(r => {
+      if (dataVal   && r.data  !== dataVal)                          return false;
+      if (turnoVal  && r.turno !== turnoVal)                         return false;
+      if (equipeVal && !r.equipe.toUpperCase().includes(equipeVal))  return false;
+      return true;
+    });
+    const listEl = document.getElementById('cfgRegistrosList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    if (!records.length) {
+      listEl.innerHTML = '<div class="cfg-empty">📭 Nenhum registro encontrado.</div>';
+      return;
+    }
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    records.forEach(r => {
+      const [ry,rm,rd] = r.data.split('-');
+      const dataBR = rd+'/'+rm+'/'+ry;
+      const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
+      const rh = Math.floor(r.totalMin/60), rmn = r.totalMin%60;
+      const statusBadge = r.status === 'revisado'
+        ? '<span style="font-size:0.68rem;font-weight:800;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:99px;">✅ Revisado</span>'
+        : '<span style="font-size:0.68rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:99px;">⏳ Pendente</span>';
 
+      const entryPills = r.entries.map(e =>
+        '<span class="cfg-reg-entry-pill">' + categorias[e.catKey]?.icon + ' ' + categorias[e.catKey]?.nome + '</span>'
+      ).join('');
+
+      const card = document.createElement('div');
+      card.className = 'cfg-registro';
+      card.innerHTML = `
+        <div class="cfg-registro-header">
+          <div class="cfg-registro-info">
+            <span class="cfg-registro-date">📅 ${diaSem}, ${dataBR}</span>${r.registroId ? ` <span style="font-size:0.7rem;font-weight:800;background:#1E4DA1;color:white;padding:1px 8px;border-radius:99px;">${r.registroId}</span>` : ''}
+            <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
+            <span class="db-meta-pill">👷 ${r.equipe}</span>
+            <span class="db-meta-pill">⏱ ${pad(rh)}h${pad(rmn)}min</span>
+            ${statusBadge}
+          </div>
+          <div class="cfg-registro-actions">
+            <button class="cfg-reg-btn edit" data-id="${r.id}">✏️ Editar</button>
+            <button class="cfg-reg-btn del" data-id="${r.id}">🗑 Excluir</button>
+          </div>
+        </div>
+        <div class="cfg-reg-entries">${entryPills}</div>`;
+
+      card.querySelector('.cfg-reg-btn.edit').addEventListener('click', () => openEditModal(r.id));
+      card.querySelector('.cfg-reg-btn.del').addEventListener('click',  () => cfgDeleteRecord(r.id));
+      listEl.appendChild(card);
+    });
+  }
+
+  function cfgRegClearFilters() {
+    document.getElementById('cfgRegFilterData').value = '';
+    document.getElementById('cfgRegFilterTurno').value = '';
+    document.getElementById('cfgRegFilterEquipe').value = '';
+    renderCfgRegistros();
+  }
 
   // Called from Banco de Dados tab — btn element passed directly
   function deleteRecordConfirm(id, btn) {
@@ -5999,6 +6367,33 @@ entryLines.join('\n\n') + '\n' +
           btn.style.background = '';
           btn.style.color = '';
           btn.style.border = '';
+        }
+      }, 4000);
+      return;
+    }
+    btn.dataset.confirming = 'false';
+    doDeleteRecord(id);
+  }
+
+  // Core deletion logic shared by both DB tab and Config tab
+  function cfgDeleteRecord(id) {
+    const idStr = String(id);
+    const btn = document.querySelector(`.cfg-reg-btn.del[data-id="${idStr}"]`);
+    if (!btn) { doDeleteRecord(id); return; }
+
+    if (btn.dataset.confirming !== 'true') {
+      btn.dataset.confirming = 'true';
+      btn.textContent = '⚠️ Confirmar exclusão';
+      btn.style.background = '#DC2626';
+      btn.style.color = 'white';
+      btn.style.borderColor = '#DC2626';
+      setTimeout(() => {
+        if (btn.dataset.confirming === 'true') {
+          btn.dataset.confirming = 'false';
+          btn.textContent = '🗑 Excluir';
+          btn.style.background = 'white';
+          btn.style.color = '#EF4444';
+          btn.style.borderColor = '#EF4444';
         }
       }, 4000);
       return;
@@ -6284,10 +6679,13 @@ entryLines.join('\n\n') + '\n' +
       // Reset justificativa & coordination — send back to Justificativa flow
       r.status = undefined;
       r.supervisorAnswers = [];
+      r.coordStatus = undefined;
+      r.coordMotivo = undefined;
       showCopyToast('⚠️ Registro editado com desvio — enviado para Justificativa!');
     } else {
       // No desvio — stays in Banco de Dados, clear any previous justificativa flags
       r.status = 'revisado';
+      r.coordStatus = 'aprovado';
       showCopyToast('✅ Registro atualizado! Sem desvios detectados.');
     }
 
@@ -6298,6 +6696,7 @@ entryLines.join('\n\n') + '\n' +
     applyDBFilters();
     renderRetorno();
     updateTabBadgeRetorno(loadDB().filter(rec => needsJustificativa(rec) && rec.status !== 'revisado').length);
+    updateCoordenacaoBadge();
   }
 
   function closeEditModal() {
@@ -6357,8 +6756,6 @@ entryLines.join('\n\n') + '\n' +
   const _inicioImg = document.querySelector('.inicio-img');
   if (_inicioImg) _inicioImg.dataset.origSrc = _inicioImg.src;
   applyInicioImage();
-  // Seed default equipes/causas if not yet in storage
-  initDefaults();
   // Start Firebase real-time sync
   initFirebaseSync();
   initConfigSync();
@@ -6373,6 +6770,233 @@ entryLines.join('\n\n') + '\n' +
   // ══════════════════════════════════════════
   //  ABA COORDENAÇÃO
   // ══════════════════════════════════════════
+
+  const CFG_COORD_PASS_KEY = 'enel_cfg_coord_pass';
+  let _coordFilter = 'pending';
+  function getCoordPass() { return getCfg(CFG_COORD_PASS_KEY, 'coord123'); }
+
+  function checkCoordPass() {
+    const inp = document.getElementById('coordPassInput');
+    const err = document.getElementById('coordPassErr');
+    if (inp.value === getCoordPass()) {
+      document.getElementById('coordLock').style.display  = 'none';
+      document.getElementById('coordPanel').style.display = 'block';
+      inp.value = '';
+      err.style.display = 'none';
+      renderCoordenacao();
+    } else {
+      err.style.display = 'block';
+      inp.value = '';
+      inp.focus();
+    }
+  }
+
+  function lockCoordenacao() {
+    document.getElementById('coordLock').style.display  = 'block';
+    document.getElementById('coordPanel').style.display = 'none';
+    const inp = document.getElementById('coordPassInput');
+    if (inp) inp.value = '';
+  }
+
+  function filterCoordenacao(f) {
+    _coordFilter = f;
+    ['pending','approved','rejected','all'].forEach(k => {
+      const id = 'coordFilter' + k.charAt(0).toUpperCase() + k.slice(1);
+      document.getElementById(id)?.classList.toggle('active', k === f);
+    });
+    renderCoordenacao();
+  }
+
+  function updateCoordenacaoBadge() {
+    const records = loadDB();
+    // Records awaiting coordination: status=revisado or parcial, no coordStatus yet
+    const count = records.filter(r =>
+      (r.status === 'revisado' || r.status === 'parcial') && !r.coordStatus
+    ).length;
+    const badge = document.getElementById('tabBadgeCoordenacao');
+    if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
+  }
+
+  function renderCoordenacao() {
+    const listEl = document.getElementById('coordList');
+    const subtitle = document.getElementById('coordSubtitle');
+    if (!listEl) return;
+    const all = loadDB();
+    // Only records with supervisor answers
+    const eligible = all.filter(r =>
+      (r.status === 'revisado' || r.status === 'parcial') ||
+      r.coordStatus === 'aprovado' || r.coordStatus === 'reprovado'
+    );
+    let filtered = eligible;
+    if (_coordFilter === 'pending')  filtered = eligible.filter(r => !r.coordStatus);
+    if (_coordFilter === 'approved') filtered = eligible.filter(r => r.coordStatus === 'aprovado');
+    if (_coordFilter === 'rejected') filtered = eligible.filter(r => r.coordStatus === 'reprovado');
+    if (subtitle) subtitle.textContent = filtered.length + ' registro' + (filtered.length !== 1 ? 's' : '') + ' encontrado' + (filtered.length !== 1 ? 's' : '');
+    listEl.innerHTML = '';
+    if (!filtered.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--gray-400);font-size:0.9rem;">📭 Nenhum registro encontrado.</div>';
+      return;
+    }
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    filtered.forEach(r => {
+      const [ry,rm,rd] = r.data.split('-');
+      const dataBR = rd+'/'+rm+'/'+ry;
+      const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
+      const coordBadge = r.coordStatus === 'aprovado'
+        ? '<span style="font-size:0.72rem;font-weight:800;background:#D1FAE5;color:#065F46;padding:2px 10px;border-radius:99px;">✅ Aprovado</span>'
+        : r.coordStatus === 'reprovado'
+          ? '<span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 10px;border-radius:99px;">❌ Reprovado</span>'
+          : '<span style="font-size:0.72rem;font-weight:800;background:#EEF2FF;color:#4338CA;padding:2px 10px;border-radius:99px;">⏳ Aguardando</span>';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1.5px solid var(--gray-200);border-radius:var(--radius);margin-bottom:1rem;overflow:hidden;';
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;background:var(--gray-50);flex-wrap:wrap;gap:0.5rem;cursor:pointer;';
+      header.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:var(--green-dark);">📅 ${diaSem}, ${dataBR}</span>
+          ${r.registroId ? `<span style="font-size:0.72rem;font-weight:800;background:#1E4DA1;color:white;padding:2px 9px;border-radius:99px;">${r.registroId}</span>` : ''}
+          <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
+          <span class="db-meta-pill">👷 ${r.equipe}</span>
+          <span class="db-meta-pill">⚡ ${r.entries.length} ocorrência${r.entries.length!==1?'s':''}</span>
+          ${coordBadge}
+        </div>
+        <span style="color:var(--gray-400);">▾</span>`;
+
+      const body = document.createElement('div');
+      body.style.cssText = 'padding:1rem 1.1rem;display:none;';
+
+      // Build entries display
+      let entriesHTML = '';
+      r.entries.forEach((e, idx) => {
+        const color = catColors[e.catKey] || '#888';
+        const cat   = categorias[e.catKey];
+        const supAns = r.supervisorAnswers?.[idx];
+        const h = Math.floor(e.mins/60), m = e.mins%60;
+        const timeStr = pad(h)+'h'+pad(m)+'min';
+        entriesHTML += `
+          <div style="border:1px solid var(--gray-200);border-radius:var(--radius-sm);margin-bottom:0.75rem;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0.85rem;background:${color}15;border-bottom:1px solid ${color}30;">
+              <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;font-size:0.88rem;">
+                ${cat?.icon} ${cat?.nome}
+                <span style="font-size:0.65rem;font-weight:800;background:${color};color:white;padding:1px 7px;border-radius:99px;">Nº${idx+1}</span>
+              </div>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;color:${color};">⏱ ${timeStr}</span>
+            </div>
+            ${supAns ? `<div style="padding:0.65rem 0.85rem;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1rem;">
+              <div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Justificativa</div>
+                <div style="font-size:0.82rem;font-weight:700;color:#065F46;">${supAns.justSel||'—'}</div>
+                ${supAns.just?`<div style="font-size:0.78rem;color:var(--gray-600);margin-top:2px;">${supAns.just}</div>`:''}
+              </div>
+              <div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Ação corretiva</div>
+                <div style="font-size:0.82rem;font-weight:700;color:#1E4DA1;">${supAns.acaoSel||'—'}</div>
+                ${supAns.acao?`<div style="font-size:0.78rem;color:var(--gray-600);margin-top:2px;">${supAns.acao}</div>`:''}
+              </div>
+              <div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Status da ação</div>
+                <div style="font-size:0.82rem;font-weight:700;">${supAns.acaoStatus==='realizada'?'<span style="color:#059669;">✅ Realizada</span>':supAns.acaoStatus==='nao_realizada'?'<span style="color:#D97706;">❌ Não realizada</span>':'—'}</div>
+                ${supAns.dataPrevista?`<div style="font-size:0.75rem;color:var(--gray-500);">📅 Prevista: ${supAns.dataPrevista}</div>`:''}
+              </div>
+              ${supAns.evidName || supAns.evidData ?`<div><div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);margin-bottom:2px;">Evidência</div>
+                ${supAns.evidData
+                  ? `<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+                      <span style="font-size:0.78rem;font-weight:600;color:#065F46;">📎 ${supAns.evidName||'Evidência'}</span>
+                      <button type="button" onclick="openEvidPreview(this.dataset.url,this.dataset.name)" data-url="${supAns.evidData}" data-name="${supAns.evidName||'evidencia'}" style="font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #059669;background:white;color:#059669;cursor:pointer;">👁 Ver</button>
+                      <a href="${supAns.evidData}" download="${supAns.evidName||'evidencia'}" style="font-size:0.7rem;color:#059669;font-weight:700;text-decoration:none;">⬇ Baixar</a>
+                    </div>`
+                  : `<div style="font-size:0.78rem;color:#059669;font-weight:600;">📎 ${supAns.evidName}</div>`
+                }</div>`:''}
+            </div>` : '<div style="padding:0.5rem 0.85rem;font-size:0.8rem;color:var(--gray-400);font-style:italic;">Sem justificativa preenchida.</div>'}
+          </div>`;
+      });
+      body.innerHTML = entriesHTML;
+
+      // Action buttons (only if not yet decided)
+      if (!r.coordStatus) {
+        const actDiv = document.createElement('div');
+        actDiv.style.cssText = 'padding:0 1.1rem 1rem;display:flex;gap:0.65rem;align-items:flex-start;flex-wrap:wrap;';
+        actDiv.innerHTML = `
+          <button onclick="coordDecide(${r.id},'aprovado')"
+            style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.4rem;border-radius:var(--radius-sm);border:none;background:#059669;color:white;cursor:pointer;">
+            ✅ Aprovar
+          </button>
+          <div style="flex:1;min-width:200px;">
+            <input type="text" id="coordMotivo_${r.id}" placeholder="Motivo da reprovação (obrigatório para reprovar)..."
+              style="font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.5rem 0.75rem;width:100%;outline:none;background:var(--gray-50);">
+          </div>
+          <button onclick="coordDecide(${r.id},'reprovado')"
+            style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.4rem;border-radius:var(--radius-sm);border:none;background:#DC2626;color:white;cursor:pointer;">
+            ❌ Reprovar
+          </button>`;
+        body.appendChild(actDiv);
+      } else if (r.coordStatus === 'reprovado' && r.coordMotivo) {
+        const motivoDiv = document.createElement('div');
+        motivoDiv.style.cssText = 'padding:0 1.1rem 1rem;';
+        motivoDiv.innerHTML = `<div style="padding:0.5rem 0.85rem;background:#FEE2E2;border-radius:6px;border-left:3px solid #DC2626;font-size:0.82rem;color:#991B1B;"><strong>Motivo da reprovação:</strong> ${r.coordMotivo}</div>`;
+        body.appendChild(motivoDiv);
+      }
+
+      header.addEventListener('click', () => {
+        body.style.display = body.style.display === 'none' ? 'block' : 'none';
+        header.querySelector('span:last-child').textContent = body.style.display === 'none' ? '▾' : '▴';
+      });
+      card.appendChild(header);
+      card.appendChild(body);
+      listEl.appendChild(card);
+    });
+    updateCoordenacaoBadge();
+  }
+
+  function coordDecide(id, decision) {
+    const records = loadDB();
+    const rIdx = records.findIndex(r => r.id === id);
+    if (rIdx === -1) return;
+
+    if (decision === 'reprovado') {
+      const motivo = document.getElementById('coordMotivo_' + id)?.value.trim();
+      if (!motivo) { showCopyToast('⚠️ Informe o motivo da reprovação.'); return; }
+      records[rIdx].coordStatus = 'reprovado';
+      records[rIdx].coordMotivo = motivo;
+      records[rIdx].coordAt = new Date().toISOString();
+      // Return to justificativa — keep supervisorAnswers so supervisor sees their previous data
+      records[rIdx].status = 'reprovado'; // new status so it shows in justificativa
+      // Do NOT clear supervisorAnswers — data is preserved for editing
+      saveDB(records);
+      showCopyToast('❌ Registro reprovado. Retornou para Justificativa com dados preservados.');
+    } else {
+      records[rIdx].coordStatus = 'aprovado';
+      records[rIdx].coordAt = new Date().toISOString();
+      // CRITICAL: if any entry is "nao_realizada", keep as parcial (pendente)
+      // Only mark as revisado if all entries are "realizada"
+      const supAnswers = records[rIdx].supervisorAnswers || [];
+      const allRealizada = supAnswers.length > 0 && supAnswers.every(a => a.acaoStatus === 'realizada');
+      if (!allRealizada) {
+        records[rIdx].status = 'parcial'; // remains pending
+      }
+      saveDB(records);
+      const msg = allRealizada
+        ? '✅ Aprovado e liberado para o Banco de Dados!'
+        : '✅ Aprovado! Registro permanece PENDENTE até todas as ações serem realizadas.';
+      showCopyToast(msg);
+    }
+    updateTabBadge();
+    updateTabBadgeRetorno(loadDB().filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
+    updateCoordenacaoBadge();
+    renderCoordenacao();
+  }
+
+  function cfgChangeCoordPass() {
+    const p1 = document.getElementById('cfgCoordPass1')?.value;
+    const p2 = document.getElementById('cfgCoordPass2')?.value;
+    const msg = document.getElementById('cfgCoordPassMsg');
+    if (!p1 || p1.length < 4) { if(msg){msg.textContent='Senha deve ter ao menos 4 caracteres.';msg.style.color='#DC2626';msg.style.display='block';} return; }
+    if (p1 !== p2)             { if(msg){msg.textContent='As senhas não coincidem.';msg.style.color='#DC2626';msg.style.display='block';} return; }
+    saveCfg(CFG_COORD_PASS_KEY, p1);
+    document.getElementById('cfgCoordPass1').value = '';
+    document.getElementById('cfgCoordPass2').value = '';
+    if (msg) { msg.textContent='✅ Senha da Coordenação alterada!'; msg.style.color='var(--green-dark)'; msg.style.display='block'; }
+    setTimeout(()=>{ if(msg) msg.style.display='none'; }, 3000);
+  }
 
   function openEvidPreview(dataUrl, name) {
     const modal   = document.getElementById('evidPreviewModal');
@@ -6439,135 +7063,7 @@ entryLines.join('\n\n') + '\n' +
     }
   }
 
-  // ══════════════════════════════════════════
-  //  ABA REUNIÃO
-  // ══════════════════════════════════════════
-
-  function toggleReuniao(id) {
-    const records = loadDB();
-    const r = records.find(rec => rec.id === id);
-    if (!r) return;
-    r.reuniao = !r.reuniao;
-    saveDB(records);
-    applyDBFilters();
-    updateBadgeReuniao();
-    showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
-  }
-
-  function updateBadgeReuniao() {
-    const count = loadDB().filter(r => r.reuniao).length;
-    const badge = document.getElementById('tabBadgeReuniao');
-    if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
-  }
-
-  function renderReuniao() {
-    const listEl = document.getElementById('reuniaoList');
-    if (!listEl) return;
-    const all = loadDB();
-    const marked = all.filter(r => r.reuniao);
-    updateBadgeReuniao();
-
-    if (!marked.length) {
-      listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
-        <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-        <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
-        <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
-      </div>`;
-      return;
-    }
-
-    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    const toMins = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; };
-
-    listEl.innerHTML = '';
-    marked.forEach(r => {
-      const [ry,rm,rd] = r.data.split('-');
-      const dataBR = rd+'/'+rm+'/'+ry;
-      const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
-      const totalH = Math.floor(r.totalMin/60), totalM = r.totalMin%60;
-      const supervisorStr = ''; // removed
-
-      // ── Timeline ──
-
-
-      // ── Ocorrências + Justificativa numa única tabela ──
-      const ocRows = r.entries.map((e, idx) => {
-        const color = catColors[e.catKey]||'#888';
-        const cat   = categorias[e.catKey];
-        const desvio = entryNeedsJustificativa(e);
-        const statusBadge = desvio
-          ? `<span style="font-size:0.7rem;font-weight:800;background:#DC2626;color:white;padding:3px 10px;border-radius:99px;">⚠️ Fora do Tempo</span>`
-          : `<span style="font-size:0.7rem;font-weight:800;background:#16A34A;color:white;padding:3px 10px;border-radius:99px;">✅ Dentro do Tempo</span>`;
-        const supAns = r.supervisorAnswers?.[idx];
-        const justCell = supAns?.just
-          ? `<span style="font-size:0.72rem;color:#374151;">${supAns.just}</span>`
-          : `<span style="font-size:0.72rem;color:#9CA3AF;">—</span>`;
-        return `<tr style="border-bottom:1px solid #F3F4F6;">
-          <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
-          <td style="padding:0.55rem 0.75rem;color:#374151;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
-          <td style="padding:0.55rem 0.75rem;text-align:center;font-weight:700;">${pad(Math.floor(e.mins/60))}:${pad(e.mins%60)}</td>
-          <td style="padding:0.55rem 0.75rem;text-align:center;">${statusBadge}</td>
-          <td style="padding:0.55rem 0.75rem;">${justCell}</td>
-        </tr>`;
-      }).join('');
-
-      const card = document.createElement('div');
-      card.style.cssText = 'background:white;border-radius:10px;margin-bottom:1.75rem;box-shadow:0 2px 12px rgba(79,70,229,0.1);border:1px solid #C7D2FE;overflow:hidden;';
-      card.innerHTML = `
-        <!-- Cabeçalho -->
-        <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
-          <div style="display:flex;flex-direction:column;gap:0.3rem;">
-            <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
-              <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:white;">👷 Equipe: <strong>${r.equipe}</strong></span>
-              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong style="color:white;">${r.turno}</strong></span>
-              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong style="color:white;">${diaSem}, ${dataBR}</strong></span>
-            </div>
-            ${r.jornadaEntrada ? `<div style="font-size:0.78rem;color:#93C5FD;">🕐 Jornada: <strong style="color:white;">${r.jornadaEntrada}</strong> às <strong style="color:white;">${r.jornadaSaida||'—'}</strong></div>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:0.75rem;">
-            <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
-            <button onclick="toggleReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
-          </div>
-        </div>
-
-        <!-- Timeline -->
-        <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
-
-        <!-- Ocorrências -->
-        <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
-          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;">
-            <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
-          </div>
-          <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
-            <thead>
-              <tr style="background:#F8FAFF;">
-                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
-                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
-                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
-                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Status</th>
-                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
-              </tr>
-            </thead>
-            <tbody>${ocRows}</tbody>
-          </table>
-        </div>`;
-
-      listEl.appendChild(card);
-
-      // Append real timeline (same as Banco de Dados / Resumo)
-      const tlContainer = card.querySelector(`#reu_tl_${r.id}`);
-      if (tlContainer && r.jornadaEntrada) {
-        const tlEl = buildTimelineEl(r);
-        if (tlEl) tlContainer.appendChild(tlEl);
-      }
-    });
-  }
-
-  function printReuniao() {
-    window.print();
-  }
-
-
+  // ── DIAGNÓSTICO FIREBASE ──
   function toggleFbDebug() {
     const p = document.getElementById('fbDebugPanel');
     if (p.style.display === 'none') { p.style.display = 'block'; runFbDiag(); }
