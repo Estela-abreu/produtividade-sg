@@ -1519,6 +1519,12 @@
   <button onclick="pushLocalToFirebase()" style="margin-top:0.4rem;width:100%;font-family:monospace;font-size:0.75rem;padding:6px;border-radius:6px;border:none;background:#F59E0B;color:white;cursor:pointer;">⬆ Enviar dados locais ao Firebase</button>
 </div>
 
+<script>
+// Esconde login imediatamente se já autenticado — evita flash
+if (localStorage.getItem('enel_auth') === '1') {
+  document.write('<style>#loginScreen{display:none!important}</style>');
+}
+</script>
 <!-- ── TELA DE LOGIN ── -->
 <div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:flex;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
   <div style="background:white;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
@@ -1612,8 +1618,8 @@
     <div class="topbar-metrics" id="topbarMetrics">
       <!-- Firebase status -->
       <div class="topbar-metric" id="fbStatusMetric">
-        <span id="fbStatusDot" style="width:8px;height:8px;border-radius:50%;background:#6B7280;display:inline-block;transition:background 0.3s;"></span>
-        <span class="topbar-metric-label" id="fbStatusLabel">Conectando...</span>
+        <span id="fbStatusDot" style="width:8px;height:8px;border-radius:50%;background:#4ADE80;display:inline-block;transition:background 0.3s;"></span>
+        <span class="topbar-metric-label" id="fbStatusLabel">Sincronizado</span>
         <span id="fbDebugLabel" style="font-size:0.65rem;color:#F59E0B;margin-left:4px;cursor:pointer;" title="Clique para ver diagnóstico" onclick="toggleFbDebug()">🔍</span>
       </div>
       <div class="topbar-sep"></div>
@@ -3662,24 +3668,24 @@
   function initFirebaseSync() {
     _firebaseReady = true;
 
-    // Carrega lista de IDs deletados do localStorage (persiste entre reloads)
+    // Carrega lista de IDs deletados do localStorage
     try {
       const saved = JSON.parse(localStorage.getItem('enel_deleted_ids') || '[]');
       saved.forEach(id => _deletedIds.add(String(id)));
     } catch(e) {}
 
-    // Carrega localStorage IMEDIATAMENTE — sem esperar Firebase
+    // Carrega localStorage IMEDIATAMENTE — mostra dados sem esperar Firebase
     try {
       const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]')
         .filter(r => !_deletedIds.has(String(r.id)));
       if (local.length > 0) {
         _dbCache = local;
         refreshAllUI(local);
-        setFbStatus(true); // mostra Sincronizado imediatamente
+        setFbStatus(true); // mostra "Sincronizado" imediatamente
       }
     } catch(e) {}
 
-    // Carrega tombstones do Firebase em background
+    // Carrega tombstones do Firebase em background (não bloqueia)
     fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
       .then(r => r.json())
       .then(data => {
@@ -6348,6 +6354,16 @@ entryLines.join('\n\n') + '\n' +
     if (tr) tr.textContent = rate + '%';
   }
 
+  // ── Verificação de autenticação (roda primeiro) ──
+  (function checkAuth() {
+    if (localStorage.getItem('enel_auth') === '1') {
+      const screen = document.getElementById('loginScreen');
+      if (screen) screen.style.display = 'none';
+    } else {
+      setTimeout(() => document.getElementById('loginUser')?.focus(), 100);
+    }
+  })();
+
   setInterval(updateTopbarMetrics, 1000);
   updateTopbarMetrics();
   // Apply stored inicio image if exists
@@ -6675,17 +6691,6 @@ entryLines.join('\n\n') + '\n' +
       document.getElementById('loginPass').focus();
     }
   }
-
-  // Check if already logged in this session
-  (function checkAuth() {
-    if (localStorage.getItem('enel_auth') === '1') {
-      const screen = document.getElementById('loginScreen');
-      if (screen) screen.style.display = 'none';
-    } else {
-      // Focus login field on load
-      setTimeout(() => document.getElementById('loginUser')?.focus(), 100);
-    }
-  })();
 
   function resetForm() {
     sessionStorage.removeItem(DRAFT_KEY);
