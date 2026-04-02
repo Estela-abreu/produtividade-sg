@@ -3970,7 +3970,9 @@ if (localStorage.getItem('enel_auth') === '1') {
     const sub = hasFilter
       ? `${records.length} resultado${records.length !== 1 ? 's' : ''} · ${filterDesc}`
       : `${allRecords.length} registro${allRecords.length !== 1 ? 's' : ''} no total`;
-    document.getElementById('dbSubtitle').textContent = sub;
+    const dbSubEl = document.getElementById('dbSubtitle');
+    if (!dbSubEl) return; // tab not active
+    dbSubEl.textContent = sub;
 
     // ── KPIs ──
     const totalAnalises = records.length;
@@ -3992,6 +3994,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     const topEquipeDias = topEquipeEntry ? topEquipeEntry[1].size : 0;
 
     const kpisEl = document.getElementById('dbKpis');
+    if (!kpisEl) return; // tab not in DOM yet
     kpisEl.innerHTML = `
       <div class="db-kpi">
         <div class="db-kpi-label">📋 Análises</div>
