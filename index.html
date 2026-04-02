@@ -3982,8 +3982,7 @@ if (localStorage.getItem('enel_auth') === '1') {
       ? `${records.length} resultado${records.length !== 1 ? 's' : ''} · ${filterDesc}`
       : `${allRecords.length} registro${allRecords.length !== 1 ? 's' : ''} no total`;
     const dbSubEl = document.getElementById('dbSubtitle');
-    if (!dbSubEl) return; // tab not active
-    dbSubEl.textContent = sub;
+    if (dbSubEl) dbSubEl.textContent = sub;
 
     // ── KPIs ──
     const totalAnalises = records.length;
@@ -4005,8 +4004,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     const topEquipeDias = topEquipeEntry ? topEquipeEntry[1].size : 0;
 
     const kpisEl = document.getElementById('dbKpis');
-    if (!kpisEl) return; // tab not in DOM yet
-    kpisEl.innerHTML = `
+    if (kpisEl) kpisEl.innerHTML = `
       <div class="db-kpi">
         <div class="db-kpi-label">📋 Análises</div>
         <div class="db-kpi-value">${totalAnalises}</div>
@@ -4488,7 +4486,13 @@ if (localStorage.getItem('enel_auth') === '1') {
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
-    if (tab === 'db')          { applyDBFilters(); window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'db') {
+      applyDBFilters();
+      // Retry after short delay in case data is still loading from localStorage/Firebase
+      setTimeout(() => { if (_currentTab === 'db') applyDBFilters(); }, 300);
+      setTimeout(() => { if (_currentTab === 'db') applyDBFilters(); }, 1000);
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
     if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
