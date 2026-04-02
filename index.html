@@ -58,6 +58,8 @@
 
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --green: #00843D;
@@ -2179,6 +2181,12 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div class="resumo-section" id="rObsSection" style="display:none;">
       <div class="resumo-section-title">Observações Gerais</div>
       <div class="resumo-obs" id="rObs"></div>
+    </div>
+
+    <!-- Mapa de Deslocamento -->
+    <div class="resumo-section" id="rMapSection" style="display:none;">
+      <div class="resumo-section-title">🗺️ Mapa de Deslocamento</div>
+      <div id="rMapContainer" style="height:320px;border-radius:8px;overflow:hidden;margin-top:0.75rem;border:1.5px solid var(--gray-200);"></div>
     </div>
 
     <!-- Notificar Supervisor -->
@@ -4421,6 +4429,13 @@ if (localStorage.getItem('enel_auth') === '1') {
     // Build timeline
     buildTimeline(r);
 
+    // Build route map (incidências com coordenadas)
+    const mapSection = document.getElementById('rMapSection');
+    if (mapSection) {
+      const hasMap = buildRouteMap(r, 'rMapContainer');
+      mapSection.style.display = hasMap ? 'block' : 'none';
+    }
+
     const modal = document.getElementById('resumoModal');
     if (!modal) return;
     modal.style.display = 'flex';
@@ -4429,6 +4444,101 @@ if (localStorage.getItem('enel_auth') === '1') {
   }
 
   // Shared timeline builder — returns a container div (used by resumo modal AND reunião)
+  // ── Mapa de Deslocamento entre Incidências ──
+  let _leafletMaps = {}; // track map instances to avoid double-init
+
+  function buildRouteMap(r, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return false;
+
+    // Coleta incidências com coordenadas válidas, ordenadas por hinicio
+    const points = (r.entries || [])
+      .filter(e => e.catKey === 'incidencia' && e.lat && e.lon &&
+                   !isNaN(parseFloat(e.lat)) && !isNaN(parseFloat(e.lon)))
+      .sort((a, b) => {
+        if (a.hinicio && b.hinicio) return a.hinicio.localeCompare(b.hinicio);
+        return 0;
+      })
+      .map((e, i) => ({
+        lat: parseFloat(e.lat),
+        lon: parseFloat(e.lon),
+        label: e.endereco || `Inc. ${i+1}`,
+        causas: e.causas?.join(', ') || '—',
+        tempo: e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '—',
+        hora: e.hinicio ? `${e.hinicio}${e.hfim?' → '+e.hfim:''}` : '—',
+        num: i + 1
+      }));
+
+    if (points.length < 1) return false;
+
+    // Destroi mapa anterior se existir
+    if (_leafletMaps[containerId]) {
+      _leafletMaps[containerId].remove();
+      delete _leafletMaps[containerId];
+    }
+    container.innerHTML = '';
+
+    const map = L.map(container, { zoomControl: true, scrollWheelZoom: false });
+    _leafletMaps[containerId] = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18
+    }).addTo(map);
+
+    const latlngs = points.map(p => [p.lat, p.lon]);
+
+    // Linha do trajeto
+    if (points.length > 1) {
+      L.polyline(latlngs, {
+        color: '#1E4DA1', weight: 3, opacity: 0.8, dashArray: '6,4'
+      }).addTo(map);
+    }
+
+    // Marcadores
+    points.forEach((p, i) => {
+      const isFirst = i === 0;
+      const isLast  = i === points.length - 1;
+      const color   = isFirst ? '#00843D' : isLast ? '#DC2626' : '#1E4DA1';
+      const icon = L.divIcon({
+        html: `<div style="background:${color};color:white;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${p.num}</div>`,
+        className: '', iconSize: [26,26], iconAnchor: [13,13]
+      });
+      L.marker([p.lat, p.lon], { icon })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:sans-serif;min-width:180px;">
+          <div style="font-weight:800;color:${color};margin-bottom:4px;">⚡ Incidência ${p.num}</div>
+          <div style="font-size:0.82rem;">🕐 ${p.hora}</div>
+          <div style="font-size:0.82rem;">⏱ ${p.tempo}</div>
+          <div style="font-size:0.82rem;">📋 ${p.causas}</div>
+          ${p.label ? `<div style="font-size:0.78rem;color:#6B7280;margin-top:4px;">📍 ${p.label}</div>` : ''}
+        </div>`, { maxWidth: 260 });
+    });
+
+    // Legenda
+    const legendHtml = `<div style="font-size:0.68rem;display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.4rem;color:#6B7280;">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00843D;margin-right:3px;"></span>Início</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:3px;"></span>Fim</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#1E4DA1;margin-right:3px;"></span>Intermediária</span>
+      <span style="margin-left:auto;">🖱️ Clique nos marcadores para detalhes</span>
+    </div>`;
+    const legendDiv = document.createElement('div');
+    legendDiv.innerHTML = legendHtml;
+    container.parentNode.insertBefore(legendDiv, container.nextSibling);
+
+    // Fit bounds
+    setTimeout(() => {
+      if (points.length === 1) {
+        map.setView([points[0].lat, points[0].lon], 15);
+      } else {
+        map.fitBounds(L.latLngBounds(latlngs), { padding: [30, 30] });
+      }
+      map.invalidateSize();
+    }, 100);
+
+    return true;
+  }
+
   function buildTimelineEl(r) {
     const entrada = r.jornadaEntrada;
     const saida   = r.jornadaSaida;
@@ -6699,6 +6809,12 @@ entryLines.join('\n\n') + '\n' +
         <!-- Timeline -->
         <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
 
+        <!-- Mapa de Deslocamento -->
+        <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;'>
+          <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
+          <div id='reu_map_${r.id}' style='height:280px;border-radius:8px;overflow:hidden;border:1.5px solid #BFDBFE;'></div>
+        </div>
+
         <!-- Ocorrências -->
         <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
           <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;">
@@ -6725,6 +6841,13 @@ entryLines.join('\n\n') + '\n' +
       if (tlContainer && r.jornadaEntrada) {
         const tlEl = buildTimelineEl(r);
         if (tlEl) tlContainer.appendChild(tlEl);
+      }
+
+      // Build route map
+      const mapSection = card.querySelector(`#reu_map_section_${r.id}`);
+      if (mapSection) {
+        const hasMap = buildRouteMap(r, `reu_map_${r.id}`);
+        if (hasMap) mapSection.style.display = 'block';
       }
     });
   }
