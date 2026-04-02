@@ -6374,10 +6374,22 @@ entryLines.join('\n\n') + '\n' +
   function updateTopbarMetrics() {
     try {
       const now = new Date();
-      const records = loadDB();
       const todayStr = now.toISOString().slice(0,10);
-      const todayCount = records.filter(r => r.data === todayStr).length;
-      const pending    = records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length;
+
+      // Read records — cache first, localStorage fallback
+      let records = [];
+      try {
+        if (_dbCache && _dbCache.length > 0) {
+          records = _dbCache;
+        } else {
+          records = JSON.parse(localStorage.getItem('enel_prod_records') || '[]');
+        }
+      } catch(e) { records = []; }
+
+      const todayCount = records.filter(r => r && r.data === todayStr).length;
+      const pending = records.filter(r => {
+        try { return needsJustificativa(r) && r.status !== 'revisado'; } catch(e) { return false; }
+      }).length;
 
       const tc = document.getElementById('topbarTodayCount');
       const tt = document.getElementById('topbarTotalCount');
