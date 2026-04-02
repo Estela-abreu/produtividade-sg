@@ -2995,6 +2995,12 @@ if (localStorage.getItem('enel_auth') === '1') {
 
   function calcIncidencia(id) {
     const inicioEl  = document.getElementById('hinicio-'      + id);
+    const fimEl     = document.getElementById('hfim-'         + id);
+    const hEl       = document.getElementById('h-'            + id);
+    const mEl       = document.getElementById('m-'            + id);
+    const tdEl      = document.getElementById('td-'           + id);
+    const sumEl     = document.getElementById('sum-'          + id);
+    const statusEl  = document.getElementById('inc-status-'   + id);
     if (!inicioEl || !fimEl) return;
     const ini = inicioEl.value, fim = fimEl.value;
     if (!ini || !fim) {
