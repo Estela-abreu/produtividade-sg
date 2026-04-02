@@ -6796,7 +6796,15 @@ entryLines.join('\n\n') + '\n' +
     })
     .then(r => r.json())
     .then(d => {
-      if (d && d.display_name) { setEndereco(d.display_name); return; }
+      if (d && d.address) {
+        const a = d.address;
+        const bairro = a.suburb || a.neighbourhood || a.village || a.hamlet || '';
+        const cidade  = a.city || a.town || a.municipality || a.county || '';
+        const estado  = a.state ? a.state.replace('Estado de ','').replace('Estado do ','') : '';
+        const partes  = [bairro, cidade, estado].filter(Boolean);
+        setEndereco(partes.length ? partes.join(', ') : d.display_name);
+        return;
+      }
       throw new Error('vazio');
     })
     .catch(() => {
@@ -6804,24 +6812,12 @@ entryLines.join('\n\n') + '\n' +
       fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`)
       .then(r => r.json())
       .then(d => {
-        // Monta endereço a partir dos campos disponíveis
-        const rua    = d.street || d.road || '';
-        const bairro = d.neighbourhood || d.suburb || '';
-        const cidade = d.city || d.locality || d.town || d.village || '';
-        const estado = d.principalSubdivision || d.region || '';
-        const pais   = d.countryName || '';
-        const partes = [rua, bairro, cidade, estado, pais].filter(Boolean);
-        if (partes.length >= 2) {
+        const bairro = d.neighbourhood || d.suburb || d.locality || '';
+        const cidade  = d.city || d.town || d.village || '';
+        const estado  = d.principalSubdivision || '';
+        const partes  = [bairro, cidade, estado].filter(Boolean);
+        if (partes.length >= 1) {
           setEndereco(partes.join(', '));
-        } else if (d.localityInfo?.administrative) {
-          // Usa hierarquia administrativa se campos simples estiverem vazios
-          const admin = d.localityInfo.administrative
-            .sort((a,b) => b.order - a.order)
-            .slice(0,4)
-            .map(a => a.name)
-            .filter(Boolean);
-          if (admin.length) { setEndereco(admin.join(', ')); return; }
-          throw new Error('vazio');
         } else {
           throw new Error('vazio');
         }
