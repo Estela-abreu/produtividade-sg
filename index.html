@@ -2494,6 +2494,37 @@ if (localStorage.getItem('enel_auth') === '1') {
             style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCD34D;border-radius:var(--radius-sm);padding:0.45rem 0.65rem;resize:vertical;outline:none;background:#FFFBEB;color:#78350F;"
             placeholder="Detalhe ou observação adicional sobre esta causa..."></textarea>
         </div>
+
+        <!-- Coordenadas GPS -->
+        <div style="margin-top:0.65rem;padding:0.65rem 0.75rem;background:#EFF6FF;border-radius:8px;border:1.5px solid #BFDBFE;">
+          <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1E4DA1;margin-bottom:0.5rem;">📍 Localização GPS <span style="font-size:0.62rem;font-weight:500;color:var(--gray-400);">(opcional)</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <div>
+              <label style="font-size:0.7rem;font-weight:700;color:#1E4DA1;display:block;margin-bottom:2px;">Latitude</label>
+              <input type="text" inputmode="decimal" id="lat-${id}" placeholder="-22.705629"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:5px 8px;outline:none;background:white;"
+                oninput="tryGeocode('${id}')">
+            </div>
+            <div>
+              <label style="font-size:0.7rem;font-weight:700;color:#1E4DA1;display:block;margin-bottom:2px;">Longitude</label>
+              <input type="text" inputmode="decimal" id="lon-${id}" placeholder="-42.615166"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:5px 8px;outline:none;background:white;"
+                oninput="tryGeocode('${id}')">
+            </div>
+          </div>
+          <div style="position:relative;">
+            <input type="text" id="endereco-${id}" placeholder="Endereço será preenchido automaticamente..." readonly
+              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:5px 8px;outline:none;background:#F0F9FF;color:#1E40AF;cursor:default;box-sizing:border-box;">
+            <span id="geo-loading-${id}" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.7rem;color:#6B7280;">⏳</span>
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.4rem;align-items:center;">
+            <button type="button" onclick="openMaps('${id}')" id="btn-map-${id}"
+              style="display:none;font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:6px;border:none;background:#1E4DA1;color:white;cursor:pointer;">
+              🗺️ Abrir no mapa
+            </button>
+            <span id="geo-err-${id}" style="display:none;font-size:0.7rem;color:#DC2626;font-weight:600;">⚠️ Coordenadas inválidas</span>
+          </div>
+        </div>
         <input type="hidden" id="h-${id}" value="0">
         <input type="hidden" id="m-${id}" value="0">
         ` : catKey === 'deslocamento' ? `
@@ -3513,6 +3544,17 @@ if (localStorage.getItem('enel_auth') === '1') {
               <div class="r-entry-field-label">📋 Observação</div>
               <div class="r-entry-just">${e.obs}</div>
             </div>` : ''}
+            ${e.justificativa ? `<div class="r-entry-field-block" style="background:#FEF2F2;border:1px solid #FCA5A5;">
+              <div class="r-entry-field-label" style="color:#991B1B;">⚠️ Justificativa</div>
+              <div class="r-entry-just">${e.justificativa}</div>
+            </div>` : ''}
+            ${e.endereco ? `<div class="r-entry-field-block" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+              <div class="r-entry-field-label" style="color:#1E4DA1;">📍 Localização</div>
+              <div class="r-entry-just" style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
+                <span>${e.endereco}</span>
+                ${e.lat && e.lon ? `<a href="https://www.google.com/maps?q=${e.lat},${e.lon}" target="_blank" style="font-size:0.72rem;font-weight:700;color:#1E4DA1;white-space:nowrap;text-decoration:none;border:1px solid #BFDBFE;padding:2px 8px;border-radius:99px;">🗺️ Ver no mapa</a>` : ''}
+              </div>
+            </div>` : ''}
           </div>
         </div>`;
       list.appendChild(card);
@@ -3905,8 +3947,11 @@ if (localStorage.getItem('enel_auth') === '1') {
         ? (document.getElementById('obs-causa-' + id)?.value.trim() || '')
         : undefined;
       const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
+      const lat      = catKey === 'incidencia' ? (document.getElementById('lat-' + id)?.value.trim() || '') : undefined;
+      const lon      = catKey === 'incidencia' ? (document.getElementById('lon-' + id)?.value.trim() || '') : undefined;
+      const endereco = catKey === 'incidencia' ? (document.getElementById('endereco-' + id)?.value.trim() || '') : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -4273,9 +4318,13 @@ if (localStorage.getItem('enel_auth') === '1') {
           return '';
         })();
 
-        const supBlock = isRevisado && supAns ? `
+        const supBlock = (e.justificativa ? `
+          <div class="r-entry-field-block" style="background:#FEF2F2;border:1px solid #FCA5A5;">
+            <div class="r-entry-field-label" style="color:#991B1B;">⚠️ Justificativa</div>
+            <div class="r-entry-just">${e.justificativa}</div>
+          </div>` : '') + (isRevisado && supAns ? `
           ${supAns.justSel ? '' : ''}<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
-            <div class="r-entry-field-label" style="color:#1E4DA1;">✅ Justificativa</div>
+            <div class="r-entry-field-label" style="color:#1E4DA1;">✅ Justificativa supervisor</div>
             <div class="r-entry-just">${supAns.justSel ? '<strong>'+supAns.justSel+'</strong> · ' : ''}${supAns.just || '—'}</div>
           </div>
           <div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
@@ -4293,16 +4342,16 @@ if (localStorage.getItem('enel_auth') === '1') {
               <button type="button" onclick="openEvidPreview(this.dataset.url,this.dataset.name)" data-url="${supAns.evidData}" data-name="${supAns.evidName||'evidencia'}" style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid #059669;background:white;color:#059669;cursor:pointer;">👁 Visualizar</button>
               <a href="${supAns.evidData}" download="${supAns.evidName||'evidencia'}" style="font-size:0.72rem;font-weight:700;color:#059669;text-decoration:none;">⬇ Baixar</a>
             </div>
-          </div>` : ''}` : isRevisado ? `
+          </div>` : ''}` : !e.justificativa && isRevisado ? `
           <div class="r-entry-field-block" style="background:#FFF8E1;border:1px solid #FFE082;">
             <div class="r-entry-field-label" style="color:#7B5800;">⚠️ Sem retorno do supervisor</div>
-          </div>` : entryNeedsJustificativa(e) ? `
+          </div>` : !e.justificativa && entryNeedsJustificativa(e) ? `
           <div class="r-entry-field-block" style="background:#FFF5F5;border:1px solid #FCA5A5;">
             <div class="r-entry-field-label" style="color:#991B1B;">⏳ Aguardando retorno do supervisor</div>
-          </div>` : `
+          </div>` : !e.justificativa ? `
           <div class="r-entry-field-block" style="background:#F0FDF4;border:1px solid #BBF7D0;">
-            <div class="r-entry-field-label" style="color:#166534;">✅ Dentro do tempo · Sem justificativa necessária</div>
-          </div>`;
+            <div class="r-entry-field-label" style="color:#166634;">✅ Dentro do tempo · Sem justificativa necessária</div>
+          </div>` : '');
 
         const card = document.createElement('div');
         card.className = 'r-entry-card';
@@ -6611,12 +6660,17 @@ entryLines.join('\n\n') + '\n' +
           ? `<span style="font-size:0.7rem;font-weight:800;background:#DC2626;color:white;padding:3px 10px;border-radius:99px;">⚠️ Fora do Tempo</span>`
           : `<span style="font-size:0.7rem;font-weight:800;background:#16A34A;color:white;padding:3px 10px;border-radius:99px;">✅ Dentro do Tempo</span>`;
         const supAns = r.supervisorAnswers?.[idx];
-        const justCell = supAns?.just
-          ? `<span style="font-size:0.72rem;color:#374151;">${supAns.just}</span>`
+        // Justificativa: prioriza inline (registro) depois supervisor (fluxo antigo)
+        const justText = e.justificativa || supAns?.just || '';
+        const justCell = justText
+          ? `<span style="font-size:0.72rem;color:#374151;">${justText}</span>`
           : `<span style="font-size:0.72rem;color:#9CA3AF;">—</span>`;
         return `<tr style="border-bottom:1px solid #F3F4F6;">
           <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">${cat?.icon||''} ${cat?.nome||e.catKey}</td>
-          <td style="padding:0.55rem 0.75rem;color:#374151;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
+          <td style="padding:0.55rem 0.75rem;color:#374151;">
+            ${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}
+            ${e.endereco ? `<div style="font-size:0.68rem;color:#1E4DA1;margin-top:2px;">📍 ${e.endereco}${e.lat&&e.lon?` <a href="https://www.google.com/maps?q=${e.lat},${e.lon}" target="_blank" style="color:#1E4DA1;">🗺️</a>`:''}</div>` : ''}
+          </td>
           <td style="padding:0.55rem 0.75rem;text-align:center;font-weight:700;">${pad(Math.floor(e.mins/60))}:${pad(e.mins%60)}</td>
           <td style="padding:0.55rem 0.75rem;text-align:center;">${statusBadge}</td>
           <td style="padding:0.55rem 0.75rem;">${justCell}</td>
@@ -6679,6 +6733,117 @@ entryLines.join('\n\n') + '\n' +
     window.print();
   }
 
+
+  // ── GPS / Geocodificação ──
+  // Debounce timers para geocodificação
+  const _geoTimers = {};
+
+  function tryGeocode(id) {
+    clearTimeout(_geoTimers[id]);
+    _geoTimers[id] = setTimeout(() => _doGeocode(id), 900);
+  }
+
+  function _doGeocode(id) {
+    const latRaw = document.getElementById('lat-' + id)?.value.trim().replace(',', '.');
+    const lonRaw = document.getElementById('lon-' + id)?.value.trim().replace(',', '.');
+    const endEl  = document.getElementById('endereco-' + id);
+    const errEl  = document.getElementById('geo-err-' + id);
+    const loadEl = document.getElementById('geo-loading-' + id);
+    const mapBtn = document.getElementById('btn-map-' + id);
+    if (!endEl) return;
+
+    if (errEl)  errEl.style.display  = 'none';
+    endEl.value = '';
+
+    // Só busca se os dois campos estiverem preenchidos
+    if (!latRaw || !lonRaw) {
+      if (mapBtn) mapBtn.style.display = 'none';
+      return;
+    }
+
+    const lat = parseFloat(latRaw);
+    const lon = parseFloat(lonRaw);
+
+    if (isNaN(lat) || isNaN(lon)) {
+      if (mapBtn) mapBtn.style.display = 'none';
+      return;
+    }
+
+    // Validação de range — Brazil: lat -33 a 5, lon -74 a -28 (mais permissivo)
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      if (errEl) errEl.style.display = 'inline';
+      if (mapBtn) mapBtn.style.display = 'none';
+      return;
+    }
+
+    if (loadEl) loadEl.style.display = 'inline';
+    if (mapBtn) mapBtn.style.display = 'none';
+
+    const setEndereco = (addr) => {
+      if (loadEl) loadEl.style.display = 'none';
+      endEl.value = addr;
+      if (mapBtn) mapBtn.style.display = 'inline-flex';
+    };
+
+    const setErro = () => {
+      if (loadEl) loadEl.style.display = 'none';
+      if (errEl) errEl.style.display = 'inline';
+    };
+
+    // API 1: Nominatim OpenStreetMap
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+      headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' }
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.display_name) { setEndereco(d.display_name); return; }
+      throw new Error('vazio');
+    })
+    .catch(() => {
+      // API 2: BigDataCloud (gratuita, sem CORS)
+      fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`)
+      .then(r => r.json())
+      .then(d => {
+        // Monta endereço a partir dos campos disponíveis
+        const rua    = d.street || d.road || '';
+        const bairro = d.neighbourhood || d.suburb || '';
+        const cidade = d.city || d.locality || d.town || d.village || '';
+        const estado = d.principalSubdivision || d.region || '';
+        const pais   = d.countryName || '';
+        const partes = [rua, bairro, cidade, estado, pais].filter(Boolean);
+        if (partes.length >= 2) {
+          setEndereco(partes.join(', '));
+        } else if (d.localityInfo?.administrative) {
+          // Usa hierarquia administrativa se campos simples estiverem vazios
+          const admin = d.localityInfo.administrative
+            .sort((a,b) => b.order - a.order)
+            .slice(0,4)
+            .map(a => a.name)
+            .filter(Boolean);
+          if (admin.length) { setEndereco(admin.join(', ')); return; }
+          throw new Error('vazio');
+        } else {
+          throw new Error('vazio');
+        }
+      })
+      .catch(() => {
+        // API 3: geocode.maps.co (gratuita, sem chave)
+        fetch(`https://geocode.maps.co/reverse?lat=${lat}&lon=${lon}&api_key=`)
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.display_name) { setEndereco(d.display_name); }
+          else setErro();
+        })
+        .catch(() => setErro());
+      });
+    });
+  }
+
+  function openMaps(id) {
+    const lat = document.getElementById('lat-' + id)?.value;
+    const lon = document.getElementById('lon-' + id)?.value;
+    if (lat && lon) window.open(`https://www.google.com/maps?q=${lat},${lon}`, '_blank');
+  }
 
   function toggleFbDebug() {
     const p = document.getElementById('fbDebugPanel');
