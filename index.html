@@ -3519,7 +3519,20 @@ if (localStorage.getItem('enel_auth') === '1') {
   let _deleting     = false;
   let _deletedIds   = new Set(); // IDs permanentemente deletados — nunca restaurar
 
-  function loadDB() { return [..._dbCache]; }
+  function loadDB() {
+    // Always return _dbCache if populated
+    if (_dbCache.length > 0) return [..._dbCache];
+    // Fallback: read directly from localStorage (covers page reload before Firebase responds)
+    try {
+      const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+      const filtered = local.filter(r => !_deletedIds.has(String(r.id)));
+      if (filtered.length > 0) {
+        _dbCache = filtered; // populate cache
+        return [...filtered];
+      }
+    } catch(e) {}
+    return [];
+  }
 
   // Salva um único registro no Firebase via REST
   function saveRecordToFirebase(record) {
