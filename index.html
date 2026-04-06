@@ -2536,6 +2536,28 @@ if (localStorage.getItem('enel_auth') === '1') {
         <input type="hidden" id="h-${id}" value="0">
         <input type="hidden" id="m-${id}" value="0">
         ` : catKey === 'deslocamento' ? `
+        ${existing === 0 ? `
+        <div style="margin-bottom:0.65rem;padding:0.6rem 0.75rem;background:#EFF6FF;border-radius:8px;border:1.5px solid #BFDBFE;">
+          <label class="inc-label" style="color:#1E4DA1;margin-bottom:0.35rem;display:block;">📍 Origem do deslocamento</label>
+          <select id="origem-${id}" onchange="setOrigemCoords('${id}')"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.9rem;font-weight:700;border:1.5px solid #BFDBFE;border-radius:6px;padding:6px 10px;background:white;color:#1E3A5F;outline:none;">
+            <option value="">— Selecione a origem —</option>
+            <option value="sg">São Gonçalo</option>
+            <option value="manilha">Manilha</option>
+          </select>
+          <div style="display:flex;gap:0.5rem;margin-top:0.4rem;">
+            <div style="flex:1;">
+              <label style="font-size:0.65rem;font-weight:700;color:#1E4DA1;display:block;margin-bottom:2px;">Latitude</label>
+              <input type="text" id="lat-origem-${id}" readonly
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.78rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:4px 7px;background:#F0F9FF;color:#1E40AF;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:0.65rem;font-weight:700;color:#1E4DA1;display:block;margin-bottom:2px;">Longitude</label>
+              <input type="text" id="lon-origem-${id}" readonly
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.78rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:4px 7px;background:#F0F9FF;color:#1E40AF;">
+            </div>
+          </div>
+        </div>` : ''}
         <div class="inc-time-row">
           <div class="inc-time-field">
             <label class="inc-label" style="color:#1E4DA1;">🕐 Início do deslocamento</label>
@@ -3101,7 +3123,28 @@ if (localStorage.getItem('enel_auth') === '1') {
     toggleJustField(id, !dentroDoTempo);
   }
 
-  // Generic time range calculator for reparo and intervalo (no limit badge)
+  // ── Origem do Deslocamento ──
+  const ORIGENS = {
+    sg:      { nome: 'São Gonçalo', lat: '-22.819033918475135', lon: '-43.03345489067963' },
+    manilha: { nome: 'Manilha',     lat: '-22.77261088127656',  lon: '-42.929974900000005' }
+  };
+
+  function setOrigemCoords(id) {
+    const sel = document.getElementById('origem-' + id);
+    const latEl = document.getElementById('lat-origem-' + id);
+    const lonEl = document.getElementById('lon-origem-' + id);
+    if (!sel) return;
+    const origem = ORIGENS[sel.value];
+    if (origem) {
+      if (latEl) latEl.value = origem.lat;
+      if (lonEl) lonEl.value = origem.lon;
+    } else {
+      if (latEl) latEl.value = '';
+      if (lonEl) lonEl.value = '';
+    }
+  }
+
+
   function calcTimeRange(id, color) {
     const inicioEl = document.getElementById('hinicio-' + id);
     const fimEl    = document.getElementById('hfim-'    + id);
@@ -3579,6 +3622,10 @@ if (localStorage.getItem('enel_auth') === '1') {
             </div>
           </div>
           <div class="r-entry-fields" style="grid-template-columns:1fr;">
+            ${e.catKey === 'deslocamento' && e.origemNome ? `<div class="r-entry-field-block" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+              <div class="r-entry-field-label" style="color:#1E4DA1;">📍 Origem</div>
+              <div class="r-entry-just" style="font-weight:700;color:#1E3A5F;">${e.origemNome}</div>
+            </div>` : ''}
             ${e.catKey === 'incidencia' && e.numinc ? `<div class="r-entry-field-block" style="background:#FFFBEB;border:1px solid #FCD34D;">
               <div class="r-entry-field-label" style="color:#92400E;">🔢 Nº Incidência</div>
               <div class="r-entry-just" style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;letter-spacing:0.06em;color:#78350F;">${e.numinc}</div>
@@ -3997,8 +4044,15 @@ if (localStorage.getItem('enel_auth') === '1') {
       const lat      = catKey === 'incidencia' ? (document.getElementById('lat-' + id)?.value.trim() || '') : undefined;
       const lon      = catKey === 'incidencia' ? (document.getElementById('lon-' + id)?.value.trim() || '') : undefined;
       const endereco = catKey === 'incidencia' ? (document.getElementById('endereco-' + id)?.value.trim() || '') : undefined;
+      // Origem do 1º deslocamento
+      const origemNome = catKey === 'deslocamento' ? (() => {
+        const sel = document.getElementById('origem-' + id);
+        return sel?.value ? (ORIGENS[sel.value]?.nome || '') : '';
+      })() : undefined;
+      const origemLat = catKey === 'deslocamento' ? (document.getElementById('lat-origem-' + id)?.value || '') : undefined;
+      const origemLon = catKey === 'deslocamento' ? (document.getElementById('lon-origem-' + id)?.value || '') : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -4491,7 +4545,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     if (!container) return false;
 
     // Coleta incidências com coordenadas válidas, ordenadas por hinicio
-    const points = (r.entries || [])
+    const incPoints = (r.entries || [])
       .filter(e => e.catKey === 'incidencia' && e.lat && e.lon &&
                    !isNaN(parseFloat(e.lat)) && !isNaN(parseFloat(e.lon)))
       .sort((a, b) => {
@@ -4505,8 +4559,17 @@ if (localStorage.getItem('enel_auth') === '1') {
         causas: e.causas?.join(', ') || '—',
         tempo: e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '—',
         hora: e.hinicio ? `${e.hinicio}${e.hfim?' → '+e.hfim:''}` : '—',
-        num: i + 1
+        num: i + 1,
+        type: 'incidencia'
       }));
+
+    // Adiciona origem do 1º deslocamento como ponto inicial se existir
+    const firstDesloc = (r.entries || []).find(e => e.catKey === 'deslocamento' && e.origemLat && e.origemLon);
+    const points = firstDesloc
+      ? [{ lat: parseFloat(firstDesloc.origemLat), lon: parseFloat(firstDesloc.origemLon),
+           label: firstDesloc.origemNome || 'Origem', causas: '—', tempo: '—', hora: '—',
+           num: 0, type: 'origem' }, ...incPoints]
+      : incPoints;
 
     if (points.length < 1) return false;
 
@@ -4538,31 +4601,32 @@ if (localStorage.getItem('enel_auth') === '1') {
     points.forEach((p, i) => {
       const isFirst = i === 0;
       const isLast  = i === points.length - 1;
-      const markerColors = ['#00843D','#DC2626','#1E4DA1','#D97706','#7C3AED'];
-      const color = markerColors[i] || '#6B7280';
+      const markerColors = ['#6B7280','#00843D','#DC2626','#1E4DA1','#D97706','#7C3AED'];
+      const color = p.type === 'origem' ? '#374151' : (markerColors[p.num] || '#6B7280');
       const icon = L.divIcon({
-        html: `<div style="background:${color};color:white;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${p.num}</div>`,
+        html: `<div style="background:${color};color:white;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${p.type === 'origem' ? '🏠' : p.num}</div>`,
         className: '', iconSize: [26,26], iconAnchor: [13,13]
       });
       L.marker([p.lat, p.lon], { icon })
         .addTo(map)
         .bindPopup(`<div style="font-family:sans-serif;min-width:180px;">
-          <div style="font-weight:800;color:${color};margin-bottom:4px;">⚡ Incidência ${p.num}</div>
-          <div style="font-size:0.82rem;">🕐 ${p.hora}</div>
+          <div style="font-weight:800;color:${color};margin-bottom:4px;">${p.type === 'origem' ? '🏠 Origem: ' + p.label : '⚡ Incidência ' + p.num}</div>
+          ${p.type !== 'origem' ? `<div style="font-size:0.82rem;">🕐 ${p.hora}</div>
           <div style="font-size:0.82rem;">⏱ ${p.tempo}</div>
-          <div style="font-size:0.82rem;">📋 ${p.causas}</div>
-          ${p.label ? `<div style="font-size:0.78rem;color:#6B7280;margin-top:4px;">📍 ${p.label}</div>` : ''}
+          <div style="font-size:0.82rem;">📋 ${p.causas}</div>` : ''}
+          ${p.label && p.type !== 'origem' ? `<div style="font-size:0.78rem;color:#6B7280;margin-top:4px;">📍 ${p.label}</div>` : ''}
         </div>`, { maxWidth: 260 });
     });
 
     // Legenda
     const legendHtml = `<div style="font-size:0.68rem;display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.4rem;color:#6B7280;">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#374151;margin-right:3px;"></span>Origem</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00843D;margin-right:3px;"></span>1ª Inc.</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:3px;"></span>2ª Inc.</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#1E4DA1;margin-right:3px;"></span>3ª Inc.</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;margin-right:3px;"></span>4ª Inc.</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#7C3AED;margin-right:3px;"></span>5ª Inc.</span>
-      <span style="margin-left:auto;">🖱️ Clique nos marcadores para detalhes</span>
+      <span style="margin-left:auto;">🖱️ Clique nos marcadores</span>
     </div>`;
     const legendDiv = document.createElement('div');
     legendDiv.innerHTML = legendHtml;
@@ -6824,6 +6888,7 @@ entryLines.join('\n\n') + '\n' +
           </td>
           <td style="padding:0.55rem 0.75rem;color:#374151;">
             ${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}
+            ${e.catKey === 'deslocamento' && e.origemNome ? `<div style="font-size:0.68rem;font-weight:700;color:#1E4DA1;margin-top:2px;">📍 Origem: ${e.origemNome}</div>` : ''}
             ${e.obsCausa ? `<div style="font-size:0.68rem;color:#92400E;margin-top:2px;">📝 ${e.obsCausa}</div>` : ''}
             ${e.endereco ? `<div style="font-size:0.68rem;color:#1E4DA1;margin-top:2px;">📍 ${e.endereco}${e.lat&&e.lon?` <a href="https://www.google.com/maps?q=${e.lat},${e.lon}" target="_blank" style="color:#1E4DA1;">🗺️</a>`:''}</div>` : ''}
           </td>
