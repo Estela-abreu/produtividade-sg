@@ -2489,7 +2489,7 @@ if (localStorage.getItem('enel_auth') === '1') {
           <div class="inc-time-sep">→</div>
           <div class="inc-time-field">
             <label class="inc-label">🕐 Hora de término</label>
-            <input type="time" id="hfim-${id}" class="inc-time-input" oninput="calcIncidencia('${id}')">
+            <input type="time" id="hfim-${id}" class="inc-time-input" oninput="calcIncidencia('${id}');updateLogoffVisibility()">
           </div>
           <div class="inc-duration" id="td-${id}">⏱ —</div>
         </div>
@@ -2532,6 +2532,22 @@ if (localStorage.getItem('enel_auth') === '1') {
             </button>
             <span id="geo-err-${id}" style="display:none;font-size:0.7rem;color:#DC2626;font-weight:600;">⚠️ Coordenadas inválidas</span>
           </div>
+        </div>
+        <!-- Log off — visível apenas na última incidência (controlado por JS) -->
+        <div id="logoff-block-${id}" style="display:none;margin-top:0.65rem;padding:0.65rem 0.75rem;background:#FFF1F2;border-radius:8px;border:1.5px solid #FDA4AF;">
+          <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#9F1239;margin-bottom:0.5rem;">🏁 Log off – Retorno à Base</div>
+          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:0.7rem;font-weight:700;color:#9F1239;display:block;margin-bottom:2px;">Hora de retorno</label>
+              <input type="time" id="logoff-${id}"
+                style="font-family:'Barlow',sans-serif;font-size:1rem;font-weight:700;border:1.5px solid #FDA4AF;border-radius:6px;padding:5px 10px;background:white;outline:none;color:#9F1239;"
+                oninput="calcLogoff('${id}')">
+            </div>
+            <div id="logoff-result-${id}" style="display:none;padding:4px 12px;background:#FEE2E2;border-radius:99px;border:1px solid #FCA5A5;">
+              <span style="font-size:0.78rem;font-weight:800;color:#991B1B;">⏱ Retorno: <span id="logoff-min-${id}">—</span></span>
+            </div>
+          </div>
+          <div id="logoff-base-${id}" style="margin-top:0.4rem;font-size:0.7rem;color:#9F1239;font-weight:600;"></div>
         </div>
         <input type="hidden" id="h-${id}" value="0">
         <input type="hidden" id="m-${id}" value="0">
@@ -2687,6 +2703,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     cardJust.style.display = 'block';
     updateTotal();
     renumberEntries(catKey);
+    if (catKey === 'incidencia') updateLogoffVisibility();
 
     // Auto-fill hora de início for plataforma from jornada entrada
     if (catKey === 'plataforma') {
@@ -2713,6 +2730,7 @@ if (localStorage.getItem('enel_auth') === '1') {
       item.remove();
       renumberEntries(catKey);
       updateTotal();
+      if (catKey === 'incidencia') updateLogoffVisibility();
       const wrap = document.getElementById('justWrap');
       if (!wrap.children.length) {
         document.getElementById('cardJust').style.display = 'none';
@@ -3121,6 +3139,82 @@ if (localStorage.getItem('enel_auth') === '1') {
       statusEl.style.background = '#FEE2E2'; statusEl.style.color = '#991B1B'; statusEl.style.borderColor = '#FCA5A5';
     }
     toggleJustField(id, !dentroDoTempo);
+  }
+
+  // ── Log off – Retorno à Base ──
+
+  function updateLogoffVisibility() {
+    const wrap = document.getElementById('justWrap');
+    if (!wrap) return;
+    const incItems = [...wrap.querySelectorAll('[data-cat="incidencia"]')];
+    if (!incItems.length) return;
+
+    // Descobre qual é a última incidência (maior hfim, ou última do DOM)
+    let lastItem = incItems[incItems.length - 1]; // fallback: última do DOM
+    let lastTime = -1;
+    incItems.forEach(item => {
+      const eid  = item.dataset.eid;
+      const hfim = document.getElementById('hfim-' + eid)?.value;
+      if (hfim) {
+        const [h, m] = hfim.split(':').map(Number);
+        const mins = h * 60 + m;
+        if (mins > lastTime) { lastTime = mins; lastItem = item; }
+      }
+    });
+
+    // Esconde logoff de todos, mostra só na última
+    incItems.forEach(item => {
+      const block = document.getElementById('logoff-block-' + item.dataset.eid);
+      if (block) block.style.display = 'none';
+    });
+    const lastBlock = document.getElementById('logoff-block-' + lastItem.dataset.eid);
+    if (lastBlock) {
+      lastBlock.style.display = 'block';
+      // Mostra o nome da base
+      const baseNome = getOrigemNome();
+      const baseEl = document.getElementById('logoff-base-' + lastItem.dataset.eid);
+      if (baseEl) baseEl.textContent = baseNome ? `🏠 Base: ${baseNome}` : '';
+    }
+  }
+
+  function getOrigemNome() {
+    const wrap = document.getElementById('justWrap');
+    if (!wrap) return '';
+    const deslocItems = wrap.querySelectorAll('[data-cat="deslocamento"]');
+    if (!deslocItems.length) return '';
+    const firstId = deslocItems[0].dataset.eid;
+    const sel = document.getElementById('origem-' + firstId);
+    return sel?.value ? (ORIGENS[sel.value]?.nome || '') : '';
+  }
+
+  function getOrigemCoords() {
+    const wrap = document.getElementById('justWrap');
+    if (!wrap) return null;
+    const deslocItems = wrap.querySelectorAll('[data-cat="deslocamento"]');
+    if (!deslocItems.length) return null;
+    const firstId = deslocItems[0].dataset.eid;
+    const sel = document.getElementById('origem-' + firstId);
+    return sel?.value ? ORIGENS[sel.value] : null;
+  }
+
+  function calcLogoff(id) {
+    const logoffEl = document.getElementById('logoff-' + id);
+    const hfimEl   = document.getElementById('hfim-'   + id);
+    const resultEl = document.getElementById('logoff-result-' + id);
+    const minEl    = document.getElementById('logoff-min-'    + id);
+    if (!logoffEl || !hfimEl) return;
+
+    const logoff = logoffEl.value;
+    const hfim   = hfimEl.value;
+    if (!logoff || !hfim) { if (resultEl) resultEl.style.display = 'none'; return; }
+
+    const [lh, lm] = logoff.split(':').map(Number);
+    const [fh, fm] = hfim.split(':').map(Number);
+    let diff = (lh * 60 + lm) - (fh * 60 + fm);
+    if (diff < 0) diff += 24 * 60;
+
+    if (resultEl) resultEl.style.display = 'flex';
+    if (minEl) minEl.textContent = diff + ' min';
   }
 
   // ── Origem do Deslocamento ──
@@ -3622,6 +3716,10 @@ if (localStorage.getItem('enel_auth') === '1') {
             </div>
           </div>
           <div class="r-entry-fields" style="grid-template-columns:1fr;">
+            ${e.catKey === 'incidencia' && e.logoff ? `<div class="r-entry-field-block" style="background:#FFF1F2;border:1px solid #FDA4AF;">
+              <div class="r-entry-field-label" style="color:#9F1239;">🏁 Log off – Retorno à Base</div>
+              <div class="r-entry-just" style="font-weight:700;color:#9F1239;">⏰ ${e.logoff} · ⏱ Tempo de retorno: <strong>${e.logoffMin || 0} min</strong></div>
+            </div>` : ''}
             ${e.catKey === 'deslocamento' && e.origemNome ? `<div class="r-entry-field-block" style="background:#EFF6FF;border:1px solid #BFDBFE;">
               <div class="r-entry-field-label" style="color:#1E4DA1;">📍 Origem</div>
               <div class="r-entry-just" style="font-weight:700;color:#1E3A5F;">${e.origemNome}</div>
@@ -4051,8 +4149,19 @@ if (localStorage.getItem('enel_auth') === '1') {
       })() : undefined;
       const origemLat = catKey === 'deslocamento' ? (document.getElementById('lat-origem-' + id)?.value || '') : undefined;
       const origemLon = catKey === 'deslocamento' ? (document.getElementById('lon-origem-' + id)?.value || '') : undefined;
+      // Log off — apenas na última incidência
+      const logoff = catKey === 'incidencia' ? (document.getElementById('logoff-' + id)?.value || '') : undefined;
+      const logoffMin = catKey === 'incidencia' ? (() => {
+        const logoffVal = document.getElementById('logoff-' + id)?.value;
+        const hfimVal   = document.getElementById('hfim-'   + id)?.value;
+        if (!logoffVal || !hfimVal) return 0;
+        const [lh, lm] = logoffVal.split(':').map(Number);
+        const [fh, fm] = hfimVal.split(':').map(Number);
+        let d = (lh*60+lm) - (fh*60+fm);
+        return d < 0 ? d + 1440 : d;
+      })() : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -4565,11 +4674,24 @@ if (localStorage.getItem('enel_auth') === '1') {
 
     // Adiciona origem do 1º deslocamento como ponto inicial se existir
     const firstDesloc = (r.entries || []).find(e => e.catKey === 'deslocamento' && e.origemLat && e.origemLon);
-    const points = firstDesloc
-      ? [{ lat: parseFloat(firstDesloc.origemLat), lon: parseFloat(firstDesloc.origemLon),
-           label: firstDesloc.origemNome || 'Origem', causas: '—', tempo: '—', hora: '—',
-           num: 0, type: 'origem' }, ...incPoints]
-      : incPoints;
+    const origemPoint = firstDesloc
+      ? { lat: parseFloat(firstDesloc.origemLat), lon: parseFloat(firstDesloc.origemLon),
+          label: firstDesloc.origemNome || 'Origem', num: 0, type: 'origem' }
+      : null;
+
+    // Adiciona ponto de log off (retorno à base) se existir
+    const logoffEntry = (r.entries || []).find(e => e.catKey === 'incidencia' && e.logoff);
+    const logoffPoint = (logoffEntry && firstDesloc?.origemLat)
+      ? { lat: parseFloat(firstDesloc.origemLat), lon: parseFloat(firstDesloc.origemLon),
+          label: firstDesloc.origemNome || 'Base', logoff: logoffEntry.logoff,
+          logoffMin: logoffEntry.logoffMin, num: -1, type: 'logoff' }
+      : null;
+
+    const points = [
+      ...(origemPoint ? [origemPoint] : []),
+      ...incPoints,
+      ...(logoffPoint ? [logoffPoint] : [])
+    ];
 
     if (points.length < 1) return false;
 
@@ -4584,48 +4706,69 @@ if (localStorage.getItem('enel_auth') === '1') {
     _leafletMaps[containerId] = map;
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-      maxZoom: 18
+      attribution: '© OpenStreetMap', maxZoom: 18
     }).addTo(map);
 
-    const latlngs = points.map(p => [p.lat, p.lon]);
+    // Linha do trajeto principal (origem → incidências)
+    const mainPoints = points.filter(p => p.type !== 'logoff');
+    const mainLatLngs = mainPoints.map(p => [p.lat, p.lon]);
+    if (mainLatLngs.length > 1) {
+      L.polyline(mainLatLngs, { color: '#1E4DA1', weight: 3, opacity: 0.8, dashArray: '6,4' }).addTo(map);
+    }
 
-    // Linha do trajeto
-    if (points.length > 1) {
-      L.polyline(latlngs, {
-        color: '#1E4DA1', weight: 3, opacity: 0.8, dashArray: '6,4'
+    // Linha de retorno — última incidência → base (destaque vermelho)
+    if (logoffPoint && incPoints.length > 0) {
+      const lastInc = incPoints[incPoints.length - 1];
+      L.polyline([[lastInc.lat, lastInc.lon],[logoffPoint.lat, logoffPoint.lon]], {
+        color: '#DC2626', weight: 3, opacity: 0.9, dashArray: '8,5'
       }).addTo(map);
     }
 
+    const allLatLngs = points.map(p => [p.lat, p.lon]);
+
     // Marcadores
-    points.forEach((p, i) => {
-      const isFirst = i === 0;
-      const isLast  = i === points.length - 1;
-      const markerColors = ['#6B7280','#00843D','#DC2626','#1E4DA1','#D97706','#7C3AED'];
-      const color = p.type === 'origem' ? '#374151' : (markerColors[p.num] || '#6B7280');
-      const icon = L.divIcon({
-        html: `<div style="background:${color};color:white;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${p.type === 'origem' ? '🏠' : p.num}</div>`,
-        className: '', iconSize: [26,26], iconAnchor: [13,13]
-      });
-      L.marker([p.lat, p.lon], { icon })
-        .addTo(map)
-        .bindPopup(`<div style="font-family:sans-serif;min-width:180px;">
-          <div style="font-weight:800;color:${color};margin-bottom:4px;">${p.type === 'origem' ? '🏠 Origem: ' + p.label : '⚡ Incidência ' + p.num}</div>
-          ${p.type !== 'origem' ? `<div style="font-size:0.82rem;">🕐 ${p.hora}</div>
+    const markerColors = ['#00843D','#DC2626','#1E4DA1','#D97706','#7C3AED'];
+    points.forEach((p) => {
+      let color, iconHtml;
+      if (p.type === 'origem') {
+        color = '#374151';
+        iconHtml = `<div style="background:#374151;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🏠</div>`;
+      } else if (p.type === 'logoff') {
+        color = '#DC2626';
+        iconHtml = `<div style="background:#DC2626;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🏁</div>`;
+      } else {
+        color = markerColors[(p.num - 1) % markerColors.length] || '#6B7280';
+        iconHtml = `<div style="background:${color};color:white;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${p.num}</div>`;
+      }
+      const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [28,28], iconAnchor: [14,14] });
+      let popupHtml = '';
+      if (p.type === 'origem') {
+        popupHtml = `<div style="font-weight:800;color:#374151;">🏠 Origem: ${p.label}</div>`;
+      } else if (p.type === 'logoff') {
+        popupHtml = `<div style="font-weight:800;color:#DC2626;margin-bottom:4px;">🏁 Retorno à Base</div>
+          <div style="font-size:0.82rem;">⏰ Log off: ${p.logoff}</div>
+          <div style="font-size:0.82rem;">⏱ Tempo de retorno: <strong>${p.logoffMin || 0} min</strong></div>
+          <div style="font-size:0.78rem;color:#6B7280;margin-top:4px;">📍 ${p.label}</div>`;
+      } else {
+        popupHtml = `<div style="font-weight:800;color:${color};margin-bottom:4px;">⚡ Incidência ${p.num}</div>
+          <div style="font-size:0.82rem;">🕐 ${p.hora}</div>
           <div style="font-size:0.82rem;">⏱ ${p.tempo}</div>
-          <div style="font-size:0.82rem;">📋 ${p.causas}</div>` : ''}
-          ${p.label && p.type !== 'origem' ? `<div style="font-size:0.78rem;color:#6B7280;margin-top:4px;">📍 ${p.label}</div>` : ''}
-        </div>`, { maxWidth: 260 });
+          <div style="font-size:0.82rem;">📋 ${p.causas}</div>
+          ${p.label ? `<div style="font-size:0.78rem;color:#6B7280;margin-top:4px;">📍 ${p.label}</div>` : ''}`;
+      }
+      L.marker([p.lat, p.lon], { icon }).addTo(map)
+        .bindPopup(`<div style="font-family:sans-serif;min-width:180px;">${popupHtml}</div>`, { maxWidth: 260 });
     });
 
     // Legenda
-    const legendHtml = `<div style="font-size:0.68rem;display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.4rem;color:#6B7280;">
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#374151;margin-right:3px;"></span>Origem</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00843D;margin-right:3px;"></span>1ª Inc.</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:3px;"></span>2ª Inc.</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#1E4DA1;margin-right:3px;"></span>3ª Inc.</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;margin-right:3px;"></span>4ª Inc.</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#7C3AED;margin-right:3px;"></span>5ª Inc.</span>
+    const legendHtml = `<div style="font-size:0.68rem;display:flex;gap:0.65rem;flex-wrap:wrap;margin-top:0.4rem;color:#6B7280;">
+      <span>🏠 <strong>Origem</strong></span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#00843D;margin-right:2px;"></span>1ª</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#DC2626;margin-right:2px;"></span>2ª</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#1E4DA1;margin-right:2px;"></span>3ª</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#D97706;margin-right:2px;"></span>4ª</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7C3AED;margin-right:2px;"></span>5ª</span>
+      <span>🏁 <strong style="color:#DC2626;">Log off</strong></span>
       <span style="margin-left:auto;">🖱️ Clique nos marcadores</span>
     </div>`;
     const legendDiv = document.createElement('div');
@@ -4634,10 +4777,10 @@ if (localStorage.getItem('enel_auth') === '1') {
 
     // Fit bounds
     setTimeout(() => {
-      if (points.length === 1) {
-        map.setView([points[0].lat, points[0].lon], 15);
+      if (allLatLngs.length === 1) {
+        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 15);
       } else {
-        map.fitBounds(L.latLngBounds(latlngs), { padding: [30, 30] });
+        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [30, 30] });
       }
       map.invalidateSize();
     }, 100);
@@ -6867,16 +7010,19 @@ entryLines.join('\n\n') + '\n' +
       // ── Timeline ──
 
 
+
       // ── Ocorrências + Justificativa numa única tabela ──
-      const ocRows = r.entries.map((e, idx) => {
+      const ocRows = (filtro) => r.entries.map((e, idx) => {
         const color = catColors[e.catKey]||'#888';
         const cat   = categorias[e.catKey];
         const desvio = entryNeedsJustificativa(e);
+        // Aplica filtro
+        if (filtro === 'fora' && !desvio) return '';
+        if (filtro === 'dentro' && desvio) return '';
         const statusBadge = desvio
           ? `<span style="font-size:0.7rem;font-weight:800;background:#DC2626;color:white;padding:3px 10px;border-radius:99px;">⚠️ Fora do Tempo</span>`
           : `<span style="font-size:0.7rem;font-weight:800;background:#16A34A;color:white;padding:3px 10px;border-radius:99px;">✅ Dentro do Tempo</span>`;
         const supAns = r.supervisorAnswers?.[idx];
-        // Justificativa: prioriza inline (registro) depois supervisor (fluxo antigo)
         const justText = e.justificativa || supAns?.just || '';
         const justCell = justText
           ? `<span style="font-size:0.72rem;color:#374151;">${justText}</span>`
@@ -6897,6 +7043,15 @@ entryLines.join('\n\n') + '\n' +
           <td style="padding:0.55rem 0.75rem;">${justCell}</td>
         </tr>`;
       }).join('');
+
+      // Linha de Log off no final da tabela
+      const logoffEntry = r.entries.find(e => e.catKey === 'incidencia' && e.logoff);
+      const logoffRow = logoffEntry ? `
+        <tr style="background:#FFF1F2;border-top:2px solid #FDA4AF;">
+          <td colspan="2" style="padding:0.55rem 0.75rem;font-weight:800;color:#9F1239;">🏁 Log off – Retorno à Base</td>
+          <td style="padding:0.55rem 0.75rem;text-align:center;font-weight:800;color:#9F1239;">${logoffEntry.logoff}</td>
+          <td colspan="2" style="padding:0.55rem 0.75rem;color:#991B1B;font-weight:700;">⏱ Tempo de retorno: <strong>${logoffEntry.logoffMin || 0} min</strong></td>
+        </tr>` : '';
 
       const card = document.createElement('div');
       card.style.cssText = 'background:white;border-radius:10px;margin-bottom:1.75rem;box-shadow:0 2px 12px rgba(79,70,229,0.1);border:1px solid #C7D2FE;overflow:hidden;';
@@ -6928,7 +7083,7 @@ entryLines.join('\n\n') + '\n' +
 
         <!-- Ocorrências -->
         <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
-          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;">
+          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
           </div>
           <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
@@ -6937,11 +7092,20 @@ entryLines.join('\n\n') + '\n' +
                 <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
                 <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
                 <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
-                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Status</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
+                  <select id="reu-status-filter-${r.id}"
+                    onchange="filterReuniaoStatus('${r.id}')"
+                    style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:800;border:1.5px solid #E0E7FF;border-radius:6px;padding:2px 6px;background:white;color:#374151;cursor:pointer;outline:none;">
+                    <option value="todos">Status ▾</option>
+                    <option value="todos">Todos</option>
+                    <option value="fora">⚠️ Fora do Tempo</option>
+                    <option value="dentro">✅ Dentro do Tempo</option>
+                  </select>
+                </th>
                 <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
               </tr>
             </thead>
-            <tbody>${ocRows}</tbody>
+            <tbody id="reu-tbody-${r.id}">${ocRows('todos')}${logoffRow}</tbody>
           </table>
         </div>`;
 
@@ -6960,6 +7124,23 @@ entryLines.join('\n\n') + '\n' +
         const hasMap = buildRouteMap(r, `reu_map_${r.id}`);
         if (hasMap) mapSection.style.display = 'block';
       }
+    });
+  }
+
+  function filterReuniaoStatus(recordId) {
+    const sel   = document.getElementById('reu-status-filter-' + recordId);
+    const tbody = document.getElementById('reu-tbody-' + recordId);
+    if (!sel || !tbody) return;
+    const filtro = sel.value;
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+      // Detect status from the badge inside the row
+      const badge = row.querySelector('td:nth-child(4) span');
+      if (!badge) return;
+      const isFora = badge.textContent.includes('Fora');
+      if (filtro === 'fora')   row.style.display = isFora  ? '' : 'none';
+      else if (filtro === 'dentro') row.style.display = !isFora ? '' : 'none';
+      else row.style.display = '';
     });
   }
 
