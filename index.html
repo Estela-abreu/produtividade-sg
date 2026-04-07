@@ -1599,6 +1599,10 @@ if (localStorage.getItem('enel_auth') === '1') {
       <span class="sidebar-icon">📋</span> Reunião
       <span class="sidebar-badge" id="tabBadgeReuniao" style="display:none;background:#6366F1;">0</span>
     </button>
+    <button class="sidebar-item" id="tabBtnAcao" onclick="switchTab('acao')" style="color:#FCA5A5;">
+      <span class="sidebar-icon">⚡</span> Ação
+      <span class="sidebar-badge" id="tabBadgeAcao" style="display:none;background:#DC2626;">0</span>
+    </button>
     <button class="sidebar-item config-item" id="tabBtnConfig" onclick="switchTab('config')" title="Acesso restrito ao administrador">
       <span class="sidebar-icon">⚙️</span> Configuração
     </button>
@@ -1999,6 +2003,54 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div id="reuniaoList"></div>
   </div>
 </div><!-- /tabReuniao -->
+
+<!-- ── ABA AÇÃO ── -->
+<div id="tabAcao" style="display:none;">
+  <div style="max-width:860px;margin:0 auto;padding:1.5rem 1rem;">
+
+    <!-- Cabeçalho + contadores -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#1E3A5F;letter-spacing:0.02em;">⚡ Módulo de Ação</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Gerencie as ações das ocorrências fora do tempo</div>
+      </div>
+      <div style="display:flex;gap:0.65rem;">
+        <div style="text-align:center;background:white;border:1.5px solid #FCA5A5;border-radius:10px;padding:0.5rem 1rem;min-width:70px;">
+          <div id="acaoSubBadgePendente" style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#DC2626;line-height:1;">0</div>
+          <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Pendentes</div>
+        </div>
+        <div style="text-align:center;background:white;border:1.5px solid #6EE7B7;border-radius:10px;padding:0.5rem 1rem;min-width:70px;">
+          <div id="acaoSubBadgeRealizado" style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#16A34A;line-height:1;">0</div>
+          <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Realizadas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sub-abas -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;margin-bottom:1.25rem;">
+      <button id="acaoSubBtnPendente" onclick="switchAcaoSub('pendente')"
+        style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.5rem;border:none;border-bottom:3px solid #DC2626;background:transparent;color:#DC2626;cursor:pointer;margin-bottom:-2px;">
+        🔴 Pendentes
+      </button>
+      <button id="acaoSubBtnRealizado" onclick="switchAcaoSub('realizado')"
+        style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;">
+        🟢 Realizadas
+      </button>
+    </div>
+
+    <!-- Lista de cards -->
+    <div id="acaoList"></div>
+
+    <!-- Painel de tratativa (abre ao clicar em Resolver) -->
+    <div id="acaoTratativaPanel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9000;overflow-y:auto;display:none;" onclick="fecharTratativa(event)">
+      <div onclick="event.stopPropagation()" style="background:white;border-radius:16px;max-width:600px;margin:2rem auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+        <div id="acaoTratativaContent"></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tabAcao -->
+
 <div id="tabConfig" style="display:none;">
 <div id="configLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
   <div style="font-size:2.5rem;margin-bottom:1rem;">🔐</div>
@@ -2087,6 +2139,20 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div class="cfg-card-body">
       <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Supervisores sugeridos automaticamente ao selecionar o turno no Registro.</div>
       <div id="cfgSupervisoresList"></div>
+    </div>
+  </div>
+
+  <!-- Seção: Responsáveis de Ação -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">⚡ Responsáveis de Ação</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Nomes disponíveis para seleção como responsável na aba Ação e no Registro.</div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgRespAcaoInput" placeholder="Nome do responsável" class="cfg-input" style="max-width:220px;"
+          onkeydown="if(event.key==='Enter')cfgAddRespAcao()">
+        <button class="cfg-btn-add" onclick="cfgAddRespAcao()">+ Adicionar</button>
+      </div>
+      <div id="cfgRespAcaoList" class="cfg-tag-list"></div>
     </div>
   </div>
 
@@ -2696,6 +2762,29 @@ if (localStorage.getItem('enel_auth') === '1') {
           <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.4rem;">⚠️ FORA DO TEMPO — Justificativa obrigatória</div>
           <textarea id="just-text-${id}" rows="2" placeholder="Descreva o motivo da ocorrência fora do tempo..."
             style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;resize:vertical;outline:none;background:white;"></textarea>
+          <!-- Módulo de Ação -->
+          <div style="margin-top:0.65rem;padding-top:0.65rem;border-top:1px solid #FCA5A5;">
+            <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.5rem;">⚡ É necessário uma ação?</div>
+            <div style="display:flex;gap:1rem;margin-bottom:0.5rem;">
+              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;font-weight:700;cursor:pointer;">
+                <input type="radio" name="acao-sim-nao-${id}" id="acao-sim-${id}" value="sim" onchange="toggleAcaoResponsavel('${id}')"> Sim
+              </label>
+              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;font-weight:700;cursor:pointer;">
+                <input type="radio" name="acao-sim-nao-${id}" id="acao-nao-${id}" value="nao" onchange="toggleAcaoResponsavel('${id}')"> Não
+              </label>
+            </div>
+            <div id="acao-resp-block-${id}" style="display:none;">
+              <label style="font-size:0.72rem;font-weight:700;color:#991B1B;display:block;margin-bottom:0.3rem;">Responsável pela ação:</label>
+              <select id="acao-resp-${id}"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;border:1.5px solid #FCA5A5;border-radius:6px;padding:5px 10px;background:white;color:#374151;outline:none;">
+                <option value="">— Selecione —</option>
+                <option value="Supervisão">Supervisão</option>
+                <option value="COD">COD</option>
+                <option value="Equipe">Equipe</option>
+                <option value="Coordenação">Coordenação</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>`;
 
@@ -3465,8 +3554,9 @@ if (localStorage.getItem('enel_auth') === '1') {
       }
     } catch(e) {}
     // Also save to Firebase if not there
-    if (!getCfg(CFG_CAUSAS_KEY, null))  saveCausas([...CAUSAS_INCIDENCIA]);
-    if (!getCfg(CFG_EQUIPES_KEY, null)) saveEquipes([...EQUIPES_DEFAULT]);
+    if (!getCfg(CFG_CAUSAS_KEY, null))    saveCausas([...CAUSAS_INCIDENCIA]);
+    if (!getCfg(CFG_EQUIPES_KEY, null))   saveEquipes([...EQUIPES_DEFAULT]);
+    if (!getCfg(CFG_RESP_ACAO_KEY, null)) saveRespAcao([...RESP_ACAO_DEFAULT]);
   }
 
   function getObsPlaceholder() { return getCfg(CFG_OBS_KEY, 'Descreva detalhes desta ocorrência...'); }
@@ -3939,6 +4029,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     updateTabBadgeRetorno(records.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     updateTopbarMetrics();
     updateBadgeReuniao();
+    updateTabBadgeAcao();
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnNotify')   renderNotifyTab();
@@ -4139,6 +4230,8 @@ if (localStorage.getItem('enel_auth') === '1') {
         ? (document.getElementById('obs-causa-' + id)?.value.trim() || '')
         : undefined;
       const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
+      const acaoNecessaria = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value || '';
+      const acaoResponsavel = acaoNecessaria === 'sim' ? (document.getElementById('acao-resp-' + id)?.value || '') : '';
       const lat      = catKey === 'incidencia' ? (document.getElementById('lat-' + id)?.value.trim() || '') : undefined;
       const lon      = catKey === 'incidencia' ? (document.getElementById('lon-' + id)?.value.trim() || '') : undefined;
       const endereco = catKey === 'incidencia' ? (document.getElementById('endereco-' + id)?.value.trim() || '') : undefined;
@@ -4161,7 +4254,7 @@ if (localStorage.getItem('enel_auth') === '1') {
         return d < 0 ? d + 1440 : d;
       })() : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -4392,6 +4485,18 @@ if (localStorage.getItem('enel_auth') === '1') {
               <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
               <span class="db-meta-pill">👷 ${r.equipe}</span>
               <span class="db-meta-pill">🔖 ${r.entries.length} lançamento${r.entries.length!==1?'s':''}</span>
+              ${(() => {
+                const acoes = loadAcoes();
+                const comAcao = (r.entries||[]).filter(e => e.acaoNecessaria === 'sim' && e.acaoResponsavel);
+                if (!comAcao.length) return '';
+                const pendentes = comAcao.filter(e => {
+                  const k = getAcaoKey(r.id, e);
+                  return !acoes[k] || acoes[k].status !== 'realizada';
+                }).length;
+                return pendentes > 0
+                  ? `<span class="db-meta-pill" style="background:#FEE2E2;color:#991B1B;border-color:#FCA5A5;">⚡ ${pendentes} ação${pendentes>1?'ões':''} pendente${pendentes>1?'s':''}</span>`
+                  : `<span class="db-meta-pill" style="background:#D1FAE5;color:#065F46;border-color:#6EE7B7;">⚡ Ações realizadas</span>`;
+              })()}
             </div>
           </div>
           <div class="db-record-right">
@@ -4933,6 +5038,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     notify:      '📨 Notificar Supervisor',
     db:          '📊 Banco de Dados Produtividade',
     reuniao:     '📋 Painel de Reunião',
+    acao:        '⚡ Módulo de Ação',
     config:      '⚙️ Configuração'
   };
 
@@ -4950,8 +5056,9 @@ if (localStorage.getItem('enel_auth') === '1') {
     document.getElementById('tabNotify').style.display      = tab === 'notify'      ? 'block' : 'none';
     document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
     document.getElementById('tabReuniao').style.display     = tab === 'reuniao'     ? 'block' : 'none';
+    document.getElementById('tabAcao').style.display        = tab === 'acao'        ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','DB','Reuniao','Config'].forEach(t => {
+    ['Inicio','Form','Notify','DB','Reuniao','Acao','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
@@ -4964,6 +5071,7 @@ if (localStorage.getItem('enel_auth') === '1') {
       window.scrollTo({ top:0, behavior:'smooth' });
     }
     if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'acao')        { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')        { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -6222,6 +6330,7 @@ entryLines.join('\n\n') + '\n' +
     renderCfgCatLimites();
     renderCfgSupervisores();
     renderCfgContacts();
+    renderCfgRespAcao();
   }
 
   // ── Equipes ──
@@ -7142,6 +7251,468 @@ entryLines.join('\n\n') + '\n' +
       else if (filtro === 'dentro') row.style.display = !isFora ? '' : 'none';
       else row.style.display = '';
     });
+  }
+
+  // ── Responsáveis de Ação ──
+  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
+  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
+
+  function getRespAcao() {
+    return getCfg(CFG_RESP_ACAO_KEY, [...RESP_ACAO_DEFAULT]);
+  }
+
+  function saveRespAcao(arr) {
+    saveCfg(CFG_RESP_ACAO_KEY, [...new Set(arr)]);
+  }
+
+  function renderCfgRespAcao() {
+    const list = document.getElementById('cfgRespAcaoList');
+    if (!list) return;
+    const nomes = getRespAcao();
+    list.innerHTML = '';
+    nomes.forEach(n => {
+      const tag = document.createElement('span');
+      tag.className = 'cfg-tag';
+      tag.innerHTML = n + `<button onclick="cfgRemoveRespAcao('${n.replace(/'/g,"\\'")}')">✕</button>`;
+      list.appendChild(tag);
+    });
+  }
+
+  function cfgAddRespAcao() {
+    const inp = document.getElementById('cfgRespAcaoInput');
+    const nome = inp?.value.trim();
+    if (!nome) return;
+    const nomes = getRespAcao();
+    if (!nomes.map(n=>n.toLowerCase()).includes(nome.toLowerCase())) {
+      nomes.push(nome);
+      saveRespAcao(nomes);
+      renderCfgRespAcao();
+    }
+    if (inp) inp.value = '';
+  }
+
+  function cfgRemoveRespAcao(nome) {
+    const nomes = getRespAcao().filter(n => n !== nome);
+    saveRespAcao(nomes);
+    renderCfgRespAcao();
+  }
+
+  // ── Módulo de Ação ──
+
+  let _acaoSubAtiva = 'pendente'; // 'pendente' | 'realizado'
+
+  function switchAcaoSub(sub) {
+    _acaoSubAtiva = sub;
+    const btnP = document.getElementById('acaoSubBtnPendente');
+    const btnR = document.getElementById('acaoSubBtnRealizado');
+    if (btnP) {
+      btnP.style.borderBottomColor = sub === 'pendente' ? '#DC2626' : 'transparent';
+      btnP.style.color = sub === 'pendente' ? '#DC2626' : 'var(--gray-400)';
+    }
+    if (btnR) {
+      btnR.style.borderBottomColor = sub === 'realizado' ? '#16A34A' : 'transparent';
+      btnR.style.color = sub === 'realizado' ? '#16A34A' : 'var(--gray-400)';
+    }
+    renderAcaoTab();
+  }
+
+  function toggleAcaoResponsavel(id) {
+    const val = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value;
+    const block = document.getElementById('acao-resp-block-' + id);
+    if (block) block.style.display = val === 'sim' ? 'block' : 'none';
+  }
+
+  function updateTabBadgeAcao() {
+    const records = loadDB();
+    const acoes = loadAcoes();
+    let pendentes = 0, realizados = 0;
+    records.forEach(r => {
+      (r.entries || []).forEach(e => {
+        if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
+          const k = getAcaoKey(r.id, e);
+          if (acoes[k]?.status === 'realizada') realizados++;
+          else pendentes++;
+        }
+      });
+    });
+    const badge = document.getElementById('tabBadgeAcao');
+    if (badge) { badge.textContent = pendentes; badge.style.display = pendentes > 0 ? 'inline-flex' : 'none'; }
+    const bp = document.getElementById('acaoSubBadgePendente');
+    const br = document.getElementById('acaoSubBadgeRealizado');
+    if (bp) bp.textContent = pendentes;
+    if (br) br.textContent = realizados;
+  }
+
+  function countAcoesPendentes(records) {
+    let n = 0;
+    records.forEach(r => {
+      (r.entries || []).forEach(e => {
+        if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
+          const acao = getAcaoStatus(r.id, e);
+          if (!acao || acao.status !== 'realizada') n++;
+        }
+      });
+    });
+    return n;
+  }
+
+  // Acoes salvas separadamente no localStorage
+  const ACOES_KEY = 'enel_acoes';
+
+  function loadAcoes() {
+    try { return JSON.parse(localStorage.getItem(ACOES_KEY) || '{}'); } catch { return {}; }
+  }
+
+  function saveAcaoData(recordId, entryId, data) {
+    const acoes = loadAcoes();
+    const key = `${recordId}_${entryId}`;
+    acoes[key] = { ...acoes[key], ...data };
+    localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+  }
+
+  function getAcaoStatus(recordId, e) {
+    const acoes = loadAcoes();
+    const key = `${recordId}_${e.hinicio || ''}_${e.catKey}`;
+    return acoes[key] || null;
+  }
+
+  function getAcaoKey(recordId, e) {
+    return `${recordId}_${e.hinicio || ''}_${e.catKey}`;
+  }
+
+  function renderAcaoTab() {
+    const listEl = document.getElementById('acaoList');
+    if (!listEl) return;
+    const records = loadDB();
+    const acoes = loadAcoes();
+    const now = Date.now();
+    let cards = [];
+
+    records.forEach(r => {
+      const [ry,rm,rd] = (r.data||'').split('-');
+      const dataBR = rd && rm && ry ? `${rd}/${rm}/${ry}` : r.data || '—';
+      const dataTs = r.data ? new Date(r.data + 'T12:00:00').getTime() : 0;
+      (r.entries || []).forEach(e => {
+        if (e.acaoNecessaria !== 'sim' || !e.acaoResponsavel) return;
+        const key = getAcaoKey(r.id, e);
+        const saved = acoes[key] || {};
+        const isRealizada = saved.status === 'realizada';
+        if (_acaoSubAtiva === 'pendente'  &&  isRealizada) return;
+        if (_acaoSubAtiva === 'realizado' && !isRealizada) return;
+        const diasPendente = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
+        cards.push({ r, e, key, saved, dataBR, isRealizada, diasPendente });
+      });
+    });
+
+    // Ordenar pendentes: maior tempo primeiro
+    if (_acaoSubAtiva === 'pendente') {
+      cards.sort((a,b) => b.diasPendente - a.diasPendente || b.e.mins - a.e.mins);
+    }
+
+    if (!cards.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">${_acaoSubAtiva === 'pendente' ? '✅' : '📂'}</div>
+        <div style="font-size:0.95rem;font-weight:600;">${_acaoSubAtiva === 'pendente' ? 'Nenhuma ação pendente!' : 'Nenhuma ação realizada ainda.'}</div>
+      </div>`;
+      updateTabBadgeAcao();
+      return;
+    }
+
+    listEl.innerHTML = cards.map(({ r, e, key, saved, dataBR, isRealizada, diasPendente }) => {
+      const catNome = categorias[e.catKey]?.nome || e.catKey;
+      const catIcon = categorias[e.catKey]?.icon || '';
+      const causaStr = e.causas?.length ? e.causas.join(', ') : e.obsCausa || '—';
+      const tempoStr = e.mins ? `${Math.floor(e.mins/60)}h ${String(e.mins%60).padStart(2,'0')}min` : '—';
+      const tempoPill = `<span style="font-size:0.72rem;font-weight:800;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:99px;border:1px solid #FCD34D;">⏱ ${tempoStr} fora</span>`;
+      const diasStr = isRealizada
+        ? (saved.dataAcao ? `✅ Realizada em ${saved.dataAcao.split('-').reverse().join('/')}` : '✅ Realizada')
+        : diasPendente === 0 ? '📅 Registrado hoje'
+        : diasPendente === 1 ? '⏳ Pendente há 1 dia'
+        : `⏳ Pendente há ${diasPendente} dias`;
+      const diasColor = isRealizada ? '#16A34A' : diasPendente >= 3 ? '#DC2626' : diasPendente >= 1 ? '#D97706' : '#6B7280';
+
+      if (isRealizada) {
+        return `<div style="background:white;border:1.5px solid #D1FAE5;border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
+            <span style="font-size:0.72rem;font-weight:800;background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:99px;border:1px solid #6EE7B7;white-space:nowrap;">🟢 Realizada</span>
+            <div>
+              <div style="font-weight:800;font-size:0.88rem;color:#1E3A5F;">${r.equipe} <span style="font-weight:500;color:var(--gray-400);">· ${dataBR} · T${r.turno}</span></div>
+              <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
+            </div>
+            ${tempoPill}
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <span style="font-size:0.75rem;color:#16A34A;font-weight:700;">${diasStr}</span>
+            <span style="font-size:0.75rem;color:var(--gray-500);">por ${saved.respExec||'—'}</span>
+            <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:6px;border:1.5px solid #D1FAE5;background:white;color:#16A34A;cursor:pointer;">👁 Ver</button>
+          </div>
+        </div>`;
+      }
+
+      return `<div style="background:white;border:1.5px solid #E5E7EB;border-left:4px solid ${diasColor};border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
+          <span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:99px;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Pendente</span>
+          <div>
+            <div style="font-weight:800;font-size:0.88rem;color:#1E3A5F;">${r.equipe} <span style="font-weight:500;color:var(--gray-400);">· ${dataBR} · T${r.turno}</span></div>
+            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
+          </div>
+          ${tempoPill}
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
+          <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    updateTabBadgeAcao();
+  }
+
+  // ── Painel de Tratativa ──
+  let _tratativaKey = null;
+  let _tratativaCards = {};
+
+  function abrirTratativa(key) {
+    _tratativaKey = key;
+    const records = loadDB();
+    const acoes = loadAcoes();
+    const saved = acoes[key] || {};
+
+    // Localiza o registro e a entry correspondentes
+    let foundR = null, foundE = null;
+    records.forEach(r => {
+      (r.entries || []).forEach(e => {
+        if (getAcaoKey(r.id, e) === key) { foundR = r; foundE = e; }
+      });
+    });
+    if (!foundR || !foundE) return;
+
+    const [ry,rm,rd] = (foundR.data||'').split('-');
+    const dataBR = rd && rm && ry ? `${rd}/${rm}/${ry}` : foundR.data || '—';
+    const catNome = categorias[foundE.catKey]?.nome || foundE.catKey;
+    const catIcon = categorias[foundE.catKey]?.icon || '';
+    const causaStr = foundE.causas?.length ? foundE.causas.join(', ') : foundE.obsCausa || '—';
+    const tempoStr = foundE.mins ? `${Math.floor(foundE.mins/60)}h ${String(foundE.mins%60).padStart(2,'0')}min` : '—';
+    const isRealizada = saved.status === 'realizada';
+
+    const panel = document.getElementById('acaoTratativaPanel');
+    const content = document.getElementById('acaoTratativaContent');
+    if (!panel || !content) return;
+
+    content.innerHTML = `
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:800;color:white;">⚡ Tratativa da Ação</div>
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin-top:2px;">${foundR.equipe} · ${dataBR} · Turno ${foundR.turno}</div>
+        </div>
+        <button onclick="fecharTratativa()" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:1.2rem;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <!-- Bloco 1: Contexto (só leitura) -->
+      <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #F3F4F6;background:#FAFBFF;">
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#6B7280;margin-bottom:0.75rem;">📌 Contexto da Ocorrência</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+          <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Categoria</div>
+            <div style="font-size:0.88rem;font-weight:700;color:#1E3A5F;margin-top:2px;">${catIcon} ${catNome}</div>
+          </div>
+          <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Tempo fora do padrão</div>
+            <div style="font-size:0.88rem;font-weight:800;color:#DC2626;margin-top:2px;">⏱ ${tempoStr}</div>
+          </div>
+          <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Causa</div>
+            <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${causaStr}</div>
+          </div>
+          <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Responsável indicado</div>
+            <div style="font-size:0.88rem;font-weight:700;color:#374151;margin-top:2px;">${foundE.acaoResponsavel}</div>
+          </div>
+          ${foundE.justificativa ? `<div style="grid-column:1/-1;background:#FEF9EC;border:1px solid #FCD34D;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#92400E;">⚠️ Justificativa do registro</div>
+            <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.justificativa}</div>
+          </div>` : ''}
+        </div>
+      </div>
+
+      <!-- Bloco 2: Decisão -->
+      <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #F3F4F6;">
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#6B7280;margin-bottom:1rem;">🎯 Decisão do Supervisor</div>
+
+        <div style="background:#F8FAFF;border:1.5px solid #E0E7FF;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;">
+          <div style="font-size:0.9rem;font-weight:800;color:#1E3A5F;margin-bottom:0.75rem;">Essa ação foi realizada?</div>
+          <div style="display:flex;gap:1.5rem;">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;font-weight:700;cursor:pointer;color:#16A34A;">
+              <input type="radio" name="tratativa-realizada" id="trat-sim" value="sim"
+                ${(saved.status==='realizada' || !saved.status) ? 'checked' : ''}
+                onchange="toggleTratativaDecisao()">
+              ✅ Sim, foi realizada
+            </label>
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;font-weight:700;cursor:pointer;color:#DC2626;">
+              <input type="radio" name="tratativa-realizada" id="trat-nao" value="nao"
+                ${saved.status==='nao_realizada' ? 'checked' : ''}
+                onchange="toggleTratativaDecisao()">
+              ❌ Não foi realizada
+            </label>
+          </div>
+        </div>
+
+        <!-- Bloco SIM -->
+        <div id="trat-bloco-sim" style="display:${saved.status==='nao_realizada'?'none':'block'};">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div>
+              <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Responsável pela ação</label>
+              <select id="trat-resp"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;border:1.5px solid #D1FAE5;border-radius:8px;padding:7px 10px;outline:none;background:white;">
+                <option value="">— Selecione —</option>
+                ${getRespAcao().map(n => `<option value="${n}"${saved.respExec===n?' selected':''}>${n}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Data da ação</label>
+              <input type="date" id="trat-data" value="${saved.dataAcao||''}"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;border:1.5px solid #D1FAE5;border-radius:8px;padding:7px 10px;outline:none;box-sizing:border-box;">
+            </div>
+          </div>
+          <div style="margin-bottom:0.75rem;">
+            <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Descrição da ação tomada</label>
+            <textarea id="trat-desc" rows="3" placeholder="Descreva o que foi feito..."
+              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #D1FAE5;border-radius:8px;padding:8px 10px;resize:vertical;outline:none;background:white;box-sizing:border-box;">${saved.descricao||''}</textarea>
+          </div>
+          <div>
+            <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Anexo (opcional)</label>
+            <input type="file" id="trat-file" accept="image/*,application/pdf" style="font-size:0.8rem;">
+            ${saved.anexoNome ? `<div style="font-size:0.75rem;color:#16A34A;margin-top:4px;">📎 ${saved.anexoNome}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Bloco NÃO -->
+        <div id="trat-bloco-nao" style="display:${saved.status==='nao_realizada'?'block':'none'};">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div>
+              <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Data prevista</label>
+              <input type="date" id="trat-data-prev" value="${saved.dataPrevista||''}"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;border:1.5px solid #FCA5A5;border-radius:8px;padding:7px 10px;outline:none;box-sizing:border-box;">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Motivo (opcional)</label>
+            <textarea id="trat-motivo" rows="2" placeholder="Por que ainda não foi realizada?"
+              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:8px;padding:8px 10px;resize:vertical;outline:none;background:white;box-sizing:border-box;">${saved.motivo||''}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloco 3: Finalização -->
+      <div style="padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
+        <button onclick="fecharTratativa()" style="font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:8px 18px;border-radius:8px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;cursor:pointer;">Cancelar</button>
+        <button onclick="salvarTratativa()" style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:9px 24px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">💾 Salvar Ação</button>
+      </div>
+    `;
+
+    panel.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function toggleTratativaDecisao() {
+    const val = document.querySelector('input[name="tratativa-realizada"]:checked')?.value;
+    document.getElementById('trat-bloco-sim').style.display = val === 'sim' ? 'block' : 'none';
+    document.getElementById('trat-bloco-nao').style.display = val === 'nao' ? 'block' : 'none';
+  }
+
+  function fecharTratativa(e) {
+    if (e && e.target !== document.getElementById('acaoTratativaPanel')) return;
+    const panel = document.getElementById('acaoTratativaPanel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+    _tratativaKey = null;
+  }
+
+  function salvarTratativa() {
+    if (!_tratativaKey) return;
+    const val = document.querySelector('input[name="tratativa-realizada"]:checked')?.value;
+    if (!val) { showCopyToast('⚠️ Informe se a ação foi realizada ou não.'); return; }
+
+    const acoes = loadAcoes();
+    const saved = acoes[_tratativaKey] || {};
+
+    if (val === 'sim') {
+      const respExec = document.getElementById('trat-resp')?.value || '';
+      const dataAcao = document.getElementById('trat-data')?.value || '';
+      if (!respExec || !dataAcao) { showCopyToast('⚠️ Preencha o Responsável e a Data da ação.'); return; }
+      const desc = document.getElementById('trat-desc')?.value || '';
+      acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, descricao: desc };
+      // Anexo
+      const fileInput = document.getElementById('trat-file');
+      if (fileInput?.files[0]) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          acoes[_tratativaKey].anexoData = ev.target.result;
+          acoes[_tratativaKey].anexoNome = fileInput.files[0].name;
+          localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+      }
+      showCopyToast('✅ Ação marcada como realizada!');
+      const panel = document.getElementById('acaoTratativaPanel');
+      if (panel) panel.style.display = 'none';
+      document.body.style.overflow = '';
+      _tratativaKey = null;
+      switchAcaoSub('realizado');
+    } else {
+      const dataPrevista = document.getElementById('trat-data-prev')?.value || '';
+      const motivo = document.getElementById('trat-motivo')?.value || '';
+      acoes[_tratativaKey] = { ...saved, status: 'nao_realizada', dataPrevista, motivo };
+      localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+      showCopyToast('📋 Ação salva como não realizada.');
+      const panel = document.getElementById('acaoTratativaPanel');
+      if (panel) panel.style.display = 'none';
+      document.body.style.overflow = '';
+      _tratativaKey = null;
+      renderAcaoTab();
+    }
+    updateTabBadgeAcao();
+  }
+
+  function autoSaveAcao(key) {
+    const desc     = document.getElementById('acao-desc-' + key)?.value || '';
+    const dataAcao = document.getElementById('acao-data-' + key)?.value || '';
+    const respExec = document.getElementById('acao-resp-exec-' + key)?.value || '';
+    const acoes = loadAcoes();
+    acoes[key] = { ...acoes[key], descricao: desc, dataAcao, respExec };
+    localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+  }
+
+  function marcarAcaoRealizada(key) {
+    const dataAcao = document.getElementById('acao-data-' + key)?.value || '';
+    const respExec = document.getElementById('acao-resp-exec-' + key)?.value || '';
+    if (!dataAcao || !respExec) {
+      showCopyToast('⚠️ Preencha a Data da ação e o Responsável antes de marcar como realizada.');
+      return;
+    }
+    const desc = document.getElementById('acao-desc-' + key)?.value || '';
+    const acoes = loadAcoes();
+    acoes[key] = { ...acoes[key], descricao: desc, dataAcao, respExec, status: 'realizada' };
+    localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+    switchAcaoSub('realizado');
+    updateTabBadgeAcao();
+    showCopyToast('✅ Ação marcada como realizada!');
+  }
+
+  function saveAcaoAnexo(key, input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const acoes = loadAcoes();
+      acoes[key] = { ...acoes[key], anexoData: e.target.result, anexoNome: file.name };
+      localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+      showCopyToast('📎 Anexo salvo!');
+    };
+    reader.readAsDataURL(file);
   }
 
   function printReuniao() {
