@@ -1603,6 +1603,9 @@ if (localStorage.getItem('enel_auth') === '1') {
       <span class="sidebar-icon">⚡</span> Ação
       <span class="sidebar-badge" id="tabBadgeAcao" style="display:none;background:#DC2626;">0</span>
     </button>
+    <button class="sidebar-item" id="tabBtnDashboard" onclick="switchTab('dashboard')" style="color:#34D399;">
+      <span class="sidebar-icon">📊</span> Dashboard
+    </button>
     <button class="sidebar-item config-item" id="tabBtnConfig" onclick="switchTab('config')" title="Acesso restrito ao administrador">
       <span class="sidebar-icon">⚙️</span> Configuração
     </button>
@@ -2050,6 +2053,130 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div id="acaoTratativaContent"></div>
   </div>
 </div>
+
+<!-- ── ABA DASHBOARD ── -->
+<div id="tabDashboard" style="display:none;">
+  <div style="max-width:1000px;margin:0 auto;padding:1.5rem 1rem;">
+
+    <!-- Cabeçalho -->
+    <div style="margin-bottom:1.25rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;letter-spacing:0.02em;">📊 Dashboard de Gestão</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Visão executiva das ocorrências e ações</div>
+      </div>
+      <button onclick="renderDashboard()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:6px 14px;border-radius:8px;border:1.5px solid #6EE7B7;background:white;color:#065F46;cursor:pointer;">🔄 Atualizar</button>
+    </div>
+
+    <!-- Filtros -->
+    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
+      <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9CA3AF;margin-bottom:0.75rem;">🔍 Filtros</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.65rem;">
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Equipe</label>
+          <input type="text" id="dash-f-equipe" placeholder="Todas" oninput="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Turno</label>
+          <select id="dash-f-turno" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
+            <option value="">Todos</option>
+            <option value="A">Turno A</option>
+            <option value="B">Turno B</option>
+            <option value="C">Turno C</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Resp. Ocorrência</label>
+          <select id="dash-f-resp-oc" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
+            <option value="">Todos</option>
+            <option value="Supervisão">Supervisão</option>
+            <option value="COD">COD</option>
+            <option value="Equipe">Equipe</option>
+            <option value="Coordenação">Coordenação</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Resp. Ação</label>
+          <select id="dash-f-resp-ac" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;"></select>
+        </div>
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Status</label>
+          <select id="dash-f-status" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
+            <option value="">Todos</option>
+            <option value="pendente">🔴 Pendente</option>
+            <option value="realizada">🟢 Realizada</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Data início</label>
+          <input type="date" id="dash-f-data-ini" oninput="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Data fim</label>
+          <input type="date" id="dash-f-data-fim" oninput="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button onclick="limparFiltrosDash()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;cursor:pointer;width:100%;">✕ Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div id="dash-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1.25rem;"></div>
+
+    <!-- Alertas -->
+    <div id="dash-alertas" style="margin-bottom:1.25rem;"></div>
+
+    <!-- Grid de gráficos -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">📊 Ações por Equipe</div>
+        <div id="dash-chart-equipe"></div>
+      </div>
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">👤 Ranking de Responsáveis</div>
+        <div id="dash-chart-resp"></div>
+      </div>
+    </div>
+
+    <!-- Evolução no tempo -->
+    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1.25rem;">
+      <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">📈 Evolução de Ações no Tempo</div>
+      <div id="dash-chart-tempo"></div>
+    </div>
+
+    <!-- Top problemas -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">🏆 Top 5 Problemas</div>
+        <div id="dash-top-problemas"></div>
+      </div>
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">🔁 Reincidência por Equipe</div>
+        <div id="dash-reincidencia"></div>
+      </div>
+    </div>
+
+    <!-- Tabela detalhada -->
+    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;">📋 Tabela Detalhada</div>
+        <input type="text" id="dash-busca" placeholder="🔍 Buscar..." oninput="renderDashboard()"
+          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:5px 10px;outline:none;width:200px;">
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="dash-tabela" style="width:100%;border-collapse:collapse;font-size:0.78rem;"></table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tabDashboard -->
 
 <div id="tabConfig" style="display:none;">
 <div id="configLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
@@ -5047,6 +5174,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     db:          '📊 Banco de Dados Produtividade',
     reuniao:     '📋 Painel de Reunião',
     acao:        '⚡ Módulo de Ação',
+    dashboard:   '📊 Dashboard de Gestão',
     config:      '⚙️ Configuração'
   };
 
@@ -5065,8 +5193,9 @@ if (localStorage.getItem('enel_auth') === '1') {
     document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
     document.getElementById('tabReuniao').style.display     = tab === 'reuniao'     ? 'block' : 'none';
     document.getElementById('tabAcao').style.display        = tab === 'acao'        ? 'block' : 'none';
+    document.getElementById('tabDashboard').style.display   = tab === 'dashboard'   ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','DB','Reuniao','Acao','Config'].forEach(t => {
+    ['Inicio','Form','Notify','DB','Reuniao','Acao','Dashboard','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
@@ -5080,6 +5209,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     }
     if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'acao')        { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'dashboard')   { renderDashboard(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')        { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -7282,7 +7412,285 @@ entryLines.join('\n\n') + '\n' +
     });
   }
 
-  // ── Responsáveis de Ação ──
+  // ══════════════════════════════════════════
+  //  DASHBOARD
+  // ══════════════════════════════════════════
+
+  function limparFiltrosDash() {
+    ['dash-f-equipe','dash-f-turno','dash-f-resp-oc','dash-f-resp-ac','dash-f-status','dash-f-data-ini','dash-f-data-fim','dash-busca']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    renderDashboard();
+  }
+
+  function renderDashboard() {
+    const records = loadDB();
+    const acoes   = loadAcoes();
+    const now     = Date.now();
+    const PRAZO_DIAS = 2; // Prazo máximo de resposta em dias
+
+    // Populate resp ação filter
+    const respSel = document.getElementById('dash-f-resp-ac');
+    if (respSel && respSel.options.length <= 1) {
+      getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
+    }
+
+    // Filters
+    const fEquipe  = (document.getElementById('dash-f-equipe')?.value   || '').trim().toUpperCase();
+    const fTurno   = document.getElementById('dash-f-turno')?.value    || '';
+    const fRespOc  = document.getElementById('dash-f-resp-oc')?.value  || '';
+    const fRespAc  = document.getElementById('dash-f-resp-ac')?.value  || '';
+    const fStatus  = document.getElementById('dash-f-status')?.value   || '';
+    const fDataIni = document.getElementById('dash-f-data-ini')?.value || '';
+    const fDataFim = document.getElementById('dash-f-data-fim')?.value || '';
+    const fBusca   = (document.getElementById('dash-busca')?.value     || '').trim().toUpperCase();
+
+    // Build flat list of ação items
+    const items = [];
+    records.forEach(r => {
+      if (fEquipe && !r.equipe?.toUpperCase().includes(fEquipe)) return;
+      if (fTurno  && r.turno !== fTurno) return;
+      if (fDataIni && r.data < fDataIni) return;
+      if (fDataFim && r.data > fDataFim) return;
+      (r.entries || []).forEach(e => {
+        if (e.acaoNecessaria !== 'sim' || !e.acaoResponsavel) return;
+        const key  = getAcaoKey(r.id, e);
+        const saved = acoes[key] || {};
+        const isRealizada = saved.status === 'realizada';
+        if (fRespOc && e.acaoResponsavel !== fRespOc) return;
+        if (fRespAc && saved.respExec    !== fRespAc) return;
+        if (fStatus === 'pendente'  &&  isRealizada) return;
+        if (fStatus === 'realizada' && !isRealizada) return;
+        const catNome = categorias[e.catKey]?.nome || e.catKey;
+        const dataTs  = r.data ? new Date(r.data + 'T12:00:00').getTime() : 0;
+        const diasPend = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
+        const tempoRespDias = (isRealizada && saved.dataAcao && r.data)
+          ? Math.max(0, Math.floor((new Date(saved.dataAcao+'T12:00:00') - new Date(r.data+'T12:00:00')) / 86400000))
+          : null;
+        const foraPrazo = !isRealizada && diasPend > PRAZO_DIAS;
+        items.push({ r, e, key, saved, isRealizada, catNome, diasPend, tempoRespDias, foraPrazo,
+          equipe: r.equipe, turno: r.turno, data: r.data, respOc: e.acaoResponsavel,
+          respAc: saved.respExec || '—', causaStr: e.causas?.join(', ') || e.obsCausa || '—',
+          tempoStr: e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '—' });
+      });
+    });
+
+    // Apply busca global
+    const filtered = fBusca ? items.filter(it =>
+      [it.equipe,it.catNome,it.causaStr,it.respOc,it.respAc,it.data].join('|').toUpperCase().includes(fBusca)
+    ) : items;
+
+    const total     = filtered.length;
+    const pendentes = filtered.filter(i => !i.isRealizada).length;
+    const realizadas= filtered.filter(i =>  i.isRealizada).length;
+    const tempos    = filtered.filter(i => i.tempoRespDias !== null).map(i => i.tempoRespDias);
+    const tMedio    = tempos.length ? (tempos.reduce((a,b)=>a+b,0)/tempos.length).toFixed(1) : '—';
+    const foraPrazo   = filtered.filter(i => i.foraPrazo).length;
+
+    // ── Cards de resumo ──
+    const cardsEl = document.getElementById('dash-cards');
+    if (cardsEl) cardsEl.innerHTML = [
+      ['📋','Total de Ações', total,         '#1E4DA1','#EFF6FF','#BFDBFE'],
+      ['🔴','Pendentes',      pendentes,      '#DC2626','#FEF2F2','#FCA5A5'],
+      ['🟢','Realizadas',     realizadas,     '#16A34A','#F0FDF4','#6EE7B7'],
+      ['⏱','Tempo médio resp',tMedio === '—' ? tMedio : tMedio+' dias', '#D97706','#FFFBEB','#FCD34D'],
+      ['⚠️','Fora do tempo de resposta', foraPrazo, '#9F1239','#FFF1F2','#FDA4AF'],
+    ].map(([icon,label,val,color,bg,bdr]) => `
+      <div style="background:${bg};border:1.5px solid ${bdr};border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:1.4rem;margin-bottom:2px;">${icon}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:800;color:${color};line-height:1;">${val}</div>
+        <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-top:3px;">${label}</div>
+      </div>`).join('');
+
+    // ── Alertas ──
+    const alertasEl = document.getElementById('dash-alertas');
+    if (alertasEl) {
+      const alertas = [];
+      const pendLong = filtered.filter(i => !i.isRealizada && i.diasPend > PRAZO_DIAS);
+      if (pendLong.length) alertas.push(`⚠️ <strong>${pendLong.length}</strong> ação(ões) pendentes há mais de ${PRAZO_DIAS} dias`);
+
+      // Equipe com mais estouro
+      const eqCount = {}; filtered.forEach(i => { eqCount[i.equipe] = (eqCount[i.equipe]||0)+1; });
+      const topEq = Object.entries(eqCount).sort((a,b)=>b[1]-a[1])[0];
+      if (topEq) alertas.push(`📌 Equipe com mais ocorrências: <strong>${topEq[0]}</strong> (${topEq[1]})`);
+
+      // Responsável com mais pendências
+      const respPend = {}; filtered.filter(i=>!i.isRealizada).forEach(i => { respPend[i.respAc]=(respPend[i.respAc]||0)+1; });
+      const topResp = Object.entries(respPend).filter(([k])=>k!=='—').sort((a,b)=>b[1]-a[1])[0];
+      if (topResp) alertas.push(`👤 Responsável com mais pendências: <strong>${topResp[0]}</strong> (${topResp[1]})`);
+
+      alertasEl.innerHTML = alertas.length ? `<div style="background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:10px;padding:0.85rem 1.1rem;display:flex;flex-direction:column;gap:0.4rem;">
+        ${alertas.map(a=>`<div style="font-size:0.82rem;color:#78350F;">${a}</div>`).join('')}
+      </div>` : '';
+    }
+
+    // ── Bar chart helper ──
+    const barChart = (containerId, data, colorFn) => {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const max = Math.max(...data.map(d=>d.total), 1);
+      el.innerHTML = data.slice(0,8).map(d => {
+        const pct = Math.round(d.total/max*100);
+        const pctR = d.total ? Math.round(d.realizadas/d.total*100) : 0;
+        return `<div style="margin-bottom:0.6rem;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;">
+            <span style="font-size:0.78rem;font-weight:700;color:#374151;">${d.label}</span>
+            <span style="font-size:0.7rem;color:#6B7280;">${d.total} · ${pctR}% resolvido</span>
+          </div>
+          <div style="height:10px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${colorFn(d)};border-radius:99px;transition:width 0.4s;"></div>
+          </div>
+        </div>`;
+      }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
+    };
+
+    // ── Por Equipe ──
+    const eqMap = {};
+    filtered.forEach(i => {
+      if (!eqMap[i.equipe]) eqMap[i.equipe] = {label:i.equipe,total:0,realizadas:0};
+      eqMap[i.equipe].total++;
+      if (i.isRealizada) eqMap[i.equipe].realizadas++;
+    });
+    barChart('dash-chart-equipe', Object.values(eqMap).sort((a,b)=>b.total-a.total),
+      d => d.realizadas/d.total >= 0.7 ? '#16A34A' : d.realizadas/d.total >= 0.4 ? '#D97706' : '#DC2626');
+
+    // ── Por Responsável ──
+    const respMap = {};
+    filtered.forEach(i => {
+      const k = i.respAc || '—';
+      if (!respMap[k]) respMap[k] = {label:k,total:0,realizadas:0,tempos:[]};
+      respMap[k].total++;
+      if (i.isRealizada) { respMap[k].realizadas++; if(i.tempoRespDias!==null) respMap[k].tempos.push(i.tempoRespDias); }
+    });
+    const respEl = document.getElementById('dash-chart-resp');
+    if (respEl) respEl.innerHTML = Object.values(respMap).sort((a,b)=>b.total-a.total).slice(0,8).map(d => {
+      const tM = d.tempos.length ? (d.tempos.reduce((a,b)=>a+b,0)/d.tempos.length).toFixed(1) : '—';
+      const pend = d.total - d.realizadas;
+      const cor = pend >= 3 ? '#DC2626' : pend >= 1 ? '#D97706' : '#16A34A';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid #F3F4F6;">
+        <div>
+          <div style="font-size:0.82rem;font-weight:700;color:#374151;">${d.label}</div>
+          <div style="font-size:0.68rem;color:#9CA3AF;">⏱ T.médio: ${tM === '—' ? tM : tM+'d'}</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <span style="font-size:0.72rem;background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;">${d.realizadas} ✓</span>
+          <span style="font-size:0.72rem;background:${pend>0?'#FEE2E2':'#F3F4F6'};color:${cor};padding:2px 7px;border-radius:99px;">${pend} ⏳</span>
+        </div>
+      </div>`;
+    }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
+
+    // ── Evolução no tempo ──
+    const tempoMap = {};
+    filtered.forEach(i => { tempoMap[i.data] = (tempoMap[i.data]||0)+1; });
+    const tempoEl = document.getElementById('dash-chart-tempo');
+    if (tempoEl) {
+      const dias = Object.keys(tempoMap).sort();
+      if (!dias.length) { tempoEl.innerHTML = '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>'; }
+      else {
+        const maxV = Math.max(...dias.map(d=>tempoMap[d]),1);
+        tempoEl.innerHTML = `<div style="display:flex;align-items:flex-end;gap:4px;height:80px;overflow-x:auto;">
+          ${dias.map(d => {
+            const h = Math.round(tempoMap[d]/maxV*70);
+            const [y,m,dd] = d.split('-');
+            return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:36px;" title="${dd}/${m}: ${tempoMap[d]} ação(ões)">
+              <div style="font-size:0.6rem;color:#6B7280;margin-bottom:2px;">${tempoMap[d]}</div>
+              <div style="width:28px;height:${h}px;background:#1E4DA1;border-radius:4px 4px 0 0;"></div>
+              <div style="font-size:0.6rem;color:#9CA3AF;margin-top:3px;">${dd}/${m}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+    }
+
+    // ── Top 5 Problemas ──
+    const catMap = {};
+    filtered.forEach(i => { catMap[i.catNome] = (catMap[i.catNome]||0)+1; });
+    const topEl = document.getElementById('dash-top-problemas');
+    if (topEl) {
+      const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const maxC = top5[0]?.[1] || 1;
+      topEl.innerHTML = top5.map(([nome,cnt],i) => `
+        <div style="margin-bottom:0.55rem;display:flex;align-items:center;gap:0.6rem;">
+          <span style="font-size:0.7rem;font-weight:800;color:#9CA3AF;width:16px;text-align:center;">${i+1}</span>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+              <span style="font-size:0.78rem;font-weight:700;color:#374151;">${nome}</span>
+              <span style="font-size:0.72rem;color:#6B7280;">${cnt}</span>
+            </div>
+            <div style="height:7px;background:#F3F4F6;border-radius:99px;"><div style="height:100%;width:${Math.round(cnt/maxC*100)}%;background:#1E4DA1;border-radius:99px;"></div></div>
+          </div>
+        </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
+    }
+
+    // ── Reincidência ──
+    const reincMap = {};
+    filtered.forEach(i => {
+      const k = i.equipe;
+      if (!reincMap[k]) reincMap[k] = {};
+      reincMap[k][i.catNome] = (reincMap[k][i.catNome]||0)+1;
+    });
+    const rEl = document.getElementById('dash-reincidencia');
+    if (rEl) {
+      const rows = Object.entries(reincMap).map(([eq,cats]) => {
+        const top = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
+        return { eq, cat: top?.[0]||'—', cnt: top?.[1]||0 };
+      }).sort((a,b)=>b.cnt-a.cnt).slice(0,6);
+      rEl.innerHTML = rows.map(r => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid #F3F4F6;">
+          <div>
+            <div style="font-size:0.82rem;font-weight:700;color:#374151;">${r.eq}</div>
+            <div style="font-size:0.68rem;color:#9CA3AF;">${r.cat}</div>
+          </div>
+          <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt}×</span>
+        </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
+    }
+
+    // ── Tabela detalhada ──
+    const table = document.getElementById('dash-tabela');
+    if (table) {
+      const thStyle = 'padding:0.5rem 0.65rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:2px solid #F3F4F6;white-space:nowrap;';
+      const tdStyle = 'padding:0.45rem 0.65rem;font-size:0.78rem;border-bottom:1px solid #F9FAFB;';
+      table.innerHTML = `<thead><tr>
+        <th style="${thStyle}">Data</th>
+        <th style="${thStyle}">Equipe</th>
+        <th style="${thStyle}">Turno</th>
+        <th style="${thStyle}">Categoria</th>
+        <th style="${thStyle}">Tempo Fora</th>
+        <th style="${thStyle}">Resp. Ocorrência</th>
+        <th style="${thStyle}">Resp. Ação</th>
+        <th style="${thStyle}">Status</th>
+        <th style="${thStyle}">Data Ação</th>
+        <th style="${thStyle}">Prazo</th>
+      </tr></thead>
+      <tbody>${filtered.map(i => {
+        const [y,m,d] = i.data.split('-');
+        const dataBR = `${d}/${m}/${y}`;
+        const sla = i.isRealizada
+          ? (i.tempoRespDias !== null && i.tempoRespDias <= PRAZO_DIAS
+              ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ No prazo</span>`
+              : `<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">❌ Fora</span>`)
+          : (i.foraPrazo
+              ? `<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">⚠️ ${i.diasPend}d</span>`
+              : `<span style="background:#FEF9EC;color:#92400E;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">⏳ ${i.diasPend}d</span>`);
+        const statusBadge = i.isRealizada
+          ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🟢</span>`
+          : `<span style="background:#FEE2E2;color:#991B1B;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🔴</span>`;
+        return `<tr>
+          <td style="${tdStyle}">${dataBR}</td>
+          <td style="${tdStyle};font-weight:700;">${i.equipe}</td>
+          <td style="${tdStyle}">${i.turno}</td>
+          <td style="${tdStyle}">${i.catNome}</td>
+          <td style="${tdStyle};font-weight:700;color:#DC2626;">${i.tempoStr}</td>
+          <td style="${tdStyle}">${i.respOc}</td>
+          <td style="${tdStyle};font-weight:600;">${i.respAc}</td>
+          <td style="${tdStyle}">${statusBadge}</td>
+          <td style="${tdStyle}">${i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '—'}</td>
+          <td style="${tdStyle}">${sla}</td>
+        </tr>`;
+      }).join('')}</tbody>`;
+    }
+  }
+
+
   const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
   const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
 
@@ -7324,6 +7732,27 @@ entryLines.join('\n\n') + '\n' +
     const nomes = getRespAcao().filter(n => n !== nome);
     saveRespAcao(nomes);
     renderCfgRespAcao();
+  }
+
+  const PRAZO_RESPOSTA_DIAS = 2; // Prazo máximo para responder uma ação
+
+  function calcPrazoAcao(dataOcorrencia) {
+    // Retorna { prazoDate, diasRestantes, status: 'ok'|'atencao'|'vencido', label, color, bg }
+    if (!dataOcorrencia) return null;
+    const base  = new Date(dataOcorrencia + 'T12:00:00');
+    const prazo = new Date(base);
+    prazo.setDate(prazo.getDate() + PRAZO_RESPOSTA_DIAS);
+    const hoje  = new Date();
+    hoje.setHours(12,0,0,0);
+    const diff  = Math.ceil((prazo - hoje) / 86400000);
+    const [py,pm,pd] = prazo.toISOString().slice(0,10).split('-');
+    const prazoStr = `${pd}/${pm}`;
+    if (diff < 0) return { prazoStr, diasRestantes: diff, status:'vencido',
+      label: `Vencido há ${Math.abs(diff)} dia${Math.abs(diff)!==1?'s':''}`, color:'#991B1B', bg:'#FEE2E2', border:'#FCA5A5' };
+    if (diff <= 1) return { prazoStr, diasRestantes: diff, status:'atencao',
+      label: diff === 0 ? 'Vence hoje!' : 'Vence amanhã', color:'#92400E', bg:'#FEF9C3', border:'#FCD34D' };
+    return { prazoStr, diasRestantes: diff, status:'ok',
+      label: `Prazo: ${prazoStr} (${diff}d)`, color:'#065F46', bg:'#D1FAE5', border:'#6EE7B7' };
   }
 
   // ── Módulo de Ação ──
@@ -7472,6 +7901,12 @@ entryLines.join('\n\n') + '\n' +
         : `⏳ Pendente há ${diasPendente} dias`;
       const diasColor = isRealizada ? '#16A34A' : diasPendente >= 3 ? '#DC2626' : diasPendente >= 1 ? '#D97706' : '#6B7280';
 
+      // Prazo de resposta — só para pendentes e não realizadas
+      const prazoInfo = (!isRealizada) ? calcPrazoAcao(r.data) : null;
+      const prazoBadge = prazoInfo ? `<span style="font-size:0.72rem;font-weight:800;background:${prazoInfo.bg};color:${prazoInfo.color};padding:3px 9px;border-radius:99px;border:1px solid ${prazoInfo.border};white-space:nowrap;">
+        ${prazoInfo.status==='vencido'?'🔴':prazoInfo.status==='atencao'?'🟡':'🟢'} ${prazoInfo.label}
+      </span>` : '';
+
       if (isRealizada) {
         return `<div style="background:white;border:1.5px solid #D1FAE5;border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
@@ -7490,7 +7925,7 @@ entryLines.join('\n\n') + '\n' +
         </div>`;
       }
 
-      return `<div style="background:white;border:1.5px solid #E5E7EB;border-left:4px solid ${diasColor};border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      return `<div style="background:white;border:1.5px solid #E5E7EB;border-left:4px solid ${prazoInfo?.status==='vencido'?'#DC2626':prazoInfo?.status==='atencao'?'#D97706':'#6B7280'};border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
           <span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:99px;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Pendente</span>
           <div>
@@ -7498,6 +7933,7 @@ entryLines.join('\n\n') + '\n' +
             <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
           </div>
           ${tempoPill}
+          ${prazoBadge}
         </div>
         <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
           <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
@@ -7570,6 +8006,15 @@ entryLines.join('\n\n') + '\n' +
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Responsável indicado</div>
             <div style="font-size:0.88rem;font-weight:700;color:#374151;margin-top:2px;">${foundE.acaoResponsavel}</div>
           </div>
+          ${!isRealizada && foundR.data ? (() => {
+            const p = calcPrazoAcao(foundR.data);
+            return p ? `<div style="grid-column:1/-1;background:${p.bg};border:1px solid ${p.border};border-radius:8px;padding:0.6rem 0.85rem;">
+              <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:${p.color};">⏰ Prazo de resposta</div>
+              <div style="font-size:0.88rem;font-weight:800;color:${p.color};margin-top:2px;">
+                ${p.status==='vencido'?'🔴':p.status==='atencao'?'🟡':'🟢'} ${p.label}
+              </div>
+            </div>` : '';
+          })() : ''}
           ${foundE.justificativa ? `<div style="grid-column:1/-1;background:#FEF9EC;border:1px solid #FCD34D;border-radius:8px;padding:0.6rem 0.85rem;">
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#92400E;">⚠️ Justificativa do registro</div>
             <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.justificativa}</div>
