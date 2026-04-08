@@ -7158,6 +7158,7 @@ entryLines.join('\n\n') + '\n' +
     initDefaults();
     initFirebaseSync();
     initConfigSync();
+    initAcoesSync();
     applyCatLimites();
     const _custom = getCustomLimites();
     Object.entries(_custom).forEach(([k,v]) => { INCIDENCIA_LIMITES[k] = v; });
@@ -7885,16 +7886,57 @@ entryLines.join('\n\n') + '\n' +
 
   // Acoes salvas separadamente no localStorage
   const ACOES_KEY = 'enel_acoes';
+  const FB_ACOES_PATH = 'produtividade/acoes';
+  let _acoesCache = null; // null = not loaded yet
 
   function loadAcoes() {
-    try { return JSON.parse(localStorage.getItem(ACOES_KEY) || '{}'); } catch { return {}; }
+    // Returns cache if available, otherwise reads from localStorage
+    if (_acoesCache !== null) return _acoesCache;
+    try { _acoesCache = JSON.parse(localStorage.getItem(ACOES_KEY) || '{}'); } catch { _acoesCache = {}; }
+    return _acoesCache;
+  }
+
+  function persistAcoes(acoes) {
+    _acoesCache = acoes;
+    try { localStorage.setItem(ACOES_KEY, JSON.stringify(acoes)); } catch {}
+    // Sync to Firebase
+    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/${FB_ACOES_PATH}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(acoes)
+    }).catch(() => {});
+  }
+
+  // Poll Firebase for ações every 8 seconds
+  function initAcoesSync() {
+    const poll = () => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/${FB_ACOES_PATH}.json`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data || typeof data !== 'object') return;
+          const remote = data;
+          const local  = loadAcoes();
+          // Merge: remote wins for each key (last write wins)
+          const merged = { ...local, ...remote };
+          _acoesCache = merged;
+          try { localStorage.setItem(ACOES_KEY, JSON.stringify(merged)); } catch {}
+          // Refresh ação tab if visible
+          if (document.getElementById('tabAcao')?.style.display !== 'none') {
+            renderAcaoTab();
+          }
+          updateTabBadgeAcao();
+        })
+        .catch(() => {});
+    };
+    poll(); // immediate
+    setInterval(poll, 8000);
   }
 
   function saveAcaoData(recordId, entryId, data) {
     const acoes = loadAcoes();
     const key = `${recordId}_${entryId}`;
     acoes[key] = { ...acoes[key], ...data };
-    localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+    persistAcoes(acoes);
   }
 
   function getAcaoStatus(recordId, e) {
@@ -8209,7 +8251,7 @@ entryLines.join('\n\n') + '\n' +
 
       // Salva status realizada IMEDIATAMENTE no localStorage (antes do FileReader)
       acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, descricao: desc };
-      localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+      persistAcoes(acoes);
 
       // Anexo — leitura assíncrona, atualiza depois sem bloquear o fluxo
       const fileInput = document.getElementById('trat-file');
@@ -8222,7 +8264,7 @@ entryLines.join('\n\n') + '\n' +
           if (a[keySnapshot]) {
             a[keySnapshot].anexoData = ev.target.result;
             a[keySnapshot].anexoNome = fileName;
-            localStorage.setItem(ACOES_KEY, JSON.stringify(a));
+            persistAcoes(a);
           }
         };
         reader.readAsDataURL(fileInput.files[0]);
@@ -8238,7 +8280,7 @@ entryLines.join('\n\n') + '\n' +
       const dataPrevista = document.getElementById('trat-data-prev')?.value || '';
       const motivo = document.getElementById('trat-motivo')?.value || '';
       acoes[_tratativaKey] = { ...saved, status: 'nao_realizada', dataPrevista, motivo };
-      localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+      persistAcoes(acoes);
       showCopyToast('📋 Ação salva como não realizada.');
       const panel = document.getElementById('acaoTratativaPanel');
       if (panel) panel.style.display = 'none';
@@ -8255,7 +8297,7 @@ entryLines.join('\n\n') + '\n' +
     const respExec = document.getElementById('acao-resp-exec-' + key)?.value || '';
     const acoes = loadAcoes();
     acoes[key] = { ...acoes[key], descricao: desc, dataAcao, respExec };
-    localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+    persistAcoes(acoes);
   }
 
   function marcarAcaoRealizada(key) {
@@ -8268,7 +8310,7 @@ entryLines.join('\n\n') + '\n' +
     const desc = document.getElementById('acao-desc-' + key)?.value || '';
     const acoes = loadAcoes();
     acoes[key] = { ...acoes[key], descricao: desc, dataAcao, respExec, status: 'realizada' };
-    localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+    persistAcoes(acoes);
     switchAcaoSub('realizado');
     updateTabBadgeAcao();
     showCopyToast('✅ Ação marcada como realizada!');
@@ -8319,7 +8361,7 @@ entryLines.join('\n\n') + '\n' +
     reader.onload = (e) => {
       const acoes = loadAcoes();
       acoes[key] = { ...acoes[key], anexoData: e.target.result, anexoNome: file.name };
-      localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+      persistAcoes(acoes);
       showCopyToast('📎 Anexo salvo!');
     };
     reader.readAsDataURL(file);
