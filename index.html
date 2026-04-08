@@ -2041,15 +2041,15 @@ if (localStorage.getItem('enel_auth') === '1') {
     <!-- Lista de cards -->
     <div id="acaoList"></div>
 
-    <!-- Painel de tratativa (abre ao clicar em Resolver) -->
-    <div id="acaoTratativaPanel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:9000;overflow-y:auto;display:none;" onclick="fecharTratativa(event)">
-      <div onclick="event.stopPropagation()" style="background:white;border-radius:16px;max-width:600px;margin:2rem auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
-        <div id="acaoTratativaContent"></div>
-      </div>
-    </div>
-
   </div>
 </div><!-- /tabAcao -->
+
+<!-- Painel de tratativa — fora de qualquer container para overlay correto -->
+<div id="acaoTratativaPanel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;align-items:flex-start;justify-content:center;padding:2rem 1rem;box-sizing:border-box;" onclick="fecharTratativa(event)">
+  <div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
+    <div id="acaoTratativaContent"></div>
+  </div>
+</div>
 
 <div id="tabConfig" style="display:none;">
 <div id="configLock" style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center;">
@@ -2765,16 +2765,24 @@ if (localStorage.getItem('enel_auth') === '1') {
           <!-- Módulo de Ação -->
           <div style="margin-top:0.65rem;padding-top:0.65rem;border-top:1px solid #FCA5A5;">
             <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.5rem;">⚡ É necessário uma ação?</div>
-            <div style="display:flex;gap:1rem;margin-bottom:0.5rem;">
-              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;font-weight:700;cursor:pointer;">
-                <input type="radio" name="acao-sim-nao-${id}" id="acao-sim-${id}" value="sim" onchange="toggleAcaoResponsavel('${id}')"> Sim
+            <div style="display:flex;gap:0.6rem;margin-bottom:0.5rem;">
+              <label id="acao-label-sim-${id}" style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;font-weight:700;cursor:pointer;padding:5px 14px;border-radius:8px;border:2px solid #E5E7EB;background:white;color:#16A34A;transition:all 0.15s;">
+                <input type="radio" name="acao-sim-nao-${id}" id="acao-sim-${id}" value="sim"
+                  style="display:none;"
+                  onchange="toggleAcaoResponsavel('${id}');updateAcaoRadioStyle('${id}')">
+                <span id="acao-check-sim-${id}" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:2px solid #16A34A;background:white;color:white;font-size:0.65rem;font-weight:900;flex-shrink:0;"></span>
+                Sim
               </label>
-              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;font-weight:700;cursor:pointer;">
-                <input type="radio" name="acao-sim-nao-${id}" id="acao-nao-${id}" value="nao" onchange="toggleAcaoResponsavel('${id}')"> Não
+              <label id="acao-label-nao-${id}" style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;font-weight:700;cursor:pointer;padding:5px 14px;border-radius:8px;border:2px solid #E5E7EB;background:white;color:#DC2626;transition:all 0.15s;">
+                <input type="radio" name="acao-sim-nao-${id}" id="acao-nao-${id}" value="nao"
+                  style="display:none;"
+                  onchange="toggleAcaoResponsavel('${id}');updateAcaoRadioStyle('${id}')">
+                <span id="acao-check-nao-${id}" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:2px solid #DC2626;background:white;color:white;font-size:0.65rem;font-weight:900;flex-shrink:0;"></span>
+                Não
               </label>
             </div>
             <div id="acao-resp-block-${id}" style="display:none;">
-              <label style="font-size:0.72rem;font-weight:700;color:#991B1B;display:block;margin-bottom:0.3rem;">Responsável pela ação:</label>
+              <label style="font-size:0.72rem;font-weight:700;color:#991B1B;display:block;margin-bottom:0.3rem;">Responsável pela Ocorrência:</label>
               <select id="acao-resp-${id}"
                 style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;border:1.5px solid #FCA5A5;border-radius:6px;padding:5px 10px;background:white;color:#374151;outline:none;">
                 <option value="">— Selecione —</option>
@@ -6950,6 +6958,27 @@ entryLines.join('\n\n') + '\n' +
       if (tc) tc.textContent = todayCount;
       if (tt) tt.textContent = records.length;
       if (tp) tp.textContent = pending;
+
+      // Atualiza badge de ações pendentes (sidebar) a cada segundo
+      try {
+        const acoes = loadAcoes();
+        let acPendentes = 0, acRealizadas = 0;
+        records.forEach(r => {
+          (r.entries || []).forEach(e => {
+            if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
+              const k = getAcaoKey(r.id, e);
+              if (acoes[k]?.status === 'realizada') acRealizadas++;
+              else acPendentes++;
+            }
+          });
+        });
+        const badge = document.getElementById('tabBadgeAcao');
+        if (badge) { badge.textContent = acPendentes; badge.style.display = acPendentes > 0 ? 'inline-flex' : 'none'; }
+        const bp = document.getElementById('acaoSubBadgePendente');
+        const br = document.getElementById('acaoSubBadgeRealizado');
+        if (bp) bp.textContent = acPendentes;
+        if (br) br.textContent = acRealizadas;
+      } catch(e) {}
     } catch(e) {}
   }
 
@@ -7322,6 +7351,18 @@ entryLines.join('\n\n') + '\n' +
     if (block) block.style.display = val === 'sim' ? 'block' : 'none';
   }
 
+  function updateAcaoRadioStyle(id) {
+    const val = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value;
+    const lSim = document.getElementById('acao-label-sim-' + id);
+    const lNao = document.getElementById('acao-label-nao-' + id);
+    const cSim = document.getElementById('acao-check-sim-' + id);
+    const cNao = document.getElementById('acao-check-nao-' + id);
+    if (lSim) { lSim.style.borderColor = val==='sim'?'#16A34A':'#E5E7EB'; lSim.style.background = val==='sim'?'#F0FDF4':'white'; }
+    if (lNao) { lNao.style.borderColor = val==='nao'?'#DC2626':'#E5E7EB'; lNao.style.background = val==='nao'?'#FEF2F2':'white'; }
+    if (cSim) { cSim.style.background = val==='sim'?'#16A34A':'white'; cSim.textContent = val==='sim'?'✕':''; }
+    if (cNao) { cNao.style.background = val==='nao'?'#DC2626':'white'; cNao.textContent = val==='nao'?'✕':''; }
+  }
+
   function updateTabBadgeAcao() {
     const records = loadDB();
     const acoes = loadAcoes();
@@ -7538,22 +7579,26 @@ entryLines.join('\n\n') + '\n' +
 
       <!-- Bloco 2: Decisão -->
       <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #F3F4F6;">
-        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#6B7280;margin-bottom:1rem;">🎯 Decisão do Supervisor</div>
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#6B7280;margin-bottom:1rem;">⚡ Ação</div>
 
         <div style="background:#F8FAFF;border:1.5px solid #E0E7FF;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;">
           <div style="font-size:0.9rem;font-weight:800;color:#1E3A5F;margin-bottom:0.75rem;">Essa ação foi realizada?</div>
-          <div style="display:flex;gap:1.5rem;">
-            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;font-weight:700;cursor:pointer;color:#16A34A;">
+          <div style="display:flex;gap:0.75rem;">
+            <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.9rem;font-weight:700;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;border:2px solid ${(saved.status==='realizada' || !saved.status) ? '#16A34A' : '#E5E7EB'};background:${(saved.status==='realizada' || !saved.status) ? '#F0FDF4' : 'white'};color:#16A34A;transition:all 0.15s;" id="trat-label-sim">
               <input type="radio" name="tratativa-realizada" id="trat-sim" value="sim"
                 ${(saved.status==='realizada' || !saved.status) ? 'checked' : ''}
-                onchange="toggleTratativaDecisao()">
-              ✅ Sim, foi realizada
+                onchange="toggleTratativaDecisao()"
+                style="display:none;">
+              <span id="trat-check-sim" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:2px solid #16A34A;background:${(saved.status==='realizada' || !saved.status) ? '#16A34A' : 'white'};color:white;font-size:0.7rem;font-weight:900;flex-shrink:0;">${(saved.status==='realizada' || !saved.status) ? '✕' : ''}</span>
+              Sim, foi realizada
             </label>
-            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;font-weight:700;cursor:pointer;color:#DC2626;">
+            <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.9rem;font-weight:700;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;border:2px solid ${saved.status==='nao_realizada' ? '#DC2626' : '#E5E7EB'};background:${saved.status==='nao_realizada' ? '#FEF2F2' : 'white'};color:#DC2626;transition:all 0.15s;" id="trat-label-nao">
               <input type="radio" name="tratativa-realizada" id="trat-nao" value="nao"
                 ${saved.status==='nao_realizada' ? 'checked' : ''}
-                onchange="toggleTratativaDecisao()">
-              ❌ Não foi realizada
+                onchange="toggleTratativaDecisao()"
+                style="display:none;">
+              <span id="trat-check-nao" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:2px solid #DC2626;background:${saved.status==='nao_realizada' ? '#DC2626' : 'white'};color:white;font-size:0.7rem;font-weight:900;flex-shrink:0;">${saved.status==='nao_realizada' ? '✕' : ''}</span>
+              Não foi realizada
             </label>
           </div>
         </div>
@@ -7613,12 +7658,22 @@ entryLines.join('\n\n') + '\n' +
 
     panel.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    panel.scrollTop = 0;
   }
 
   function toggleTratativaDecisao() {
     const val = document.querySelector('input[name="tratativa-realizada"]:checked')?.value;
     document.getElementById('trat-bloco-sim').style.display = val === 'sim' ? 'block' : 'none';
     document.getElementById('trat-bloco-nao').style.display = val === 'nao' ? 'block' : 'none';
+    // Update visual state of styled buttons
+    const lSim = document.getElementById('trat-label-sim');
+    const lNao = document.getElementById('trat-label-nao');
+    const cSim = document.getElementById('trat-check-sim');
+    const cNao = document.getElementById('trat-check-nao');
+    if (lSim) { lSim.style.borderColor = val==='sim'?'#16A34A':'#E5E7EB'; lSim.style.background = val==='sim'?'#F0FDF4':'white'; }
+    if (lNao) { lNao.style.borderColor = val==='nao'?'#DC2626':'#E5E7EB'; lNao.style.background = val==='nao'?'#FEF2F2':'white'; }
+    if (cSim) { cSim.style.background = val==='sim'?'#16A34A':'white'; cSim.textContent = val==='sim'?'✕':''; }
+    if (cNao) { cNao.style.background = val==='nao'?'#DC2626':'white'; cNao.textContent = val==='nao'?'✕':''; }
   }
 
   function fecharTratativa(e) {
