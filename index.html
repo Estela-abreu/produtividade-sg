@@ -2091,10 +2091,6 @@ if (localStorage.getItem('enel_auth') === '1') {
           <select id="dash-f-resp-oc" onchange="renderDashboard()"
             style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
             <option value="">Todos</option>
-            <option value="Supervisão">Supervisão</option>
-            <option value="COD">COD</option>
-            <option value="Equipe">Equipe</option>
-            <option value="Coordenação">Coordenação</option>
           </select>
         </div>
         <div>
@@ -2273,13 +2269,27 @@ if (localStorage.getItem('enel_auth') === '1') {
   <div class="cfg-card">
     <div class="cfg-card-header">⚡ Responsáveis de Ação</div>
     <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Nomes disponíveis para seleção como responsável na aba Ação e no Registro.</div>
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Nomes disponíveis para seleção como responsável na aba Ação.</div>
       <div class="cfg-add-row">
         <input type="text" id="cfgRespAcaoInput" placeholder="Nome do responsável" class="cfg-input" style="max-width:220px;"
           onkeydown="if(event.key==='Enter')cfgAddRespAcao()">
         <button class="cfg-btn-add" onclick="cfgAddRespAcao()">+ Adicionar</button>
       </div>
       <div id="cfgRespAcaoList" class="cfg-tag-list"></div>
+    </div>
+  </div>
+
+  <!-- Seção: Responsáveis pela Ocorrência -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">🔖 Responsáveis pela Ocorrência</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Opções disponíveis no campo "Responsável pela Ocorrência" na aba Registro.</div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgRespOcInput" placeholder="Ex: Supervisão, COD..." class="cfg-input" style="max-width:220px;"
+          onkeydown="if(event.key==='Enter')cfgAddRespOc()">
+        <button class="cfg-btn-add" onclick="cfgAddRespOc()">+ Adicionar</button>
+      </div>
+      <div id="cfgRespOcList" class="cfg-tag-list"></div>
     </div>
   </div>
 
@@ -2913,10 +2923,7 @@ if (localStorage.getItem('enel_auth') === '1') {
               <select id="acao-resp-${id}"
                 style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;border:1.5px solid #FCA5A5;border-radius:6px;padding:5px 10px;background:white;color:#374151;outline:none;">
                 <option value="">— Selecione —</option>
-                <option value="Supervisão">Supervisão</option>
-                <option value="COD">COD</option>
-                <option value="Equipe">Equipe</option>
-                <option value="Coordenação">Coordenação</option>
+                ${getRespOc().map(n => `<option value="${n}">${n}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -3692,6 +3699,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     if (!getCfg(CFG_CAUSAS_KEY, null))    saveCausas([...CAUSAS_INCIDENCIA]);
     if (!getCfg(CFG_EQUIPES_KEY, null))   saveEquipes([...EQUIPES_DEFAULT]);
     if (!getCfg(CFG_RESP_ACAO_KEY, null)) saveRespAcao([...RESP_ACAO_DEFAULT]);
+    if (!getCfg(CFG_RESP_OC_KEY,  null)) saveRespOc([...RESP_OC_DEFAULT]);
   }
 
   function getObsPlaceholder() { return getCfg(CFG_OBS_KEY, 'Descreva detalhes desta ocorrência...'); }
@@ -6469,6 +6477,7 @@ entryLines.join('\n\n') + '\n' +
     renderCfgSupervisores();
     renderCfgContacts();
     renderCfgRespAcao();
+    renderCfgRespOc();
   }
 
   // ── Equipes ──
@@ -7433,6 +7442,11 @@ entryLines.join('\n\n') + '\n' +
     if (respSel && respSel.options.length <= 1) {
       getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
     }
+    // Populate resp ocorrência filter
+    const respOcSel = document.getElementById('dash-f-resp-oc');
+    if (respOcSel && respOcSel.options.length <= 1) {
+      getRespOc().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respOcSel.appendChild(o); });
+    }
 
     // Filters
     const fEquipe  = (document.getElementById('dash-f-equipe')?.value   || '').trim().toUpperCase();
@@ -7694,12 +7708,55 @@ entryLines.join('\n\n') + '\n' +
   const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
   const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
 
+  const CFG_RESP_OC_KEY  = 'enel_cfg_resp_oc';
+  const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
+
   function getRespAcao() {
     return getCfg(CFG_RESP_ACAO_KEY, [...RESP_ACAO_DEFAULT]);
   }
 
   function saveRespAcao(arr) {
     saveCfg(CFG_RESP_ACAO_KEY, [...new Set(arr)]);
+  }
+
+  function getRespOc() {
+    return getCfg(CFG_RESP_OC_KEY, [...RESP_OC_DEFAULT]);
+  }
+
+  function saveRespOc(arr) {
+    saveCfg(CFG_RESP_OC_KEY, [...new Set(arr)]);
+  }
+
+  function renderCfgRespOc() {
+    const list = document.getElementById('cfgRespOcList');
+    if (!list) return;
+    const nomes = getRespOc();
+    list.innerHTML = '';
+    nomes.forEach(n => {
+      const tag = document.createElement('span');
+      tag.className = 'cfg-tag';
+      tag.innerHTML = n + `<button onclick="cfgRemoveRespOc('${n.replace(/'/g,"\\'")}')">✕</button>`;
+      list.appendChild(tag);
+    });
+  }
+
+  function cfgAddRespOc() {
+    const inp = document.getElementById('cfgRespOcInput');
+    const nome = inp?.value.trim();
+    if (!nome) return;
+    const nomes = getRespOc();
+    if (!nomes.map(n=>n.toLowerCase()).includes(nome.toLowerCase())) {
+      nomes.push(nome);
+      saveRespOc(nomes);
+      renderCfgRespOc();
+    }
+    if (inp) inp.value = '';
+  }
+
+  function cfgRemoveRespOc(nome) {
+    const nomes = getRespOc().filter(n => n !== nome);
+    saveRespOc(nomes);
+    renderCfgRespOc();
   }
 
   function renderCfgRespAcao() {
@@ -8142,20 +8199,28 @@ entryLines.join('\n\n') + '\n' +
       const dataAcao = document.getElementById('trat-data')?.value || '';
       if (!respExec || !dataAcao) { showCopyToast('⚠️ Preencha o Responsável e a Data da ação.'); return; }
       const desc = document.getElementById('trat-desc')?.value || '';
+
+      // Salva status realizada IMEDIATAMENTE no localStorage (antes do FileReader)
       acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, descricao: desc };
-      // Anexo
+      localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+
+      // Anexo — leitura assíncrona, atualiza depois sem bloquear o fluxo
       const fileInput = document.getElementById('trat-file');
       if (fileInput?.files[0]) {
+        const keySnapshot = _tratativaKey;
+        const fileName    = fileInput.files[0].name;
         const reader = new FileReader();
         reader.onload = ev => {
-          acoes[_tratativaKey].anexoData = ev.target.result;
-          acoes[_tratativaKey].anexoNome = fileInput.files[0].name;
-          localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
+          const a = loadAcoes();
+          if (a[keySnapshot]) {
+            a[keySnapshot].anexoData = ev.target.result;
+            a[keySnapshot].anexoNome = fileName;
+            localStorage.setItem(ACOES_KEY, JSON.stringify(a));
+          }
         };
         reader.readAsDataURL(fileInput.files[0]);
-      } else {
-        localStorage.setItem(ACOES_KEY, JSON.stringify(acoes));
       }
+
       showCopyToast('✅ Ação marcada como realizada!');
       const panel = document.getElementById('acaoTratativaPanel');
       if (panel) panel.style.display = 'none';
