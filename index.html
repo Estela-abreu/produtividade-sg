@@ -4189,10 +4189,12 @@ if (localStorage.getItem('enel_auth') === '1') {
     updateTopbarMetrics();
     updateBadgeReuniao();
     updateTabBadgeAcao();
+    // Always render DB so data is ready when user opens the tab
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnNotify')   renderNotifyTab();
     if (activeBtn === 'tabBtnReuniao')  renderReuniao();
+    if (activeBtn === 'tabBtnDashboard') renderDashboard();
   }
 
   function setFbStatus(connected) {
@@ -4271,9 +4273,10 @@ if (localStorage.getItem('enel_auth') === '1') {
               return c && JSON.stringify(c) !== JSON.stringify(fr);
             });
 
+            // Always update cache and UI when Firebase has data
+            _dbCache = fbRecords;
+            try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
             if (hasNew || hasDeleted || hasEdited || fbCount !== cacheCount) {
-              _dbCache = fbRecords;
-              try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
               refreshAllUI(fbRecords);
             }
           } else if (fbCount === 0 && cacheCount > 0) {
