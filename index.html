@@ -4320,20 +4320,27 @@ if (localStorage.getItem('enel_auth') === '1') {
           return;
         }
 
-        const changed =
-          fbCount !== cacheCount ||
-          records.some(fr => {
+        // Firebase tem dados — sempre aplica se diferente do cache
+        if (fbCount > 0) {
+          // Detecta qualquer diferença: quantidade ou conteúdo
+          const cacheIds  = new Set(_dbCache.map(r => String(r.id)));
+          const fbIds     = new Set(records.map(r => String(r.id)));
+          const hasNew    = records.some(r => !cacheIds.has(String(r.id)));
+          const hasRemoved = [...cacheIds].some(id => !fbIds.has(id));
+          const hasChanged = records.some(fr => {
             const cached = _dbCache.find(r => String(r.id) === String(fr.id));
-            return !cached || JSON.stringify(cached) !== JSON.stringify(fr);
+            return cached && JSON.stringify(cached) !== JSON.stringify(fr);
           });
 
-        if (changed) {
-          _dbCache = records;
-          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-          refreshAllUI(records);
+          if (hasNew || hasRemoved || hasChanged || fbCount !== cacheCount) {
+            _dbCache = records;
+            try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+            refreshAllUI(records);
+          }
         }
+        setFbStatus(true);
       }).catch(() => {});
-    }, 4000);
+    }, 3000);
 
     // Sync contatos via REST polling
     setInterval(() => {
