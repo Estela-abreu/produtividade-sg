@@ -4211,154 +4211,105 @@ if (localStorage.getItem('enel_auth') === '1') {
   function initFirebaseSync() {
     _firebaseReady = true;
 
-    // Carrega lista de IDs deletados do localStorage
+    // ── PASSO 1: Carrega deletados do localStorage ──
     try {
-      const saved = JSON.parse(localStorage.getItem('enel_deleted_ids') || '[]');
-      saved.forEach(id => _deletedIds.add(String(id)));
+      JSON.parse(localStorage.getItem('enel_deleted_ids') || '[]')
+        .forEach(id => _deletedIds.add(String(id)));
     } catch(e) {}
 
-    // Carrega localStorage IMEDIATAMENTE — mostra dados sem esperar Firebase
+    // ── PASSO 2: Mostra dados locais IMEDIATAMENTE (sem esperar Firebase) ──
     try {
       const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]')
         .filter(r => !_deletedIds.has(String(r.id)));
       if (local.length > 0) {
         _dbCache = local;
         refreshAllUI(local);
-        setFbStatus(true); // mostra "Sincronizado" imediatamente
       }
     } catch(e) {}
 
-    // Carrega tombstones do Firebase em background (não bloqueia)
-    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
-      .then(r => r.json())
-      .then(data => {
-        if (data && typeof data === 'object') {
-          Object.keys(data).forEach(id => _deletedIds.add(String(id)));
-          localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds]));
-        }
-      }).catch(() => {});
-
-    // Busca dados do Firebase (filtrando deletados)
-    _fetchViaREST().then(records => {
-      const filtered = records.filter(r => !_deletedIds.has(String(r.id)));
-      // Remove do Firebase os que estão na lista de deletados
-      records.filter(r => _deletedIds.has(String(r.id))).forEach(r => {
-        fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
-      });
-
-      // NUNCA sobrescrever cache local com Firebase vazio — só atualiza se Firebase tem dados
-      // OU se Firebase está explicitamente vazio e não temos dados locais
-      if (filtered.length > 0) {
-        _dbCache = filtered;
-        try { localStorage.setItem(DB_KEY, JSON.stringify(filtered)); } catch(e) {}
-        refreshAllUI(filtered);
-        setFbStatus(true);
-      } else if (_dbCache.length === 0) {
-        // Firebase vazio E sem cache local — sobe dados locais se existirem
-        const localBackup = (() => { try { return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch{return [];} })();
-        const validLocal = localBackup.filter(r => !_deletedIds.has(String(r.id)));
-        if (validLocal.length > 0) {
-          validLocal.forEach(r => {
-            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-              method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
-            }).catch(()=>{});
-          });
-          _dbCache = validLocal;
-          refreshAllUI(validLocal);
-        }
-        setFbStatus(true);
-      } else {
-        // Firebase vazio mas cache local tem dados — sobe para o Firebase
-        if (_dbCache.length > 0) {
-          _dbCache.forEach(r => {
-            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-              method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
-            }).catch(() => {});
-          });
-        }
-        setFbStatus(true);
-      }
-    }).catch(e => { console.warn('[REST] Erro inicial:', e.message); setFbStatus(false); });
-
-    // Polling a cada 4s — sincroniza todos os usuários via REST
-    setInterval(() => {
+    // ── Função central de sincronização ──
+    const syncFromFirebase = () => {
       if (_deleting) return;
 
-      // Atualiza tombstones (IDs deletados por outros usuários)
+      // Busca tombstones (registros deletados por outros usuários)
       fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
         .then(r => r.json())
         .then(data => {
           if (data && typeof data === 'object') {
-            Object.keys(data).forEach(id => _deletedIds.add(String(id)));
+            let tombChanged = false;
+            Object.keys(data).forEach(id => {
+              if (!_deletedIds.has(String(id))) { _deletedIds.add(String(id)); tombChanged = true; }
+            });
+            if (tombChanged) {
+              try { localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds])); } catch {}
+            }
           }
         }).catch(() => {});
 
-      _fetchViaREST().then(allRecords => {
-        // allRecords pode ser [] — significa que Firebase está vazio (tudo foi deletado)
-        // Filtra registros deletados
-        const records = (allRecords || []).filter(r => !_deletedIds.has(String(r.id)));
-
-        // Remove do Firebase os que ainda estão lá mas foram deletados
-        (allRecords || []).forEach(r => {
-          if (_deletedIds.has(String(r.id))) {
-            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, { method: 'DELETE' }).catch(() => {});
-          }
-        });
-
-        // Compara com cache atual — só atualiza se Firebase tem dados OU se cache também está vazio
-        const fbCount    = records.length;
-        const cacheCount = _dbCache.length;
-
-        // Firebase vazio mas cache local tem dados → sobe os dados para o Firebase
-        if (fbCount === 0 && cacheCount > 0) {
-          _dbCache.forEach(r => {
-            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-              method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
-            }).catch(() => {});
-          });
+      // Busca registros do Firebase
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(data => {
           setFbStatus(true);
-          return;
-        }
 
-        // Firebase tem dados — sempre aplica se diferente do cache
-        if (fbCount > 0) {
-          // Detecta qualquer diferença: quantidade ou conteúdo
-          const cacheIds  = new Set(_dbCache.map(r => String(r.id)));
-          const fbIds     = new Set(records.map(r => String(r.id)));
-          const hasNew    = records.some(r => !cacheIds.has(String(r.id)));
-          const hasRemoved = [...cacheIds].some(id => !fbIds.has(id));
-          const hasChanged = records.some(fr => {
-            const cached = _dbCache.find(r => String(r.id) === String(fr.id));
-            return cached && JSON.stringify(cached) !== JSON.stringify(fr);
-          });
+          const fbRecords = (data && typeof data === 'object')
+            ? Object.values(data)
+                .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
+                .sort((a, b) => b.id - a.id)
+            : [];
 
-          if (hasNew || hasRemoved || hasChanged || fbCount !== cacheCount) {
-            _dbCache = records;
-            try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-            refreshAllUI(records);
+          const fbCount    = fbRecords.length;
+          const cacheCount = _dbCache.length;
+
+          if (fbCount > 0) {
+            const fbIds    = new Set(fbRecords.map(r => String(r.id)));
+            const cacheIds = new Set(_dbCache.map(r => String(r.id)));
+            const hasNew     = fbRecords.some(r => !cacheIds.has(String(r.id)));
+            const hasDeleted = [...cacheIds].some(id => !fbIds.has(id));
+            const hasEdited  = fbRecords.some(fr => {
+              const c = _dbCache.find(r => String(r.id) === String(fr.id));
+              return c && JSON.stringify(c) !== JSON.stringify(fr);
+            });
+
+            if (hasNew || hasDeleted || hasEdited || fbCount !== cacheCount) {
+              _dbCache = fbRecords;
+              try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
+              refreshAllUI(fbRecords);
+            }
+          } else if (fbCount === 0 && cacheCount > 0) {
+            // Firebase vazio mas cache tem dados → faz upload
+            _dbCache.forEach(r => {
+              fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(r)
+              }).catch(() => {});
+            });
           }
-        }
-        setFbStatus(true);
-      }).catch(() => {});
-    }, 3000);
+        })
+        .catch(() => { setFbStatus(false); });
+    };
 
-    // Sync contatos via REST polling
+    // Sync imediato + polling a cada 3s
+    syncFromFirebase();
+    setInterval(syncFromFirebase, 3000);
+
+    // Sync de contatos (10s)
     setInterval(() => {
-      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json`)
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json')
         .then(r => r.json())
         .then(data => {
-          if (data) {
-            const contacts = Array.isArray(data) ? data : Object.values(data);
-            _cfgCache[CONTACTS_KEY] = contacts;
-            try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch {}
-            renderContactChips();
-          }
+          if (!data) return;
+          const contacts = Array.isArray(data) ? data : Object.values(data);
+          _cfgCache[CONTACTS_KEY] = contacts;
+          try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch {}
+          renderContactChips();
         }).catch(() => {});
     }, 10000);
 
-    // Sync config via REST polling
+    // Sync de config (15s)
     setInterval(() => {
-      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json')
         .then(r => r.json())
         .then(data => {
           if (!data) return;
@@ -4374,7 +4325,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     }, 15000);
   }
 
-  function collectFormData() {
+    function collectFormData() {
     const data = document.getElementById('data').value;
     const turno = document.getElementById('turno').value;
     const equipe = document.getElementById('equipe').value.trim();
