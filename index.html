@@ -8129,8 +8129,15 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <div>
             <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Anexo (opcional)</label>
-            <input type="file" id="trat-file" accept="image/*,application/pdf" style="font-size:0.8rem;">
-            ${saved.anexoNome ? `<div style="font-size:0.75rem;color:#16A34A;margin-top:4px;">📎 ${saved.anexoNome}</div>` : ''}
+            <input type="file" id="trat-file" accept="image/*,application/pdf" style="font-size:0.8rem;"
+              onchange="previewTratativaAnexo(this)">
+            <div id="trat-file-preview" style="margin-top:6px;">
+              ${saved.anexoData ? `<div style="display:flex;align-items:center;gap:0.5rem;padding:6px 10px;background:#F0FDF4;border:1px solid #6EE7B7;border-radius:8px;">
+                <span style="font-size:0.78rem;font-weight:700;color:#065F46;">📎 ${saved.anexoNome||'Anexo'}</span>
+                <button type="button" onclick="verAnexoTratativa()"
+                  style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:6px;border:1px solid #059669;background:white;color:#059669;cursor:pointer;">👁 Ver</button>
+              </div>` : ''}
+            </div>
           </div>
         </div>
 
@@ -8266,6 +8273,44 @@ entryLines.join('\n\n') + '\n' +
     updateTabBadgeAcao();
     showCopyToast('✅ Ação marcada como realizada!');
   }
+
+  function previewTratativaAnexo(input) {
+    const file = input.files[0];
+    const preview = document.getElementById('trat-file-preview');
+    if (!preview) return;
+    if (!file) { preview.innerHTML = ''; return; }
+    const isImg = file.type.startsWith('image/');
+    const reader = new FileReader();
+    reader.onload = ev => {
+      preview.innerHTML = `<div style="display:flex;align-items:center;gap:0.5rem;padding:6px 10px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;">
+        <span style="font-size:0.78rem;font-weight:700;color:#1E4DA1;">📎 ${file.name}</span>
+        <button type="button" onclick="verAnexoInline('${ev.target.result}','${file.type}','${file.name}')"
+          style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:6px;border:1px solid #1E4DA1;background:white;color:#1E4DA1;cursor:pointer;">👁 Ver</button>
+      </div>`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function verAnexoTratativa() {
+    if (!_tratativaKey) return;
+    const acoes = loadAcoes();
+    const saved = acoes[_tratativaKey] || {};
+    if (saved.anexoData) verAnexoInline(saved.anexoData, '', saved.anexoNome || 'anexo');
+  }
+
+  function verAnexoInline(dataUrl, mimeType, nome) {
+    const isImg = dataUrl.startsWith('data:image');
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><title>${nome}</title>
+      <style>body{margin:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+      img{max-width:100%;max-height:100vh;object-fit:contain;}
+      iframe{width:100vw;height:100vh;border:none;}</style></head><body>
+      ${isImg ? `<img src="${dataUrl}" alt="${nome}">` : `<iframe src="${dataUrl}"></iframe>`}
+    </body></html>`);
+    w.document.close();
+  }
+
 
   function saveAcaoAnexo(key, input) {
     const file = input.files[0];
