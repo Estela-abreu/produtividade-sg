@@ -4054,9 +4054,25 @@ if (localStorage.getItem('enel_auth') === '1') {
     _dbCache.sort((a, b) => b.id - a.id);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
 
-    db.ref('produtividade/records/r_' + record.id).set(record)
-      .then(() => { setFbStatus(true); console.log('[REST] Salvo:', record.id); })
-      .catch(e => { console.error('[REST] Erro ao salvar:', e.message); showFirebaseRulesWarning(); });
+    const doSave = (attempt) => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${record.id}.json`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(record)
+      })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(() => { setFbStatus(true); })
+      .catch(e => {
+        console.error('[REST] Tentativa', attempt, 'falhou:', e.message);
+        if (attempt < 3) {
+          setTimeout(() => doSave(attempt + 1), 2000 * attempt);
+        } else {
+          showFirebaseRulesWarning();
+          setFbStatus(false);
+        }
+      });
+    };
+    doSave(1);
   }
 
   // Fallback REST API — já integrado no db object acima
@@ -4252,7 +4268,14 @@ if (localStorage.getItem('enel_auth') === '1') {
         }
         setFbStatus(true);
       } else {
-        // Firebase vazio mas cache local tem dados — mantém cache e marca sincronizado
+        // Firebase vazio mas cache local tem dados — sobe para o Firebase
+        if (_dbCache.length > 0) {
+          _dbCache.forEach(r => {
+            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+              method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
+            }).catch(() => {});
+          });
+        }
         setFbStatus(true);
       }
     }).catch(e => { console.warn('[REST] Erro inicial:', e.message); setFbStatus(false); });
@@ -4286,8 +4309,16 @@ if (localStorage.getItem('enel_auth') === '1') {
         const fbCount    = records.length;
         const cacheCount = _dbCache.length;
 
-        // PROTEÇÃO: nunca sobrescrever dados locais com Firebase vazio
-        if (fbCount === 0 && cacheCount > 0) return;
+        // Firebase vazio mas cache local tem dados → sobe os dados para o Firebase
+        if (fbCount === 0 && cacheCount > 0) {
+          _dbCache.forEach(r => {
+            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+              method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r)
+            }).catch(() => {});
+          });
+          setFbStatus(true);
+          return;
+        }
 
         const changed =
           fbCount !== cacheCount ||
