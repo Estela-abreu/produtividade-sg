@@ -2163,8 +2163,11 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
         <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;">📋 Tabela Detalhada</div>
-        <input type="text" id="dash-busca" placeholder="🔍 Buscar..." oninput="renderDashboard()"
-          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:5px 10px;outline:none;width:200px;">
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="dash-busca" placeholder="🔍 Buscar..." oninput="renderDashboard()"
+            style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:5px 10px;outline:none;width:180px;">
+          <button onclick="exportDashExcel()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 14px;border-radius:8px;border:1.5px solid #16A34A;background:white;color:#16A34A;cursor:pointer;">⬇️ Excel</button>
+        </div>
       </div>
       <div style="overflow-x:auto;">
         <table id="dash-tabela" style="width:100%;border-collapse:collapse;font-size:0.78rem;"></table>
@@ -7663,7 +7666,9 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Categoria</th>
         <th style="${thStyle}">Tempo Fora</th>
         <th style="${thStyle}">Resp. Ocorrência</th>
+        <th style="${thStyle}">Justificativa</th>
         <th style="${thStyle}">Resp. Ação</th>
+        <th style="${thStyle}">Obs. da Ação</th>
         <th style="${thStyle}">Status</th>
         <th style="${thStyle}">Data Ação</th>
         <th style="${thStyle}">Prazo</th>
@@ -7679,8 +7684,10 @@ entryLines.join('\n\n') + '\n' +
               ? `<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">⚠️ ${i.diasPend}d</span>`
               : `<span style="background:#FEF9EC;color:#92400E;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">⏳ ${i.diasPend}d</span>`);
         const statusBadge = i.isRealizada
-          ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🟢</span>`
-          : `<span style="background:#FEE2E2;color:#991B1B;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🔴</span>`;
+          ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🟢 Realizada</span>`
+          : `<span style="background:#FEE2E2;color:#991B1B;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🔴 Pendente</span>`;
+        const just = i.e.justificativa || '—';
+        const obsAcao = i.saved.descricao || '—';
         return `<tr>
           <td style="${tdStyle}">${dataBR}</td>
           <td style="${tdStyle};font-weight:700;">${i.equipe}</td>
@@ -7688,14 +7695,65 @@ entryLines.join('\n\n') + '\n' +
           <td style="${tdStyle}">${i.catNome}</td>
           <td style="${tdStyle};font-weight:700;color:#DC2626;">${i.tempoStr}</td>
           <td style="${tdStyle}">${i.respOc}</td>
+          <td style="${tdStyle};max-width:200px;color:#7C3AED;">${just}</td>
           <td style="${tdStyle};font-weight:600;">${i.respAc}</td>
+          <td style="${tdStyle};max-width:220px;color:#374151;">${obsAcao}</td>
           <td style="${tdStyle}">${statusBadge}</td>
           <td style="${tdStyle}">${i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '—'}</td>
           <td style="${tdStyle}">${sla}</td>
         </tr>`;
       }).join('')}</tbody>`;
+
+      // Store filtered for export
+      window._dashFiltered = filtered;
     }
   }
+
+  function exportDashExcel() {
+    const data = window._dashFiltered;
+    if (!data || !data.length) { showCopyToast('⚠️ Nenhum dado para exportar.'); return; }
+
+    const headers = ['Data','Equipe','Turno','Categoria','Tempo Fora','Resp. Ocorrência',
+      'Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação','Prazo (dias)'];
+
+    const rows = data.map(i => {
+      const [y,m,d] = i.data.split('-');
+      const prazoLabel = i.isRealizada ? (i.tempoRespDias !== null ? (i.tempoRespDias <= PRAZO_DIAS ? 'No prazo' : 'Fora do prazo') : '') : (i.foraPrazo ? 'Vencido' : 'No prazo');
+      return [
+        `${d}/${m}/${y}`,
+        i.equipe,
+        i.turno,
+        i.catNome,
+        i.tempoStr,
+        i.respOc,
+        i.e.justificativa || '',
+        i.respAc,
+        i.saved.descricao || '',
+        i.isRealizada ? 'Realizada' : 'Pendente',
+        i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '',
+        prazoLabel
+      ];
+    });
+
+    // Build CSV with BOM for Excel PT-BR
+    const sep = ';';
+    const bom = '\uFEFF';
+    const csv = bom + [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(sep))
+      .join('\r\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    const now  = new Date();
+    a.download = `dashboard_acoes_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showCopyToast('✅ Exportado com sucesso!');
+  }
+
+
 
 
   const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
