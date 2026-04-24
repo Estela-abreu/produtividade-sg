@@ -143,33 +143,39 @@
   .sidebar-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1.25rem;
+    gap: 0.7rem;
+    padding: 0.7rem 1.1rem;
     cursor: pointer;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    color: rgba(255,255,255,0.65);
+    color: rgba(255,255,255,0.55);
     border: none;
     background: transparent;
     width: 100%;
     text-align: left;
     border-left: 3px solid transparent;
-    transition: all 0.15s;
+    transition: all 0.18s;
     position: relative;
+    letter-spacing: 0.01em;
+    border-radius: 0 8px 8px 0;
+    margin: 1px 0;
   }
   .sidebar-item:hover {
-    background: rgba(255,255,255,0.07);
-    color: white;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
   }
   .sidebar-item.active {
-    background: rgba(0,164,78,0.18);
+    background: rgba(0,164,78,0.15);
     color: #4ADE80;
     border-left-color: #4ADE80;
     font-weight: 700;
   }
+  .sidebar-item.active .nav-icon { opacity: 1; color: #4ADE80; }
   .sidebar-item.config-item { color: #C4B5FD; }
   .sidebar-item.config-item.active { background: rgba(124,58,237,0.18); color: #C4B5FD; border-left-color: #7C3AED; }
   .sidebar-item.config-item:hover { background: rgba(124,58,237,0.1); color: #DDD6FE; }
+  .nav-icon { width:18px;height:18px;flex-shrink:0;opacity:0.7;transition:opacity 0.18s; }
+  .sidebar-item:hover .nav-icon { opacity: 1; }
 
   .sidebar-badge {
     background: #EF4444;
@@ -404,6 +410,12 @@
     border: 1px solid var(--gray-100);
     animation: fadeUp 0.4s ease both;
   }
+  @keyframes blinkName {
+    0%,100% { opacity:1; }
+    50%      { opacity:0.15; }
+  }
+  .blink-resp { animation: blinkName 1.4s ease-in-out infinite; }
+
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -1583,31 +1595,35 @@ if (localStorage.getItem('enel_auth') === '1') {
 
   <div class="sidebar-nav">
     <button class="sidebar-item active" id="tabBtnInicio" onclick="switchTab('inicio')">
-      <span class="sidebar-icon">🏠</span> Início
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Início
     </button>
     <button class="sidebar-item" id="tabBtnForm" onclick="switchTab('form')">
-      <span class="sidebar-icon">📋</span> Registro
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Registro
     </button>
     <button class="sidebar-item" id="tabBtnNotify" onclick="switchTab('notify')">
-      <span class="sidebar-icon">📨</span> Notificar
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.11 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.21h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.21 16z"/></svg>
+      Notificar
     </button>
-    <button class="sidebar-item" id="tabBtnDB" onclick="switchTab('db')">
-      <span class="sidebar-icon">📊</span> Banco de Dados
-      <span class="sidebar-badge" id="tabBadge" style="display:none;background:var(--green);">0</span>
-    </button>
-    <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:#818CF8;">
-      <span class="sidebar-icon">📋</span> Reunião
+    <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:rgba(129,140,248,0.8);">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Reunião
       <span class="sidebar-badge" id="tabBadgeReuniao" style="display:none;background:#6366F1;">0</span>
     </button>
-    <button class="sidebar-item" id="tabBtnAcao" onclick="switchTab('acao')" style="color:#FCA5A5;">
-      <span class="sidebar-icon">⚡</span> Ação
+    <button class="sidebar-item" id="tabBtnAcao" onclick="switchTab('acao')" style="color:rgba(252,165,165,0.8);">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Ação
       <span class="sidebar-badge" id="tabBadgeAcao" style="display:none;background:#DC2626;">0</span>
     </button>
-    <button class="sidebar-item" id="tabBtnDashboard" onclick="switchTab('dashboard')" style="color:#34D399;">
-      <span class="sidebar-icon">📊</span> Dashboard
+    <button class="sidebar-item" id="tabBtnDashboard" onclick="switchTab('dashboard')" style="color:rgba(52,211,153,0.8);">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+      <span class="sidebar-badge" id="tabBadge" style="display:none;background:var(--green);">0</span>
     </button>
     <button class="sidebar-item config-item" id="tabBtnConfig" onclick="switchTab('config')" title="Acesso restrito ao administrador">
-      <span class="sidebar-icon">⚙️</span> Configuração
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
+      Configuração
     </button>
   </div>
 
@@ -1621,43 +1637,43 @@ if (localStorage.getItem('enel_auth') === '1') {
 <div class="main-content">
   <div class="topbar">
     <div>
-      <div class="topbar-title" id="topbarTitle">📋 Registro</div>
+      <div class="topbar-title" id="topbarTitle">Registro</div>
       <div class="topbar-sub">Gestão de Equipes · Campo Operacional</div>
     </div>
     <div class="topbar-metrics" id="topbarMetrics">
       <!-- Firebase status -->
       <div class="topbar-metric" id="fbStatusMetric">
-        <span id="fbStatusDot" style="width:8px;height:8px;border-radius:50%;background:#4ADE80;display:inline-block;transition:background 0.3s;"></span>
+        <span id="fbStatusDot" style="width:7px;height:7px;border-radius:50%;background:#4ADE80;display:inline-block;transition:background 0.3s;box-shadow:0 0 6px #4ADE80;"></span>
         <span class="topbar-metric-label" id="fbStatusLabel">Sincronizado</span>
-        <span id="fbDebugLabel" style="font-size:0.65rem;color:#F59E0B;margin-left:4px;cursor:pointer;" title="Clique para ver diagnóstico" onclick="toggleFbDebug()">🔍</span>
+        <span id="fbDebugLabel" style="margin-left:4px;cursor:pointer;opacity:0.5;" title="Diagnóstico" onclick="toggleFbDebug()">
+          <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
       </div>
       <div class="topbar-sep"></div>
+      <!-- Relógio -->
       <div class="topbar-metric clock-metric">
-        <span class="topbar-metric-icon">🕐</span>
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         <span class="topbar-metric-value" id="topbarClock">--:--:--</span>
         <span class="topbar-metric-label" id="topbarDate">--/--/----</span>
       </div>
-      <!-- Separador -->
       <div class="topbar-sep"></div>
-      <!-- Registros hoje -->
+      <!-- Hoje -->
       <div class="topbar-metric">
-        <span class="topbar-metric-icon">📋</span>
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span class="topbar-metric-value" id="topbarTodayCount">0</span>
         <span class="topbar-metric-label">Hoje</span>
       </div>
-      <!-- Separador -->
       <div class="topbar-sep"></div>
-      <!-- Total de registros -->
+      <!-- Total -->
       <div class="topbar-metric">
-        <span class="topbar-metric-icon">📊</span>
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         <span class="topbar-metric-value" id="topbarTotalCount">0</span>
         <span class="topbar-metric-label">Total</span>
       </div>
-      <!-- Separador -->
       <div class="topbar-sep"></div>
-      <!-- Pendentes de justificativa -->
+      <!-- Pendentes -->
       <div class="topbar-metric">
-        <span class="topbar-metric-icon">⏳</span>
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span class="topbar-metric-value pending-val" id="topbarPending">0</span>
         <span class="topbar-metric-label">Pendentes</span>
       </div>
@@ -1943,49 +1959,7 @@ if (localStorage.getItem('enel_auth') === '1') {
 </div>
 </div><!-- /tabNotify -->
 
-<div id="tabDB" style="display:none;">
-<div style="max-width:960px;margin:0 auto;padding:0 2rem 3rem;">
 
-    <div class="db-header-bar">
-      <div>
-        <div class="db-title">📊 Banco de Dados Produtividade</div>
-        <div class="db-subtitle" id="dbSubtitle">Carregando...</div>
-      </div>
-    </div>
-
-    <!-- Filtros de busca -->
-    <div class="db-search-bar">
-      <div class="db-search-field">
-        <label class="db-search-label">📅 Data</label>
-        <input type="date" id="dbFilterData" onkeydown="if(event.key==='Enter')applyDBFilters()" onchange="applyDBFilters()" class="db-search-input">
-      </div>
-      <div class="db-search-field">
-        <label class="db-search-label">🔄 Turno</label>
-        <select id="dbFilterTurno" class="db-search-input">
-          <option value="">Todos</option>
-          <option value="A">Turno A</option>
-          <option value="B">Turno B</option>
-          <option value="C">Turno C</option>
-        </select>
-      </div>
-      <div class="db-search-field" style="flex:2;">
-        <label class="db-search-label">👷 Equipe</label>
-        <input type="text" id="dbFilterEquipe" placeholder="Buscar equipe..." onkeydown="if(event.key==='Enter')applyDBFilters()" class="db-search-input">
-      </div>
-      <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:0.4rem;">
-        <button class="db-btn-search" onclick="applyDBFilters()">🔍 Buscar</button>
-        <button class="db-btn-clear-filter" onclick="clearDBFilters()">✕ Limpar</button>
-      </div>
-    </div>
-
-    <!-- KPI cards -->
-    <div class="db-kpis" id="dbKpis"></div>
-
-    <!-- Records list -->
-    <div id="dbList"></div>
-
-</div>
-</div><!-- /tabDB -->
 
 <!-- ── ABA RETORNO ── -->
 
@@ -2011,34 +1985,16 @@ if (localStorage.getItem('enel_auth') === '1') {
 <div id="tabAcao" style="display:none;">
   <div style="max-width:860px;margin:0 auto;padding:1.5rem 1rem;">
 
-    <!-- Cabeçalho + contadores -->
+    <!-- Cabeçalho + contador -->
     <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;">
       <div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#1E3A5F;letter-spacing:0.02em;">⚡ Módulo de Ação</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Gerencie as ações das ocorrências fora do tempo</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Ações pendentes das ocorrências fora do tempo</div>
       </div>
-      <div style="display:flex;gap:0.65rem;">
-        <div style="text-align:center;background:white;border:1.5px solid #FCA5A5;border-radius:10px;padding:0.5rem 1rem;min-width:70px;">
-          <div id="acaoSubBadgePendente" style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#DC2626;line-height:1;">0</div>
-          <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Pendentes</div>
-        </div>
-        <div style="text-align:center;background:white;border:1.5px solid #6EE7B7;border-radius:10px;padding:0.5rem 1rem;min-width:70px;">
-          <div id="acaoSubBadgeRealizado" style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#16A34A;line-height:1;">0</div>
-          <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Realizadas</div>
-        </div>
+      <div style="text-align:center;background:white;border:1.5px solid #FCA5A5;border-radius:10px;padding:0.5rem 1rem;min-width:70px;">
+        <div id="acaoSubBadgePendente" style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#DC2626;line-height:1;">0</div>
+        <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Pendentes</div>
       </div>
-    </div>
-
-    <!-- Sub-abas -->
-    <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;margin-bottom:1.25rem;">
-      <button id="acaoSubBtnPendente" onclick="switchAcaoSub('pendente')"
-        style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.5rem;border:none;border-bottom:3px solid #DC2626;background:transparent;color:#DC2626;cursor:pointer;margin-bottom:-2px;">
-        🔴 Pendentes
-      </button>
-      <button id="acaoSubBtnRealizado" onclick="switchAcaoSub('realizado')"
-        style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.6rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;">
-        🟢 Realizadas
-      </button>
     </div>
 
     <!-- Lista de cards -->
@@ -2056,7 +2012,22 @@ if (localStorage.getItem('enel_auth') === '1') {
 
 <!-- ── ABA DASHBOARD ── -->
 <div id="tabDashboard" style="display:none;">
-  <div style="max-width:1000px;margin:0 auto;padding:1.5rem 1rem;">
+  <!-- Sub-abas -->
+  <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;background:white;padding:0 1.5rem;">
+    <button id="dashSubBtnDashboard" onclick="switchDashSub('dashboard')"
+      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid #065F46;background:transparent;color:#065F46;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
+      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+    <button id="dashSubBtnDB" onclick="switchDashSub('db')"
+      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
+      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Banco de Dados
+    </button>
+  </div>
+
+  <!-- Conteúdo sub-aba Dashboard -->
+  <div id="dashSubDashboard" style="display:block;">
 
     <!-- Cabeçalho -->
     <div style="margin-bottom:1.25rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
@@ -2141,12 +2112,6 @@ if (localStorage.getItem('enel_auth') === '1') {
       </div>
     </div>
 
-    <!-- Evolução no tempo -->
-    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1.25rem;">
-      <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">📈 Evolução de Ações no Tempo</div>
-      <div id="dash-chart-tempo"></div>
-    </div>
-
     <!-- Top problemas -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
       <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
@@ -2174,7 +2139,54 @@ if (localStorage.getItem('enel_auth') === '1') {
       </div>
     </div>
 
-  </div>
+  </div><!-- /dashSubDashboard -->
+
+  <!-- Conteúdo sub-aba Banco de Dados -->
+  <div id="dashSubDB" style="display:none;">
+    <div style="max-width:960px;margin:0 auto;padding:0 2rem 3rem;">
+      <div class="db-header-bar">
+        <div>
+          <div class="db-title">📊 Banco de Dados Produtividade</div>
+          <div class="db-subtitle" id="dbSubtitle">Carregando...</div>
+        </div>
+      </div>
+      <div class="db-search-bar">
+        <div class="db-search-field">
+          <label class="db-search-label">📅 Data</label>
+          <input type="date" id="dbFilterData" onkeydown="if(event.key==='Enter')applyDBFilters()" onchange="applyDBFilters()" class="db-search-input">
+        </div>
+        <div class="db-search-field">
+          <label class="db-search-label">🔄 Turno</label>
+          <select id="dbFilterTurno" class="db-search-input">
+            <option value="">Todos</option>
+            <option value="A">Turno A</option>
+            <option value="B">Turno B</option>
+            <option value="C">Turno C</option>
+          </select>
+        </div>
+        <div class="db-search-field" style="flex:2;">
+          <label class="db-search-label">👷 Equipe</label>
+          <input type="text" id="dbFilterEquipe" placeholder="Buscar equipe..." onkeydown="if(event.key==='Enter')applyDBFilters()" class="db-search-input">
+        </div>
+        <div class="db-search-field">
+          <label class="db-search-label">⏰ Status Prazo</label>
+          <select id="dbFilterPrazo" class="db-search-input">
+            <option value="">Todos</option>
+            <option value="vencido">Fora do Prazo</option>
+            <option value="atencao">Atenção</option>
+            <option value="ok">No prazo</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:0.4rem;">
+          <button class="db-btn-search" onclick="applyDBFilters()">🔍 Buscar</button>
+          <button class="db-btn-clear-filter" onclick="clearDBFilters()">✕ Limpar</button>
+        </div>
+      </div>
+      <div class="db-kpis" id="dbKpis"></div>
+      <div id="dbList"></div>
+    </div>
+  </div><!-- /dashSubDB -->
+
 </div><!-- /tabDashboard -->
 
 <div id="tabConfig" style="display:none;">
@@ -2256,15 +2268,6 @@ if (localStorage.getItem('enel_auth') === '1') {
         Define o tempo máximo (em minutos) para cada categoria antes de exigir justificativa. <strong>0 = sem limite</strong>.
       </div>
       <div id="cfgCatLimiteList"></div>
-    </div>
-  </div>
-
-  <!-- Seção 3: Supervisores por Turno -->
-  <div class="cfg-card">
-    <div class="cfg-card-header">👤 Supervisores por Turno</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Supervisores sugeridos automaticamente ao selecionar o turno no Registro.</div>
-      <div id="cfgSupervisoresList"></div>
     </div>
   </div>
 
@@ -2928,6 +2931,18 @@ if (localStorage.getItem('enel_auth') === '1') {
                 <option value="">— Selecione —</option>
                 ${getRespOc().map(n => `<option value="${n}">${n}</option>`).join('')}
               </select>
+
+              <!-- Responsável pela Ação — multi-select -->
+              <label style="font-size:0.72rem;font-weight:700;color:#991B1B;display:block;margin-top:0.55rem;margin-bottom:0.3rem;">Responsável pela Ação:</label>
+              <div id="acao-resp-acao-chips-${id}" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.35rem;min-height:24px;"></div>
+              <div style="position:relative;">
+                <select id="acao-resp-acao-sel-${id}" onchange="addRespAcaoChip('${id}', this)"
+                  style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:600;border:1.5px solid #FCA5A5;border-radius:6px;padding:5px 10px;background:white;color:#374151;outline:none;">
+                  <option value="">+ Adicionar responsável...</option>
+                  ${getRespAcao().map(n => `<option value="${n}">${n}</option>`).join('')}
+                </select>
+              </div>
+              <input type="hidden" id="acao-resp-acao-${id}" value="[]">
             </div>
           </div>
         </div>
@@ -4192,11 +4207,10 @@ if (localStorage.getItem('enel_auth') === '1') {
     updateTopbarMetrics();
     updateBadgeReuniao();
     updateTabBadgeAcao();
-    // Always render DB so data is ready when user opens the tab
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
-    if (activeBtn === 'tabBtnNotify')   renderNotifyTab();
-    if (activeBtn === 'tabBtnReuniao')  renderReuniao();
+    if (activeBtn === 'tabBtnNotify')    renderNotifyTab();
+    if (activeBtn === 'tabBtnReuniao')   renderReuniao();
     if (activeBtn === 'tabBtnDashboard') renderDashboard();
   }
 
@@ -4370,6 +4384,9 @@ if (localStorage.getItem('enel_auth') === '1') {
       const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
       const acaoNecessaria = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value || '';
       const acaoResponsavel = acaoNecessaria === 'sim' ? (document.getElementById('acao-resp-' + id)?.value || '') : '';
+      const acaoRespAcao = acaoNecessaria === 'sim' ? (() => {
+        try { return JSON.parse(document.getElementById('acao-resp-acao-' + id)?.value || '[]'); } catch { return []; }
+      })() : [];
       const lat      = catKey === 'incidencia' ? (document.getElementById('lat-' + id)?.value.trim() || '') : undefined;
       const lon      = catKey === 'incidencia' ? (document.getElementById('lon-' + id)?.value.trim() || '') : undefined;
       const endereco = catKey === 'incidencia' ? (document.getElementById('endereco-' + id)?.value.trim() || '') : undefined;
@@ -4392,7 +4409,7 @@ if (localStorage.getItem('enel_auth') === '1') {
         return d < 0 ? d + 1440 : d;
       })() : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoRespAcao });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -4453,6 +4470,16 @@ if (localStorage.getItem('enel_auth') === '1') {
     const allRec = loadDB();
     const pendingCount = allRec.filter(r => needsJustificativa(r) && r.status !== 'revisado' && r.status !== 'parcial').length;
     updateTabBadgeRetorno(pendingCount);
+    
+    // Add record to cache immediately so it appears in dashboard/db tables
+    _dbCache = [record, ..._dbCache.filter(r => String(r.id) !== String(record.id))];
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch {}
+    
+    // Update dashboard if it's currently visible
+    if (_currentTab === 'dashboard') {
+      if (_dashSub === 'dashboard') renderDashboard();
+      if (_dashSub === 'db') applyDBFilters();
+    }
 
     // Switch to Notify tab
     switchTab('notify');
@@ -4484,46 +4511,80 @@ if (localStorage.getItem('enel_auth') === '1') {
     const dataVal   = document.getElementById('dbFilterData')?.value || '';
     const turnoVal  = document.getElementById('dbFilterTurno')?.value || '';
     const equipeVal = (document.getElementById('dbFilterEquipe')?.value || '').trim().toUpperCase();
+    const prazoVal  = document.getElementById('dbFilterPrazo')?.value || '';
 
     // Visual feedback on Buscar button
     const btn = document.querySelector('.db-btn-search');
     if (btn) {
-      const hasFilter = dataVal || turnoVal || equipeVal;
+      const hasFilter = dataVal || turnoVal || equipeVal || prazoVal;
       btn.style.background = hasFilter ? 'var(--green-dark)' : 'var(--green)';
       btn.textContent = hasFilter ? '🔍 Filtrado' : '🔍 Buscar';
     }
 
-    renderDB(dataVal, turnoVal, equipeVal);
+    renderDB(dataVal, turnoVal, equipeVal, prazoVal);
   }
 
   function clearDBFilters() {
     document.getElementById('dbFilterData').value = '';
     document.getElementById('dbFilterTurno').value = '';
     document.getElementById('dbFilterEquipe').value = '';
+    document.getElementById('dbFilterPrazo').value = '';
     // Reset button
     const btn = document.querySelector('.db-btn-search');
     if (btn) { btn.style.background = 'var(--green)'; btn.textContent = '🔍 Buscar'; }
-    renderDB('', '', '');
+    renderDB('', '', '', '');
   }
 
-  function renderDB(dataVal, turnoVal, equipeVal) {
+  function renderDB(dataVal, turnoVal, equipeVal, prazoVal) {
     const allRecords = loadDB();
+    const acoes = loadAcoes();
+    const PRAZO_RESPOSTA_DIAS = 2;
 
     let records = allRecords.filter(r => {
       if (dataVal  && r.data  !== dataVal)  return false;
       if (turnoVal && r.turno !== turnoVal) return false;
       if (equipeVal && !r.equipe.toUpperCase().includes(equipeVal)) return false;
+      
+      // Filtro de prazo: verifica se alguma ação relacionada ao registro está vencida
+      if (prazoVal) {
+        let recordPrazoStatus = null;
+        (r.entries || []).forEach(e => {
+          if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
+            const key = getAcaoKey(r.id, e);
+            const acao = acoes[key];
+            const isRealizada = acao && acao.status === 'realizada';
+            
+            // Só considerar prazo se a ação NÃO foi realizada
+            if (!isRealizada) {
+              const prazoInfo = calcPrazoAcao(r.data);
+              if (prazoInfo && !recordPrazoStatus) {
+                recordPrazoStatus = prazoInfo.status;
+              }
+            }
+          }
+        });
+        
+        if (prazoVal === 'vencido' && recordPrazoStatus !== 'vencido') return false;
+        if (prazoVal === 'atencao' && recordPrazoStatus !== 'atencao') return false;
+        if (prazoVal === 'ok' && recordPrazoStatus !== 'ok') return false;
+      }
+      
       return true;
     });
 
     // Subtitle with active filter details
-    const hasFilter = dataVal || turnoVal || equipeVal;
+    const hasFilter = dataVal || turnoVal || equipeVal || prazoVal;
     let filterDesc = '';
     if (hasFilter) {
       const parts = [];
       if (dataVal) { const [y,m,d] = dataVal.split('-'); parts.push(d+'/'+m+'/'+y); }
       if (turnoVal) parts.push('Turno '+turnoVal);
       if (equipeVal) parts.push(equipeVal);
+      if (prazoVal) { 
+        if (prazoVal === 'vencido') parts.push('⏰ Fora do Prazo');
+        else if (prazoVal === 'atencao') parts.push('⏰ Atenção');
+        else if (prazoVal === 'ok') parts.push('⏰ No Prazo');
+      }
       filterDesc = parts.join(' · ');
     }
     const sub = hasFilter
@@ -4531,38 +4592,6 @@ if (localStorage.getItem('enel_auth') === '1') {
       : `${allRecords.length} registro${allRecords.length !== 1 ? 's' : ''} no total`;
     const dbSubEl = document.getElementById('dbSubtitle');
     if (dbSubEl) dbSubEl.textContent = sub;
-
-    // ── KPIs ──
-    const totalAnalises = records.length;
-    const catCounter = {};
-    records.forEach(r => r.entries.forEach(e => {
-      catCounter[e.catKey] = (catCounter[e.catKey]||0) + 1;
-    }));
-    const topCat = Object.entries(catCounter).sort((a,b)=>b[1]-a[1])[0];
-
-    // Equipe com mais dias distintos de análise
-    const equipesDias = {};
-    records.forEach(r => {
-      if (!equipesDias[r.equipe]) equipesDias[r.equipe] = new Set();
-      equipesDias[r.equipe].add(r.data);
-    });
-    const topEquipeEntry = Object.entries(equipesDias)
-      .sort((a,b) => b[1].size - a[1].size)[0];
-    const topEquipe     = topEquipeEntry ? topEquipeEntry[0] : null;
-    const topEquipeDias = topEquipeEntry ? topEquipeEntry[1].size : 0;
-
-    const kpisEl = document.getElementById('dbKpis');
-    if (kpisEl) kpisEl.innerHTML = `
-      <div class="db-kpi">
-        <div class="db-kpi-label">📋 Análises</div>
-        <div class="db-kpi-value">${totalAnalises}</div>
-        <div class="db-kpi-sub">registros salvos</div>
-      </div>
-      <div class="db-kpi" style="border-color:#D97706;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);">
-        <div class="db-kpi-label" style="color:#92400E;">🏅 Equipe Destaque</div>
-        <div class="db-kpi-value" style="color:#92400E;font-size:1.1rem;">${topEquipe || '—'}</div>
-        <div class="db-kpi-sub" style="color:#B45309;">${topEquipe ? topEquipeDias + ' dia' + (topEquipeDias !== 1 ? 's' : '') + ' de análise' : 'nenhuma'}</div>
-      </div>`;
 
     // ── Lista de registros ──
     const listEl = document.getElementById('dbList');
@@ -5171,51 +5200,65 @@ if (localStorage.getItem('enel_auth') === '1') {
   }
 
   const TAB_TITLES = {
-    inicio:      '🏠 Início',
-    form:        '📋 Registro',
-    notify:      '📨 Notificar Supervisor',
-    db:          '📊 Banco de Dados Produtividade',
-    reuniao:     '📋 Painel de Reunião',
-    acao:        '⚡ Módulo de Ação',
-    dashboard:   '📊 Dashboard de Gestão',
-    config:      '⚙️ Configuração'
+    inicio:      'Início',
+    form:        'Registro',
+    notify:      'Notificar Supervisor',
+    reuniao:     'Painel de Reunião',
+    acao:        'Módulo de Ação',
+    dashboard:   'Dashboard de Gestão',
+    config:      'Configuração'
   };
 
   let _currentTab = 'inicio';
+  let _dashSub    = 'dashboard'; // 'dashboard' | 'db'
+
+  function switchDashSub(sub) {
+    _dashSub = sub;
+    const subDash = document.getElementById('dashSubDashboard');
+    const subDB   = document.getElementById('dashSubDB');
+    const btnD    = document.getElementById('dashSubBtnDashboard');
+    const btnDB   = document.getElementById('dashSubBtnDB');
+    if (subDash) subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
+    if (subDB)   subDB.style.display   = sub === 'db'        ? 'block' : 'none';
+    if (btnD) {
+      btnD.style.borderBottomColor = sub === 'dashboard' ? '#065F46' : 'transparent';
+      btnD.style.color             = sub === 'dashboard' ? '#065F46' : '#9CA3AF';
+    }
+    if (btnDB) {
+      btnDB.style.borderBottomColor = sub === 'db' ? '#065F46' : 'transparent';
+      btnDB.style.color             = sub === 'db' ? '#065F46' : '#9CA3AF';
+    }
+    if (sub === 'db') {
+      applyDBFilters();
+      setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
+    }
+    if (sub === 'dashboard') renderDashboard();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
 
   function switchTab(tab) {
     if (_currentTab === 'form' && tab !== 'form') saveDraft();
-
-    // Lock protected tabs when navigating away
-    if (_currentTab === 'config'      && tab !== 'config')      lockConfig();
+    if (_currentTab === 'config' && tab !== 'config') lockConfig();
 
     _currentTab = tab;
-    document.getElementById('tabInicio').style.display      = tab === 'inicio'      ? 'block' : 'none';
-    document.getElementById('tabForm').style.display        = tab === 'form'        ? 'block' : 'none';
-    document.getElementById('tabNotify').style.display      = tab === 'notify'      ? 'block' : 'none';
-    document.getElementById('tabDB').style.display          = tab === 'db'          ? 'block' : 'none';
-    document.getElementById('tabReuniao').style.display     = tab === 'reuniao'     ? 'block' : 'none';
-    document.getElementById('tabAcao').style.display        = tab === 'acao'        ? 'block' : 'none';
-    document.getElementById('tabDashboard').style.display   = tab === 'dashboard'   ? 'block' : 'none';
-    document.getElementById('tabConfig').style.display      = tab === 'config'      ? 'block' : 'none';
-    ['Inicio','Form','Notify','DB','Reuniao','Acao','Dashboard','Config'].forEach(t => {
+    document.getElementById('tabInicio').style.display      = tab === 'inicio'    ? 'block' : 'none';
+    document.getElementById('tabForm').style.display        = tab === 'form'      ? 'block' : 'none';
+    document.getElementById('tabNotify').style.display      = tab === 'notify'    ? 'block' : 'none';
+    document.getElementById('tabReuniao').style.display     = tab === 'reuniao'   ? 'block' : 'none';
+    document.getElementById('tabAcao').style.display        = tab === 'acao'      ? 'block' : 'none';
+    document.getElementById('tabDashboard').style.display   = tab === 'dashboard' ? 'block' : 'none';
+    document.getElementById('tabConfig').style.display      = tab === 'config'    ? 'block' : 'none';
+    ['Inicio','Form','Notify','Reuniao','Acao','Dashboard','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
-    if (tab === 'db') {
-      applyDBFilters();
-      // Retry after short delay in case data is still loading from localStorage/Firebase
-      setTimeout(() => { if (_currentTab === 'db') applyDBFilters(); }, 300);
-      setTimeout(() => { if (_currentTab === 'db') applyDBFilters(); }, 1000);
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }
-    if (tab === 'reuniao')     { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'acao')        { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'dashboard')   { renderDashboard(); window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'notify')      { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'config')      { window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'form')        { window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'reuniao')   { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'dashboard') { switchDashSub(_dashSub); }
+    if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
   }
 
   const DRAFT_KEY = 'enel_form_draft';
@@ -6402,7 +6445,7 @@ entryLines.join('\n\n') + '\n' +
     setTimeout(() => t.classList.remove('show'), 3000);
 
     // Refresh DB if on that tab
-    if (document.getElementById('tabDB')?.style.display !== 'none') applyDBFilters();
+    if (_dashSub === 'db' && _currentTab === 'dashboard') applyDBFilters();
 
     // Clear hash
     history.replaceState(null, '', window.location.pathname);
@@ -7208,33 +7251,10 @@ entryLines.join('\n\n') + '\n' +
     document.body.style.overflow = '';
   }
 
-  // ── Supervisores por Turno ──
-  const CFG_SUPERVISORES_KEY = 'enel_cfg_supervisores';
-  const SUPERVISORES_DEFAULT = {
-    A: ['Lucas Costa'],
-    B: ['Dalmir', 'Darvison', 'Alexandre'],
-    C: ['Marcelo', 'Adriano', 'Helio']
-  };
-  function getSupervisores() { return getCfg(CFG_SUPERVISORES_KEY, JSON.parse(JSON.stringify(SUPERVISORES_DEFAULT))); }
-  function saveSupervisores(obj) { saveCfg(CFG_SUPERVISORES_KEY, obj); }
-
-  function onTurnoChange(turno) {
-    const field = document.getElementById('supervisorField');
-    const display = document.getElementById('supervisorDisplay');
-    if (!field || !display) return;
-    const sups = getSupervisores();
-    const lista = sups[turno] || [];
-    if (lista.length) {
-      display.textContent = lista.join(', ');
-      field.style.display = '';
-    } else {
-      field.style.display = 'none';
-    }
-  }
-
   // ══════════════════════════════════════════
   //  ABA REUNIÃO
   // ══════════════════════════════════════════
+
 
   function toggleReuniao(id) {
     const records = loadDB();
@@ -7454,7 +7474,7 @@ entryLines.join('\n\n') + '\n' +
     const fDataFim = document.getElementById('dash-f-data-fim')?.value || '';
     const fBusca   = (document.getElementById('dash-busca')?.value     || '').trim().toUpperCase();
 
-    // Build flat list of ação items
+    // Build flat list — TODOS os registros e TODAS as categorias
     const items = [];
     records.forEach(r => {
       if (fEquipe && !r.equipe?.toUpperCase().includes(fEquipe)) return;
@@ -7462,9 +7482,10 @@ entryLines.join('\n\n') + '\n' +
       if (fDataIni && r.data < fDataIni) return;
       if (fDataFim && r.data > fDataFim) return;
       (r.entries || []).forEach(e => {
-        if (e.acaoNecessaria !== 'sim' || !e.acaoResponsavel) return;
-        const key  = getAcaoKey(r.id, e);
-        const saved = acoes[key] || {};
+        const foraDoTempo = entryNeedsJustificativa(e);
+        const temAcao = e.acaoNecessaria === 'sim' && e.acaoResponsavel;
+        const key   = getAcaoKey(r.id, e);
+        const saved = temAcao ? (acoes[key] || {}) : {};
         const isRealizada = saved.status === 'realizada';
         if (fRespOc && e.acaoResponsavel !== fRespOc) return;
         if (fRespAc && saved.respExec    !== fRespAc) return;
@@ -7476,10 +7497,11 @@ entryLines.join('\n\n') + '\n' +
         const tempoRespDias = (isRealizada && saved.dataAcao && r.data)
           ? Math.max(0, Math.floor((new Date(saved.dataAcao+'T12:00:00') - new Date(r.data+'T12:00:00')) / 86400000))
           : null;
-        const foraPrazo = !isRealizada && diasPend > PRAZO_DIAS;
-        items.push({ r, e, key, saved, isRealizada, catNome, diasPend, tempoRespDias, foraPrazo,
-          equipe: r.equipe, turno: r.turno, data: r.data, respOc: e.acaoResponsavel,
-          respAc: saved.respExec || '—', causaStr: e.causas?.join(', ') || e.obsCausa || '—',
+        const foraPrazo = temAcao && !isRealizada && diasPend > PRAZO_DIAS;
+        items.push({ r, e, key, saved, isRealizada, temAcao, foraDoTempo, catNome, diasPend, tempoRespDias, foraPrazo,
+          equipe: r.equipe, turno: r.turno, data: r.data, respOc: e.acaoResponsavel || '—',
+          acaoRespAcao: e.acaoRespAcao || [],
+          respAc: saved.respExec || '—', causaStr: e.causas?.join(', ') || e.obsCausa || e.obs || '—',
           tempoStr: e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '—' });
       });
     });
@@ -7489,24 +7511,30 @@ entryLines.join('\n\n') + '\n' +
       [it.equipe,it.catNome,it.causaStr,it.respOc,it.respAc,it.data].join('|').toUpperCase().includes(fBusca)
     ) : items;
 
-    const total     = filtered.length;
-    const pendentes = filtered.filter(i => !i.isRealizada).length;
-    const realizadas= filtered.filter(i =>  i.isRealizada).length;
-    const tempos    = filtered.filter(i => i.tempoRespDias !== null).map(i => i.tempoRespDias);
-    const tMedio    = tempos.length ? (tempos.reduce((a,b)=>a+b,0)/tempos.length).toFixed(1) : '—';
-    const foraPrazo   = filtered.filter(i => i.foraPrazo).length;
+    const totalRegistros = records.filter(r => {
+      if (fEquipe && !r.equipe?.toUpperCase().includes(fEquipe)) return false;
+      if (fTurno  && r.turno !== fTurno) return false;
+      if (fDataIni && r.data < fDataIni) return false;
+      if (fDataFim && r.data > fDataFim) return false;
+      return true;
+    }).length;
+    const total      = filtered.length;
+    const foraTotal  = filtered.filter(i => i.foraPrazo || (i.temAcao && !i.isRealizada && i.diasPend >= 0)).length;
+    const pendentes  = filtered.filter(i => i.temAcao && !i.isRealizada).length;
+    const realizadas = filtered.filter(i => i.isRealizada).length;
+    const tempos     = filtered.filter(i => i.tempoRespDias !== null).map(i => i.tempoRespDias);
+    const tMedio     = tempos.length ? (tempos.reduce((a,b)=>a+b,0)/tempos.length).toFixed(1) : '—';
+    const foraPrazo  = filtered.filter(i => i.foraPrazo).length;
 
     // ── Cards de resumo ──
     const cardsEl = document.getElementById('dash-cards');
     if (cardsEl) cardsEl.innerHTML = [
-      ['📋','Total de Ações', total,         '#1E4DA1','#EFF6FF','#BFDBFE'],
-      ['🔴','Pendentes',      pendentes,      '#DC2626','#FEF2F2','#FCA5A5'],
-      ['🟢','Realizadas',     realizadas,     '#16A34A','#F0FDF4','#6EE7B7'],
-      ['⏱','Tempo médio resp',tMedio === '—' ? tMedio : tMedio+' dias', '#D97706','#FFFBEB','#FCD34D'],
-      ['⚠️','Fora do tempo de resposta', foraPrazo, '#9F1239','#FFF1F2','#FDA4AF'],
+      ['','Fora do Tempo',      foraTotal,      '#DC2626','#FEF2F2','#FCA5A5'],
+      ['','Ações Realizadas',   realizadas,     '#16A34A','#F0FDF4','#6EE7B7'],
+      ['','Ações Pendentes',    pendentes,      '#D97706','#FFFBEB','#FCD34D'],
+      ['','Fora do tempo de resposta', foraPrazo, '#9F1239','#FFF1F2','#FDA4AF'],
     ].map(([icon,label,val,color,bg,bdr]) => `
       <div style="background:${bg};border:1.5px solid ${bdr};border-radius:12px;padding:1rem;text-align:center;">
-        <div style="font-size:1.4rem;margin-bottom:2px;">${icon}</div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:800;color:${color};line-height:1;">${val}</div>
         <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-top:3px;">${label}</div>
       </div>`).join('');
@@ -7588,29 +7616,6 @@ entryLines.join('\n\n') + '\n' +
       </div>`;
     }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
 
-    // ── Evolução no tempo ──
-    const tempoMap = {};
-    filtered.forEach(i => { tempoMap[i.data] = (tempoMap[i.data]||0)+1; });
-    const tempoEl = document.getElementById('dash-chart-tempo');
-    if (tempoEl) {
-      const dias = Object.keys(tempoMap).sort();
-      if (!dias.length) { tempoEl.innerHTML = '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>'; }
-      else {
-        const maxV = Math.max(...dias.map(d=>tempoMap[d]),1);
-        tempoEl.innerHTML = `<div style="display:flex;align-items:flex-end;gap:4px;height:80px;overflow-x:auto;">
-          ${dias.map(d => {
-            const h = Math.round(tempoMap[d]/maxV*70);
-            const [y,m,dd] = d.split('-');
-            return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:36px;" title="${dd}/${m}: ${tempoMap[d]} ação(ões)">
-              <div style="font-size:0.6rem;color:#6B7280;margin-bottom:2px;">${tempoMap[d]}</div>
-              <div style="width:28px;height:${h}px;background:#1E4DA1;border-radius:4px 4px 0 0;"></div>
-              <div style="font-size:0.6rem;color:#9CA3AF;margin-top:3px;">${dd}/${m}</div>
-            </div>`;
-          }).join('')}
-        </div>`;
-      }
-    }
-
     // ── Top 5 Problemas ──
     const catMap = {};
     filtered.forEach(i => { catMap[i.catNome] = (catMap[i.catNome]||0)+1; });
@@ -7671,9 +7676,8 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Obs. da Ação</th>
         <th style="${thStyle}">Status</th>
         <th style="${thStyle}">Data Ação</th>
-        <th style="${thStyle}">Prazo</th>
       </tr></thead>
-      <tbody>${filtered.map(i => {
+      <tbody>${filtered.filter(i => i.foraPrazo || (i.temAcao && !i.isRealizada && i.diasPend >= 0)).map(i => {
         const [y,m,d] = i.data.split('-');
         const dataBR = `${d}/${m}/${y}`;
         const sla = i.isRealizada
@@ -7684,8 +7688,12 @@ entryLines.join('\n\n') + '\n' +
               ? `<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">⚠️ ${i.diasPend}d</span>`
               : `<span style="background:#FEF9EC;color:#92400E;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">⏳ ${i.diasPend}d</span>`);
         const statusBadge = i.isRealizada
-          ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🟢 Realizada</span>`
-          : `<span style="background:#FEE2E2;color:#991B1B;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🔴 Pendente</span>`;
+          ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🟢 Ação Realizada</span>`
+          : i.temAcao
+            ? `<span style="background:#FEE2E2;color:#991B1B;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">🔴 Ação Pendente</span>`
+            : i.foraDoTempo
+              ? `<span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">⚠️ Fora do Tempo</span>`
+              : `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ Dentro do Tempo</span>`;
         const just = i.e.justificativa || '—';
         const obsAcao = i.saved.descricao || '—';
         return `<tr>
@@ -7700,57 +7708,101 @@ entryLines.join('\n\n') + '\n' +
           <td style="${tdStyle};max-width:220px;color:#374151;">${obsAcao}</td>
           <td style="${tdStyle}">${statusBadge}</td>
           <td style="${tdStyle}">${i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '—'}</td>
-          <td style="${tdStyle}">${sla}</td>
         </tr>`;
       }).join('')}</tbody>`;
 
-      // Store filtered for export
-      window._dashFiltered = filtered;
     }
   }
 
   function exportDashExcel() {
-    const data = window._dashFiltered;
-    if (!data || !data.length) { showCopyToast('⚠️ Nenhum dado para exportar.'); return; }
+    try {
+      const records = loadDB();
+      const acoes   = loadAcoes();
+      const now     = Date.now();
 
-    const headers = ['Data','Equipe','Turno','Categoria','Tempo Fora','Resp. Ocorrência',
-      'Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação','Prazo (dias)'];
+      // Same filters as renderDashboard
+      const fEquipe  = (document.getElementById('dash-f-equipe')?.value   || '').trim().toUpperCase();
+      const fTurno   = document.getElementById('dash-f-turno')?.value    || '';
+      const fRespOc  = document.getElementById('dash-f-resp-oc')?.value  || '';
+      const fRespAc  = document.getElementById('dash-f-resp-ac')?.value  || '';
+      const fStatus  = document.getElementById('dash-f-status')?.value   || '';
+      const fDataIni = document.getElementById('dash-f-data-ini')?.value || '';
+      const fDataFim = document.getElementById('dash-f-data-fim')?.value || '';
+      const fBusca   = (document.getElementById('dash-busca')?.value     || '').trim().toUpperCase();
 
-    const rows = data.map(i => {
-      const [y,m,d] = i.data.split('-');
-      const prazoLabel = i.isRealizada ? (i.tempoRespDias !== null ? (i.tempoRespDias <= PRAZO_DIAS ? 'No prazo' : 'Fora do prazo') : '') : (i.foraPrazo ? 'Vencido' : 'No prazo');
-      return [
-        `${d}/${m}/${y}`,
-        i.equipe,
-        i.turno,
-        i.catNome,
-        i.tempoStr,
-        i.respOc,
-        i.e.justificativa || '',
-        i.respAc,
-        i.saved.descricao || '',
-        i.isRealizada ? 'Realizada' : 'Pendente',
-        i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '',
-        prazoLabel
-      ];
-    });
+      const rows = [['Data','Equipe','Turno','Categoria','Causa','Tempo Fora','Resp. Ocorrência',
+        'Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação']];
 
-    // Build CSV with BOM for Excel PT-BR
-    const sep = ';';
-    const bom = '\uFEFF';
-    const csv = bom + [headers, ...rows]
-      .map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(sep))
-      .join('\r\n');
+      records.forEach(r => {
+        if (fEquipe && !r.equipe?.toUpperCase().includes(fEquipe)) return;
+        if (fTurno  && r.turno !== fTurno) return;
+        if (fDataIni && r.data < fDataIni) return;
+        if (fDataFim && r.data > fDataFim) return;
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    const now  = new Date();
-    a.download = `dashboard_acoes_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showCopyToast('✅ Exportado com sucesso!');
+        (r.entries || []).forEach(e => {
+          if (!entryNeedsJustificativa(e)) return; // só fora do tempo
+          const temAcao = e.acaoNecessaria === 'sim' && e.acaoResponsavel;
+          const key   = getAcaoKey(r.id, e);
+          const saved = temAcao ? (acoes[key] || {}) : {};
+          const isRealizada = saved.status === 'realizada';
+          if (fRespOc && e.acaoResponsavel !== fRespOc) return;
+          if (fRespAc && saved.respExec     !== fRespAc) return;
+          if (fStatus === 'pendente'  &&  isRealizada) return;
+          if (fStatus === 'realizada' && !isRealizada) return;
+
+          const catNome  = categorias[e.catKey]?.nome || e.catKey;
+          const causaStr = e.causas?.join(', ') || e.obsCausa || '';
+          const tempoStr = e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '';
+          const dataTs   = r.data ? new Date(r.data+'T12:00:00').getTime() : 0;
+          const diasPend = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
+
+          const [y,m,d] = r.data.split('-');
+          const row = [
+            `${d}/${m}/${y}`,
+            r.equipe || '',
+            r.turno  || '',
+            catNome,
+            causaStr,
+            tempoStr,
+            e.acaoResponsavel || '',
+            e.justificativa   || '',
+            saved.respExec    || '',
+            saved.descricao   || '',
+            isRealizada ? 'Realizada' : 'Pendente',
+            saved.dataAcao ? saved.dataAcao.split('-').reverse().join('/') : ''
+          ];
+
+          // Apply busca filter
+          if (fBusca && !row.join('|').toUpperCase().includes(fBusca)) return;
+          rows.push(row);
+        });
+      });
+
+      if (rows.length <= 1) { showCopyToast('⚠️ Nenhum dado para exportar.'); return; }
+
+      // CSV com BOM para Excel PT-BR
+      const sep = ';';
+      const bom = '\uFEFF';
+      const csv = bom + rows
+        .map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(sep))
+        .join('\r\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      const today = new Date();
+      link.setAttribute('download',
+        `dashboard_acoes_${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showCopyToast(`✅ ${rows.length - 1} linha(s) exportada(s)!`);
+    } catch(err) {
+      console.error('Export error:', err);
+      showCopyToast('❌ Erro ao exportar: ' + err.message);
+    }
   }
 
 
@@ -7865,21 +7917,43 @@ entryLines.join('\n\n') + '\n' +
 
   // ── Módulo de Ação ──
 
-  let _acaoSubAtiva = 'pendente'; // 'pendente' | 'realizado'
+  let _acaoSubAtiva = 'pendente'; // sempre pendente
 
   function switchAcaoSub(sub) {
-    _acaoSubAtiva = sub;
-    const btnP = document.getElementById('acaoSubBtnPendente');
-    const btnR = document.getElementById('acaoSubBtnRealizado');
-    if (btnP) {
-      btnP.style.borderBottomColor = sub === 'pendente' ? '#DC2626' : 'transparent';
-      btnP.style.color = sub === 'pendente' ? '#DC2626' : 'var(--gray-400)';
-    }
-    if (btnR) {
-      btnR.style.borderBottomColor = sub === 'realizado' ? '#16A34A' : 'transparent';
-      btnR.style.color = sub === 'realizado' ? '#16A34A' : 'var(--gray-400)';
-    }
+    _acaoSubAtiva = 'pendente'; // ignora realizado — só mostra pendentes
     renderAcaoTab();
+  }
+
+  function addRespAcaoChip(id, sel) {
+    const val = sel.value;
+    if (!val) return;
+    sel.value = ''; // reset dropdown
+
+    const hidden = document.getElementById('acao-resp-acao-' + id);
+    const chips  = document.getElementById('acao-resp-acao-chips-' + id);
+    if (!hidden || !chips) return;
+
+    let current = [];
+    try { current = JSON.parse(hidden.value || '[]'); } catch {}
+    if (current.includes(val)) return; // já adicionado
+
+    current.push(val);
+    hidden.value = JSON.stringify(current);
+
+    const chip = document.createElement('span');
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-radius:99px;padding:2px 8px;font-size:0.75rem;font-weight:700;';
+    chip.innerHTML = `${val} <button type="button" onclick="removeRespAcaoChip('${id}','${val.replace(/'/g,"\\'")}',this)" style="background:none;border:none;color:#991B1B;cursor:pointer;font-size:0.8rem;padding:0;line-height:1;">✕</button>`;
+    chips.appendChild(chip);
+  }
+
+  function removeRespAcaoChip(id, val, btn) {
+    const hidden = document.getElementById('acao-resp-acao-' + id);
+    if (!hidden) return;
+    let current = [];
+    try { current = JSON.parse(hidden.value || '[]'); } catch {}
+    current = current.filter(v => v !== val);
+    hidden.value = JSON.stringify(current);
+    btn.closest('span').remove();
   }
 
   function toggleAcaoResponsavel(id) {
@@ -7903,22 +7977,19 @@ entryLines.join('\n\n') + '\n' +
   function updateTabBadgeAcao() {
     const records = loadDB();
     const acoes = loadAcoes();
-    let pendentes = 0, realizados = 0;
+    let pendentes = 0;
     records.forEach(r => {
       (r.entries || []).forEach(e => {
         if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
           const k = getAcaoKey(r.id, e);
-          if (acoes[k]?.status === 'realizada') realizados++;
-          else pendentes++;
+          if (!acoes[k] || acoes[k].status !== 'realizada') pendentes++;
         }
       });
     });
     const badge = document.getElementById('tabBadgeAcao');
     if (badge) { badge.textContent = pendentes; badge.style.display = pendentes > 0 ? 'inline-flex' : 'none'; }
     const bp = document.getElementById('acaoSubBadgePendente');
-    const br = document.getElementById('acaoSubBadgeRealizado');
     if (bp) bp.textContent = pendentes;
-    if (br) br.textContent = realizados;
   }
 
   function countAcoesPendentes(records) {
@@ -8016,8 +8087,7 @@ entryLines.join('\n\n') + '\n' +
         const key = getAcaoKey(r.id, e);
         const saved = acoes[key] || {};
         const isRealizada = saved.status === 'realizada';
-        if (_acaoSubAtiva === 'pendente'  &&  isRealizada) return;
-        if (_acaoSubAtiva === 'realizado' && !isRealizada) return;
+        if (_acaoSubAtiva === 'pendente' && isRealizada) return;
         const diasPendente = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
         cards.push({ r, e, key, saved, dataBR, isRealizada, diasPendente });
       });
@@ -8030,8 +8100,8 @@ entryLines.join('\n\n') + '\n' +
 
     if (!cards.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
-        <div style="font-size:2.5rem;margin-bottom:0.75rem;">${_acaoSubAtiva === 'pendente' ? '✅' : '📂'}</div>
-        <div style="font-size:0.95rem;font-weight:600;">${_acaoSubAtiva === 'pendente' ? 'Nenhuma ação pendente!' : 'Nenhuma ação realizada ainda.'}</div>
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">✅</div>
+        <div style="font-size:0.95rem;font-weight:600;">Nenhuma ação pendente! ✅</div>
       </div>`;
       updateTabBadgeAcao();
       return;
@@ -8074,20 +8144,30 @@ entryLines.join('\n\n') + '\n' +
         </div>`;
       }
 
-      return `<div style="background:white;border:1.5px solid #E5E7EB;border-left:4px solid ${prazoInfo?.status==='vencido'?'#DC2626':prazoInfo?.status==='atencao'?'#D97706':'#6B7280'};border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
-          <span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:99px;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Pendente</span>
-          <div>
-            <div style="font-weight:800;font-size:0.88rem;color:#1E3A5F;">${r.equipe} <span style="font-weight:500;color:var(--gray-400);">· ${dataBR} · T${r.turno}</span></div>
-            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
+      // Nomes piscando — responsáveis pela ação
+      const respNomes = e.acaoRespAcao?.length ? e.acaoRespAcao : (e.acaoResponsavel ? [e.acaoResponsavel] : []);
+      const blinkingNames = respNomes.length
+        ? `<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.4rem;">
+            ${respNomes.map(n => `<span class="blink-resp" style="font-size:0.72rem;font-weight:800;color:#DC2626;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:99px;padding:2px 9px;">👤 ${n}</span>`).join('')}
+           </div>` : '';
+
+      return `<div style="background:white;border:1.5px solid #E5E7EB;border-left:4px solid ${prazoInfo?.status==='vencido'?'#DC2626':prazoInfo?.status==='atencao'?'#D97706':'#6B7280'};border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
+            <span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:99px;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Pendente</span>
+            <div>
+              <div style="font-weight:800;font-size:0.88rem;color:#1E3A5F;">${r.equipe} <span style="font-weight:500;color:var(--gray-400);">· ${dataBR} · T${r.turno}</span></div>
+              <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
+            </div>
+            ${tempoPill}
+            ${prazoBadge}
           </div>
-          ${tempoPill}
-          ${prazoBadge}
+          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
+            <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-          <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
-          <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
-        </div>
+        ${blinkingNames}
       </div>`;
     }).join('');
 
@@ -8155,6 +8235,8 @@ entryLines.join('\n\n') + '\n' +
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Responsável indicado</div>
             <div style="font-size:0.88rem;font-weight:700;color:#374151;margin-top:2px;">${foundE.acaoResponsavel}</div>
           </div>
+          ${foundE.acaoRespAcao?.length ? '<div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.6rem 0.85rem;grid-column:1/-1;"><div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">Responsável(is) pela Ação</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">' + foundE.acaoRespAcao.map(n => '<span style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-radius:99px;padding:2px 8px;font-size:0.75rem;font-weight:700;">' + n + '</span>').join('') + '</div></div>' : ''}
+          </div>
           ${!isRealizada && foundR.data ? (() => {
             const p = calcPrazoAcao(foundR.data);
             return p ? `<div style="grid-column:1/-1;background:${p.bg};border:1px solid ${p.border};border-radius:8px;padding:0.6rem 0.85rem;">
@@ -8167,6 +8249,10 @@ entryLines.join('\n\n') + '\n' +
           ${foundE.justificativa ? `<div style="grid-column:1/-1;background:#FEF9EC;border:1px solid #FCD34D;border-radius:8px;padding:0.6rem 0.85rem;">
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#92400E;">⚠️ Justificativa do registro</div>
             <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.justificativa}</div>
+          </div>` : ''}
+          ${foundE.obs ? `<div style="grid-column:1/-1;background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#1E40AF;">💬 Comentário do registro</div>
+            <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.obs}</div>
           </div>` : ''}
         </div>
       </div>
@@ -8325,7 +8411,7 @@ entryLines.join('\n\n') + '\n' +
       if (panel) panel.style.display = 'none';
       document.body.style.overflow = '';
       _tratativaKey = null;
-      switchAcaoSub('realizado');
+      renderAcaoTab();
     } else {
       const dataPrevista = document.getElementById('trat-data-prev')?.value || '';
       const motivo = document.getElementById('trat-motivo')?.value || '';
@@ -8361,7 +8447,7 @@ entryLines.join('\n\n') + '\n' +
     const acoes = loadAcoes();
     acoes[key] = { ...acoes[key], descricao: desc, dataAcao, respExec, status: 'realizada' };
     persistAcoes(acoes);
-    switchAcaoSub('realizado');
+    renderAcaoTab();
     updateTabBadgeAcao();
     showCopyToast('✅ Ação marcada como realizada!');
   }
