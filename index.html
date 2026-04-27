@@ -6698,6 +6698,10 @@ entryLines.join('\n\n') + '\n' +
   }
 
   const CFG_LIMITES_KEY = 'enel_cfg_incidencia_limites';
+  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
+  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
+  const CFG_RESP_OC_KEY  = 'enel_cfg_resp_oc';
+  const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
 
   function getCustomLimites() {
     return getCfg(CFG_LIMITES_KEY, {});
@@ -7322,6 +7326,7 @@ entryLines.join('\n\n') + '\n' +
     r.reuniao = !r.reuniao;
     saveDB(records);
     applyDBFilters();
+    renderReuniao(); // Renderizar reunião para atualizar a lista
     updateBadgeReuniao();
     showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
   }
@@ -7869,12 +7874,6 @@ entryLines.join('\n\n') + '\n' +
 
 
 
-
-  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
-  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
-
-  const CFG_RESP_OC_KEY  = 'enel_cfg_resp_oc';
-  const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
 
   function getRespAcao() {
     return getCfg(CFG_RESP_ACAO_KEY, [...RESP_ACAO_DEFAULT]);
