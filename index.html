@@ -4065,6 +4065,33 @@ if (localStorage.getItem('enel_auth') === '1') {
     return [];
   }
 
+  // Normaliza entradas para garantir que têm status calculado
+  function normalizeEntry(e) {
+    if (!e) return e;
+    
+    // Para incidência, não precisa normalizar - é sempre fora do tempo se ordem2=true ou se tem causa
+    if (e.catKey === 'incidencia') {
+      if (e.ordem2 === true) return e; // já marcado como fora
+      return e;
+    }
+    
+    // Para outras categorias, garante que tem status
+    if (e.catKey === 'deslocamento') {
+      if (!e.deslocStatus) {
+        e.deslocStatus = (e.mins && e.mins > DESLOC_LIMITE_MIN) ? 'fora' : 'dentro';
+      }
+    } else if (e.catKey === 'ocioso') {
+      if (!e.ociososStatus) {
+        e.ociososStatus = (e.mins && e.mins > OCIOSO_LIMITE_MIN) ? 'fora' : 'dentro';
+      }
+    } else if (e.catKey === 'plataforma') {
+      if (!e.plataformaStatus) {
+        e.plataformaStatus = (e.mins && e.mins > PLATAFORMA_LIMITE_MIN) ? 'fora' : 'dentro';
+      }
+    }
+    return e;
+  }
+
   // Salva um único registro no Firebase via REST
   function saveRecordToFirebase(record) {
     _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
@@ -7192,7 +7219,7 @@ entryLines.join('\n\n') + '\n' +
   try {
     const _inicioImg = document.querySelector('.inicio-img');
     if (_inicioImg) _inicioImg.dataset.origSrc = _inicioImg.src;
-    applyInicioImage();
+    // applyInicioImage(); // Function not defined - skipping
     initDefaults();
     initFirebaseSync();
     initConfigSync();
@@ -7451,6 +7478,19 @@ entryLines.join('\n\n') + '\n' +
     const records = loadDB();
     const acoes   = loadAcoes();
     const now     = Date.now();
+    
+    // DEBUG: verificar registros carregados
+    console.log('[Dashboard Debug] Registros carregados:', records.length);
+    if (records.length > 0) {
+      records.forEach(r => {
+        console.log(`  Registro ${r.id} (${r.data}): ${(r.entries || []).length} entradas`);
+        (r.entries || []).forEach((e, i) => {
+          const normE = normalizeEntry({...e});
+          const foraDoTempo = entryNeedsJustificativa(normE);
+          console.log(`    Entry ${i}: ${e.catKey} ${e.mins}min (status=${normE.deslocStatus || normE.ociososStatus || normE.plataformaStatus || 'N/A'}) -> foraDoTempo=${foraDoTempo}`);
+        });
+      });
+    }
     const PRAZO_DIAS = 2; // Prazo máximo de resposta em dias
 
     // Populate resp ação filter
@@ -7482,27 +7522,29 @@ entryLines.join('\n\n') + '\n' +
       if (fDataIni && r.data < fDataIni) return;
       if (fDataFim && r.data > fDataFim) return;
       (r.entries || []).forEach(e => {
-        const foraDoTempo = entryNeedsJustificativa(e);
-        const temAcao = e.acaoNecessaria === 'sim' && e.acaoResponsavel;
-        const key   = getAcaoKey(r.id, e);
+        // Normalize entry to ensure status is calculated
+        const normE = normalizeEntry({...e});
+        const foraDoTempo = entryNeedsJustificativa(normE);
+        const temAcao = normE.acaoNecessaria === 'sim' && normE.acaoResponsavel;
+        const key   = getAcaoKey(r.id, normE);
         const saved = temAcao ? (acoes[key] || {}) : {};
         const isRealizada = saved.status === 'realizada';
-        if (fRespOc && e.acaoResponsavel !== fRespOc) return;
+        if (fRespOc && normE.acaoResponsavel !== fRespOc) return;
         if (fRespAc && saved.respExec    !== fRespAc) return;
         if (fStatus === 'pendente'  &&  isRealizada) return;
         if (fStatus === 'realizada' && !isRealizada) return;
-        const catNome = categorias[e.catKey]?.nome || e.catKey;
+        const catNome = categorias[normE.catKey]?.nome || normE.catKey;
         const dataTs  = r.data ? new Date(r.data + 'T12:00:00').getTime() : 0;
         const diasPend = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
         const tempoRespDias = (isRealizada && saved.dataAcao && r.data)
           ? Math.max(0, Math.floor((new Date(saved.dataAcao+'T12:00:00') - new Date(r.data+'T12:00:00')) / 86400000))
           : null;
         const foraPrazo = temAcao && !isRealizada && diasPend > PRAZO_DIAS;
-        items.push({ r, e, key, saved, isRealizada, temAcao, foraDoTempo, catNome, diasPend, tempoRespDias, foraPrazo,
-          equipe: r.equipe, turno: r.turno, data: r.data, respOc: e.acaoResponsavel || '—',
-          acaoRespAcao: e.acaoRespAcao || [],
-          respAc: saved.respExec || '—', causaStr: e.causas?.join(', ') || e.obsCausa || e.obs || '—',
-          tempoStr: e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '—' });
+        items.push({ r, e: normE, key, saved, isRealizada, temAcao, foraDoTempo, catNome, diasPend, tempoRespDias, foraPrazo,
+          equipe: r.equipe, turno: r.turno, data: r.data, respOc: normE.acaoResponsavel || '—',
+          acaoRespAcao: normE.acaoRespAcao || [],
+          respAc: saved.respExec || '—', causaStr: normE.causas?.join(', ') || normE.obsCausa || normE.obs || '—',
+          tempoStr: normE.mins ? `${Math.floor(normE.mins/60)}h${String(normE.mins%60).padStart(2,'0')}min` : '—' });
       });
     });
 
@@ -7519,7 +7561,7 @@ entryLines.join('\n\n') + '\n' +
       return true;
     }).length;
     const total      = filtered.length;
-    const foraTotal  = filtered.filter(i => i.foraPrazo || (i.temAcao && !i.isRealizada && i.diasPend >= 0)).length;
+    const foraTotal  = filtered.filter(i => i.foraDoTempo).length;
     const pendentes  = filtered.filter(i => i.temAcao && !i.isRealizada).length;
     const realizadas = filtered.filter(i => i.isRealizada).length;
     const tempos     = filtered.filter(i => i.tempoRespDias !== null).map(i => i.tempoRespDias);
@@ -7677,7 +7719,7 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Status</th>
         <th style="${thStyle}">Data Ação</th>
       </tr></thead>
-      <tbody>${filtered.filter(i => i.foraPrazo || (i.temAcao && !i.isRealizada && i.diasPend >= 0)).map(i => {
+      <tbody>${filtered.filter(i => i.foraDoTempo).map(i => {
         const [y,m,d] = i.data.split('-');
         const dataBR = `${d}/${m}/${y}`;
         const sla = i.isRealizada
