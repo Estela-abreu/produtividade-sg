@@ -1653,6 +1653,8 @@ function _doLogin(user) {
   if (user.primeiroAcesso) {
     showChangePasswordDialogImmediate(true);
   } else {
+    // Update config button visibility before reload
+    setTimeout(() => updateConfigButtonVisibility?.(), 100);
     window.location.reload();
   }
 }
@@ -1704,17 +1706,35 @@ function submitChangePasswordImmediate(isFirstAccess) {
   const user  = getCurrentUserImmediate();
   const idx   = users.findIndex(u => u.login === user.login);
   if (idx === -1) return;
+  
+  // Update users array
   users[idx].senha = newPwd;
   users[idx].primeiroAcesso = false;
+  
+  // Save to localStorage immediately
   saveUsersLocal(users);
-  saveUserToFirebase(users[idx]);
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(users[idx]));
-  document.getElementById('pwdDialog').remove();
-  if (isFirstAccess) {
-    window.location.reload();
-  } else {
-    _showToastAuth('✅ Senha alterada com sucesso!');
-  }
+  
+  // Also save to Firebase
+  saveUserToFirebase(users[idx]).then(() => {
+    document.getElementById('pwdDialog')?.remove();
+    if (isFirstAccess) {
+      // Give user feedback before reload
+      _showToastAuth('✅ Senha criada com sucesso!');
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      _showToastAuth('✅ Senha alterada com sucesso!');
+    }
+  }).catch(() => {
+    // Even if Firebase fails, the local change is saved
+    document.getElementById('pwdDialog')?.remove();
+    if (isFirstAccess) {
+      _showToastAuth('✅ Senha criada (salvar no servidor...)');
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      _showToastAuth('✅ Senha alterada localmente (sincronizando...)');
+    }
+  });
 }
 
 function _showToastAuth(msg) {
@@ -4720,6 +4740,7 @@ if (!loggedInUser) {
     updateTopbarMetrics();
     updateBadgeReuniao();
     updateTabBadgeAcao();
+    updateConfigButtonVisibility();  // ← Verifica se deve mostrar config
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnNotify')    renderNotifyTab();
@@ -5710,6 +5731,12 @@ if (!loggedInUser) {
   }
 
   function switchTab(tab) {
+    // Prevent non-admin users from accessing config tab
+    if (tab === 'config' && !isAdmin()) {
+      _showToastAuth('❌ Acesso restrito ao administrador');
+      return;
+    }
+
     if (_currentTab === 'form' && tab !== 'form') saveDraft();
     if (_currentTab === 'config' && tab !== 'config') lockConfig();
 
@@ -7811,6 +7838,14 @@ entryLines.join('\n\n') + '\n' +
     const count = loadDB().filter(r => r.reuniao).length;
     const badge = document.getElementById('tabBadgeReuniao');
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
+  }
+
+  function updateConfigButtonVisibility() {
+    const btn = document.getElementById('tabBtnConfig');
+    if (!btn) return;
+    const isAdmin = isAdmin();
+    btn.style.display = isAdmin ? 'flex' : 'none';
+    btn.style.pointerEvents = isAdmin ? 'auto' : 'none';
   }
 
   function limparFiltrosReuniao() {
