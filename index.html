@@ -5704,11 +5704,15 @@ if (!loggedInUser) {
   let _dashSub    = 'dashboard'; // 'dashboard' | 'db'
 
   function switchDashSub(sub) {
+    console.log('switchDashSub called with:', sub);
     _dashSub = sub;
     const subDash = document.getElementById('dashSubDashboard');
     const subDB   = document.getElementById('dashSubDB');
     const btnD    = document.getElementById('dashSubBtnDashboard');
     const btnDB   = document.getElementById('dashSubBtnDB');
+    
+    console.log('Elements found:', {subDash: !!subDash, subDB: !!subDB, btnD: !!btnD, btnDB: !!btnDB});
+    
     if (subDash) subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
     if (subDB)   subDB.style.display   = sub === 'db'        ? 'block' : 'none';
     if (btnD) {
