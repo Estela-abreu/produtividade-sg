@@ -5705,30 +5705,47 @@ if (!loggedInUser) {
 
   function switchDashSub(sub) {
     console.log('switchDashSub called with:', sub);
-    _dashSub = sub;
-    const subDash = document.getElementById('dashSubDashboard');
-    const subDB   = document.getElementById('dashSubDB');
-    const btnD    = document.getElementById('dashSubBtnDashboard');
-    const btnDB   = document.getElementById('dashSubBtnDB');
     
-    console.log('Elements found:', {subDash: !!subDash, subDB: !!subDB, btnD: !!btnD, btnDB: !!btnDB});
-    
-    if (subDash) subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
-    if (subDB)   subDB.style.display   = sub === 'db'        ? 'block' : 'none';
-    if (btnD) {
-      btnD.style.borderBottomColor = sub === 'dashboard' ? '#065F46' : 'transparent';
-      btnD.style.color             = sub === 'dashboard' ? '#065F46' : '#9CA3AF';
-    }
-    if (btnDB) {
-      btnDB.style.borderBottomColor = sub === 'db' ? '#065F46' : 'transparent';
-      btnDB.style.color             = sub === 'db' ? '#065F46' : '#9CA3AF';
-    }
-    if (sub === 'db') {
-      applyDBFilters();
-      setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
-    }
-    if (sub === 'dashboard') renderDashboard();
-    window.scrollTo({ top:0, behavior:'smooth' });
+    // Try immediately first
+    setTimeout(() => {
+      _dashSub = sub;
+      const subDash = document.getElementById('dashSubDashboard');
+      const subDB   = document.getElementById('dashSubDB');
+      const btnD    = document.getElementById('dashSubBtnDashboard');
+      const btnDB   = document.getElementById('dashSubBtnDB');
+      
+      console.log('Elements found:', {subDash: !!subDash, subDB: !!subDB, btnD: !!btnD, btnDB: !!btnDB});
+      console.log('Current sub:', sub);
+      
+      if (!subDash && !subDB) {
+        console.error('❌ dashSubDashboard and dashSubDB not found in DOM!');
+        console.log('Available elements:', document.body.innerHTML.includes('dashSubDB'));
+        return;
+      }
+      
+      if (subDash) {
+        subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
+        console.log('dashSubDashboard display:', subDash.style.display);
+      }
+      if (subDB) {
+        subDB.style.display = sub === 'db' ? 'block' : 'none';
+        console.log('dashSubDB display:', subDB.style.display);
+      }
+      if (btnD) {
+        btnD.style.borderBottomColor = sub === 'dashboard' ? '#065F46' : 'transparent';
+        btnD.style.color             = sub === 'dashboard' ? '#065F46' : '#9CA3AF';
+      }
+      if (btnDB) {
+        btnDB.style.borderBottomColor = sub === 'db' ? '#065F46' : 'transparent';
+        btnDB.style.color             = sub === 'db' ? '#065F46' : '#9CA3AF';
+      }
+      if (sub === 'db') {
+        applyDBFilters();
+        setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
+      }
+      if (sub === 'dashboard') renderDashboard();
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }, 10);
   }
 
   function switchTab(tab) {
