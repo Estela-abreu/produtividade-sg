@@ -1664,10 +1664,8 @@ localStorage.removeItem('enel_current_user');
 document.getElementById('loginScreen').style.display = 'flex';
 
 function logoutImmediate() {
-  if (confirm('Deseja sair da plataforma?')) {
-    localStorage.removeItem('enel_current_user');
-    window.location.reload();
-  }
+  localStorage.removeItem('enel_current_user');
+  location.href = location.href; // Recarrega a página
 }
 
 function toggleUserMenuTopbar() {
