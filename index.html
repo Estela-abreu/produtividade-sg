@@ -1658,10 +1658,10 @@ function submitChangePasswordImmediate(isFirstAccess) {
 
 // Inicializar usuários e verificar login
 initUsersImmediate();
-const loggedInUser = getCurrentUserImmediate();
-if (loggedInUser) {
-  document.getElementById('loginScreen').style.display = 'none';
-}
+
+// SEMPRE mostrar login por padrão (remover qualquer sessão anterior)
+localStorage.removeItem('enel_current_user');
+document.getElementById('loginScreen').style.display = 'flex';
 
 function logoutImmediate() {
   if (confirm('Deseja sair da plataforma?')) {
@@ -1675,8 +1675,8 @@ function toggleUserMenuTopbar() {
     <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:10000;" onclick="this.remove()">
       <div style="background:white;border-radius:12px;padding:1.5rem;max-width:300px;box-shadow:0 10px 40px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
         <div style="font-size:1rem;font-weight:700;margin-bottom:1rem;color:#1F2937;">Opções do Usuário</div>
-        <button onclick="showChangePasswordDialogImmediate(); this.closest('[style*=position]').remove();" style="width:100%;padding:0.75rem 1rem;border:none;background:#F3F4F6;cursor:pointer;border-radius:6px;text-align:left;font-size:0.85rem;color:#374151;margin-bottom:0.5rem;transition:background 0.2s;" onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">🔑 Alterar Senha</button>
-        <button onclick="logoutImmediate(); this.closest('[style*=position]').remove();" style="width:100%;padding:0.75rem 1rem;border:none;background:#FEE2E2;cursor:pointer;border-radius:6px;text-align:left;font-size:0.85rem;color:#DC2626;font-weight:700;transition:background 0.2s;" onmouseover="this.style.background='#FECACA'" onmouseout="this.style.background='#FEE2E2'">🚪 Sair</button>
+        <button onclick="showChangePasswordDialogImmediate(); document.querySelector('[style*=\\"position:fixed\\"]').remove();" style="width:100%;padding:0.75rem 1rem;border:none;background:#F3F4F6;cursor:pointer;border-radius:6px;text-align:left;font-size:0.85rem;color:#374151;margin-bottom:0.5rem;">🔑 Alterar Senha</button>
+        <button onclick="logoutImmediate();" style="width:100%;padding:0.75rem 1rem;border:none;background:#FEE2E2;cursor:pointer;border-radius:6px;text-align:left;font-size:0.85rem;color:#DC2626;font-weight:700;">🚪 Sair</button>
       </div>
     </div>
   `;
