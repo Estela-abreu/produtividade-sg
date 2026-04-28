@@ -4492,6 +4492,7 @@ if (localStorage.getItem('enel_auth') === '1') {
       id: Date.now(),
       registroId,
       savedAt: new Date().toISOString(),
+      reuniao: false, // Inicializar como false
       ...form
     };
 
@@ -7322,38 +7323,31 @@ entryLines.join('\n\n') + '\n' +
 
 
   function toggleReuniao(id) {
-    console.log('[toggleReuniao] ===== INÍCIO =====');
-    console.log('[toggleReuniao] Clicado para registro:', id);
+    alert('1. Clicou no botão reunião para ID: ' + id);
     const records = loadDB();
-    console.log('[toggleReuniao] Total de registros antes:', records.length);
-    console.log('[toggleReuniao] Registros:', records.map(r => ({id: r.id, reuniao: r.reuniao})));
-    
+    alert('2. Registros carregados: ' + records.length);
     const r = records.find(rec => rec.id === id);
-    console.log('[toggleReuniao] Registro encontrado:', !!r);
+    alert('3. Registro encontrado: ' + (r ? 'SIM' : 'NÃO'));
     if (!r) {
-      console.log('[toggleReuniao] ❌ Registro NÃO encontrado!');
+      alert('Registro não encontrado!');
       return;
     }
-    
-    console.log('[toggleReuniao] Reuniao ANTES:', r.reuniao);
+    alert('4. Reuniao ANTES: ' + r.reuniao);
     r.reuniao = !r.reuniao;
-    console.log('[toggleReuniao] Reuniao DEPOIS:', r.reuniao);
-    
-    console.log('[toggleReuniao] Salvando DB...');
+    alert('5. Reuniao DEPOIS: ' + r.reuniao);
     saveDB(records);
-    console.log('[toggleReuniao] DB salvo');
-    
-    console.log('[toggleReuniao] Verificando records APÓS saveDB:', records.map(r => ({id: r.id, reuniao: r.reuniao})));
-    
-    console.log('[toggleReuniao] Carregando DB novamente...');
-    const reloaded = loadDB();
-    console.log('[toggleReuniao] Records recarregados:', reloaded.map(r => ({id: r.id, reuniao: r.reuniao})));
-    
+    alert('6. Salvo no DB');
     applyDBFilters();
-    renderReuniao();
+    
+    // Forçar renderização da reunião
+    setTimeout(() => {
+      renderReuniao();
+      alert('7. renderReuniao chamado');
+    }, 100);
+    
     updateBadgeReuniao();
     showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
-    console.log('[toggleReuniao] ===== FIM =====');
+    alert('8. Toast mostrado');
   }
 
   function updateBadgeReuniao() {
@@ -7363,22 +7357,10 @@ entryLines.join('\n\n') + '\n' +
   }
 
   function renderReuniao() {
-    console.log('[renderReuniao] ===== INÍCIO =====');
     const listEl = document.getElementById('reuniaoList');
-    console.log('[renderReuniao] Elemento reuniaoList:', !!listEl);
-    if (!listEl) {
-      console.log('[renderReuniao] ❌ reuniaoList NÃO encontrado!');
-      return;
-    }
-    
+    if (!listEl) return;
     const all = loadDB();
-    console.log('[renderReuniao] Total de registros:', all.length);
-    console.log('[renderReuniao] Registros completos:', all.map(r => ({id: r.id, reuniao: r.reuniao, data: r.data})));
-    
     const marked = all.filter(r => r.reuniao);
-    console.log('[renderReuniao] Registros marcados para reunião:', marked.length);
-    console.log('[renderReuniao] IDs marcados:', marked.map(m => m.id));
-    
     updateBadgeReuniao();
 
     if (!marked.length) {
