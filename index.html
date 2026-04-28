@@ -1662,6 +1662,29 @@ const loggedInUser = getCurrentUserImmediate();
 if (loggedInUser) {
   document.getElementById('loginScreen').style.display = 'none';
 }
+
+function logoutImmediate() {
+  if (confirm('Deseja sair da plataforma?')) {
+    localStorage.removeItem('enel_current_user');
+    window.location.reload();
+  }
+}
+
+function toggleUserMenuTopbar() {
+  const menu = document.getElementById('userMenuTopbar');
+  if (menu) {
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+// Mostrar nome do usuário na topbar
+(function() {
+  const user = getCurrentUserImmediate();
+  if (user) {
+    const el = document.getElementById('topbarUserName');
+    if (el) el.textContent = user.nome;
+  }
+})();
 </script>
 
 <!-- TELA DE LOGIN -->
@@ -1847,6 +1870,16 @@ if (localStorage.getItem('enel_auth') === '1') {
         <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span class="topbar-metric-value pending-val" id="topbarPending">0</span>
         <span class="topbar-metric-label">Pendentes</span>
+      </div>
+      <div class="topbar-sep"></div>
+      <!-- Usuário logado -->
+      <div class="topbar-metric" style="cursor:pointer;position:relative;" onclick="toggleUserMenuTopbar()">
+        <span style="font-size:0.9rem;">👤</span>
+        <span class="topbar-metric-label" id="topbarUserName">Usuário</span>
+        <div id="userMenuTopbar" style="display:none;position:absolute;top:35px;right:0;background:white;border:1px solid #E5E7EB;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;min-width:200px;overflow:hidden;">
+          <button onclick="showChangePasswordDialogImmediate()" style="width:100%;padding:0.75rem 1rem;border:none;background:none;cursor:pointer;text-align:left;border-bottom:1px solid #E5E7EB;font-size:0.85rem;color:#374151;">🔑 Alterar Senha</button>
+          <button onclick="logoutImmediate()" style="width:100%;padding:0.75rem 1rem;border:none;background:none;cursor:pointer;text-align:left;font-size:0.85rem;color:#DC2626;font-weight:700;">🚪 Sair</button>
+        </div>
       </div>
     </div>
   </div>
