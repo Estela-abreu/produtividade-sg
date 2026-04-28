@@ -61,6 +61,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+  {
   :root {
     --green: #00843D;
     --green-light: #00A94F;
@@ -1518,11 +1519,11 @@
     border-top: 1px solid var(--gray-200);
   }
 </style>
-</head>
-<body>
-
 <script>
-// ─── FUNÇÕES DE AUTENTICAÇÃO (executadas IMEDIATAMENTE) ───
+// ════════════════════════════════════════════════════════════════
+//  SISTEMA DE LOGIN E AUTENTICAÇÃO
+// ════════════════════════════════════════════════════════════════
+
 const USERS_KEY = 'enel_users';
 const CURRENT_USER_KEY = 'enel_current_user';
 
@@ -1556,27 +1557,26 @@ function validateLoginImmediate(login, senha) {
 
 function submitLoginImmediate(event) {
   event.preventDefault();
-  const login = document.getElementById('loginInput').value;
-  const senha = document.getElementById('senhaInput').value;
+  const login = document.getElementById('loginUser').value;
+  const senha = document.getElementById('loginPass').value;
   const errorEl = document.getElementById('loginError');
   
   const user = validateLoginImmediate(login, senha);
   if (!user) {
-    errorEl.textContent = 'Login ou senha incorretos';
-    errorEl.style.display = 'block';
+    if (errorEl) {
+      errorEl.textContent = 'Login ou senha incorretos';
+      errorEl.style.display = 'block';
+    }
     return;
   }
   
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  localStorage.setItem('enel_auth', '1');
   
   if (user.primeiroAcesso) {
     showChangePasswordDialogImmediate(true);
   } else {
-    document.getElementById('loginScreen').style.display = 'none';
-    // Mostrar plataforma
-    document.querySelector('.sidebar')?.style.display = '';
-    document.querySelector('.main')?.style.display = '';
-    document.querySelector('.topbar')?.style.display = '';
+    window.location.reload();
   }
 }
 
@@ -1587,30 +1587,15 @@ function showChangePasswordDialogImmediate(isFirstAccess = false) {
         <div style="font-size:1.2rem;font-weight:700;margin-bottom:1rem;color:#1F2937;">
           🔑 ${isFirstAccess ? 'Alterar Senha Inicial' : 'Alterar Senha'}
         </div>
-        ${!isFirstAccess ? `<div style="margin-bottom:1rem;">
-          <label style="display:block;margin-bottom:0.5rem;font-weight:700;font-size:0.85rem;">Senha Atual</label>
-          <input type="password" id="currentPwdInput" placeholder="••••••••" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;">
-        </div>` : ''}
-        <div style="margin-bottom:1rem;">
-          <label style="display:block;margin-bottom:0.5rem;font-weight:700;font-size:0.85rem;">Nova Senha</label>
-          <input type="password" id="newPwdInput" placeholder="••••••••" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;">
-        </div>
-        <div style="margin-bottom:1rem;">
-          <label style="display:block;margin-bottom:0.5rem;font-weight:700;font-size:0.85rem;">Confirmar Senha</label>
-          <input type="password" id="confirmPwdInput" placeholder="••••••••" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;">
-        </div>
-        <div id="pwdError" style="color:#DC2626;font-size:0.85rem;margin-bottom:1rem;display:none;"></div>
-        <div style="display:flex;gap:0.5rem;">
-          ${!isFirstAccess ? `<button onclick="document.getElementById('pwdDialog').remove()" style="flex:1;padding:0.5rem;background:#E5E7EB;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Cancelar</button>` : ''}
-          <button onclick="submitChangePasswordImmediate(${isFirstAccess})" style="flex:1;padding:0.5rem;background:#065F46;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Salvar</button>
-        </div>
+        ${!isFirstAccess ? `<div style="margin-bottom:1rem;"><label style="font-size:0.78rem;font-weight:700;color:#374151;">Senha Atual</label><input type="password" id="currentPwdInput" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;margin-top:0.25rem;"></div>` : ''}
+        <div style="margin-bottom:1rem;"><label style="font-size:0.78rem;font-weight:700;color:#374151;">Nova Senha</label><input type="password" id="newPwdInput" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;margin-top:0.25rem;"></div>
+        <div style="margin-bottom:1rem;"><label style="font-size:0.78rem;font-weight:700;color:#374151;">Confirmar Senha</label><input type="password" id="confirmPwdInput" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;margin-top:0.25rem;"></div>
+        <div id="pwdError" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem;border-radius:6px;"></div>
+        <div style="display:flex;gap:0.5rem;"><button onclick="submitChangePasswordImmediate(${isFirstAccess})" style="flex:1;background:#003087;color:white;padding:0.5rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Confirmar</button>${!isFirstAccess ? `<button onclick="document.getElementById('pwdDialog').remove()" style="flex:1;background:#E5E7EB;color:#374151;padding:0.5rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Cancelar</button>` : ''}</div>
       </div>
     </div>
   `;
-  
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  document.body.appendChild(container.firstElementChild);
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 function submitChangePasswordImmediate(isFirstAccess) {
@@ -1640,7 +1625,6 @@ function submitChangePasswordImmediate(isFirstAccess) {
     }
   }
   
-  // Atualizar senha
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
   const user = getCurrentUserImmediate();
   const idx = users.findIndex(u => u.id === user.id);
@@ -1652,94 +1636,46 @@ function submitChangePasswordImmediate(isFirstAccess) {
   document.getElementById('pwdDialog').remove();
   
   if (isFirstAccess) {
-    document.getElementById('loginScreen').style.display = 'none';
-    // Mostrar plataforma
-    document.querySelector('.sidebar')?.style.display = '';
-    document.querySelector('.main')?.style.display = '';
-    document.querySelector('.topbar')?.style.display = '';
+    window.location.reload();
   } else {
     alert('✅ Senha alterada com sucesso!');
   }
 }
 
-// Inicializar usuários e verificar login
-initUsersImmediate();
-
-// SEMPRE mostrar login por padrão (remover qualquer sessão anterior)
-localStorage.removeItem('enel_current_user');
-document.getElementById('loginScreen').style.display = 'flex';
-
 function logoutImmediate() {
   localStorage.removeItem('enel_current_user');
-  document.getElementById('loginScreen').style.display = 'flex';
-  // Limpar o restante da plataforma
-  document.querySelector('.sidebar')?.style.display = 'none';
-  document.querySelector('.main')?.style.display = 'none';
-  document.querySelector('.topbar')?.style.display = 'none';
+  localStorage.removeItem('enel_auth');
+  window.location.reload();
 }
 
 function toggleUserMenuTopbar() {
-  const html = `
-    <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:10000;" onclick="this.remove()">
-      <div style="background:white;border-radius:12px;padding:1.5rem;max-width:300px;box-shadow:0 10px 40px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
-        <div style="font-size:1rem;font-weight:700;margin-bottom:1rem;color:#1F2937;">Opções do Usuário</div>
-        <button onclick="showChangePasswordDialogImmediate(); document.querySelector('[style*=\\"position:fixed\\"]').remove();" style="width:100%;padding:0.75rem 1rem;border:none;background:#F3F4F6;cursor:pointer;border-radius:6px;text-align:left;font-size:0.85rem;color:#374151;margin-bottom:0.5rem;">🔑 Alterar Senha</button>
-        <button onclick="logoutImmediate();" style="width:100%;padding:0.75rem 1rem;border:none;background:#FEE2E2;cursor:pointer;border-radius:6px;text-align:left;font-size:0.85rem;color:#DC2626;font-weight:700;">🚪 Sair</button>
-      </div>
-    </div>
-  `;
-  
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  document.body.appendChild(container.firstElementChild);
+  const user = getCurrentUserImmediate();
+  const html = `<div id="userMenu" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;padding:1.5rem;z-index:10001;box-shadow:0 10px 40px rgba(0,0,0,0.3);" onclick="event.stopPropagation()"><div style="font-weight:700;margin-bottom:1rem;color:#1F2937;">Opções do Usuário</div><button onclick="showChangePasswordDialogImmediate(false)" style="width:100%;background:none;border:none;padding:0.75rem;text-align:left;cursor:pointer;color:#374151;margin-bottom:0.5rem;border-radius:6px;">🔑 Alterar Senha</button><button onclick="logoutImmediate()" style="width:100%;background:none;border:none;padding:0.75rem;text-align:left;cursor:pointer;color:#DC2626;border-radius:6px;">🚪 Sair</button></div>`;
+  const existing = document.getElementById('userMenu');
+  if (existing) { existing.remove(); return; }
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.addEventListener('click', () => { const m = document.getElementById('userMenu'); if (m) m.remove(); }, { once: true });
 }
 
-// Mostrar nome do usuário na topbar
-(function() {
-  const user = getCurrentUserImmediate();
-  if (user) {
-    const el = document.getElementById('topbarUserName');
-    if (el) el.textContent = user.nome;
+function applyInicioImage() {
+  const container = document.querySelector('.inicio-img-container');
+  if (container) {
+    container.style.backgroundImage = 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 500 500%22%3E%3Crect fill=%22%2300843D%22 width=%22500%22 height=%22500%22/%3E%3C/svg%3E")';
+    container.style.backgroundSize = 'cover';
   }
-  
-  // Fechar menu ao clicar fora
-  document.addEventListener('click', function(e) {
-    const menu = document.getElementById('userMenuTopbar');
-    const btn = e.target.closest('button');
-    const metric = e.target.closest('.topbar-metric');
-    if (menu && !metric) {
-      menu.style.display = 'none';
-    }
-  });
-})();
-</script>
+}
 
-<!-- TELA DE LOGIN -->
-<div id="loginScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#065F46 0%,#047857 100%);display:flex;align-items:center;justify-content:center;z-index:9999;">
-  <div style="background:white;border-radius:16px;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:400px;width:90%;">
-    <div style="text-align:center;margin-bottom:2rem;">
-      <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔐</div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;">ENEL BRASIL</div>
-      <div style="font-size:0.85rem;color:#6B7280;margin-top:0.5rem;">Análise de Produtividade</div>
-    </div>
-    
-    <form onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:1rem;">
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#374151;display:block;margin-bottom:0.5rem;">Login</label>
-        <input type="text" id="loginInput" placeholder="br0148272697" style="width:100%;padding:0.75rem;border:1.5px solid #D1D5DB;border-radius:8px;font-size:0.95rem;box-sizing:border-box;" required>
-      </div>
-      
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#374151;display:block;margin-bottom:0.5rem;">Senha</label>
-        <input type="password" id="senhaInput" placeholder="••••••••" style="width:100%;padding:0.75rem;border:1.5px solid #D1D5DB;border-radius:8px;font-size:0.95rem;box-sizing:border-box;" required>
-      </div>
-      
-      <div id="loginError" style="color:#DC2626;font-size:0.85rem;text-align:center;display:none;"></div>
-      
-      <button type="submit" style="width:100%;padding:0.75rem;background:#065F46;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.95rem;">Entrar</button>
-    </form>
-  </div>
-</div>
+initUsersImmediate();
+const loggedInUser = getCurrentUserImmediate();
+if (loggedInUser) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) loginScreen.style.display = 'none';
+  });
+}
+</script>
+</head>
+<body>
 
 <!-- ── DEBUG PANEL ── -->
 <div id="fbDebugPanel" style="display:none;position:fixed;bottom:1rem;left:1rem;background:#1F2937;color:#F9FAFB;padding:1rem 1.25rem;border-radius:10px;z-index:9999;font-size:0.75rem;font-family:monospace;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
@@ -1766,6 +1702,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#003087;text-transform:uppercase;letter-spacing:0.05em;">ENEL BRASIL</div>
     <div style="font-size:0.85rem;color:#6B7280;margin-bottom:2rem;">Análise de Produtividade · Polo São Gonçalo</div>
 
+    <form onsubmit="submitLoginImmediate(event)" style="display:flex;flex-direction:column;gap:1rem;">
     <div style="margin-bottom:1rem;text-align:left;">
       <label style="font-size:0.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.35rem;">Usuário</label>
       <input type="text" id="loginUser" placeholder="Digite seu login"
@@ -1776,20 +1713,20 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div style="margin-bottom:1.5rem;text-align:left;">
       <label style="font-size:0.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.35rem;">Senha</label>
       <input type="password" id="loginPass" placeholder="Digite sua senha"
-        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;"
-        onkeydown="if(event.key==='Enter')doLogin()">
+        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;">
     </div>
 
-    <div id="loginErr" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:6px;">
+    <div id="loginError" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:6px;">
       ❌ Usuário ou senha incorretos.
     </div>
 
-    <button onclick="doLogin()"
+    <button type="submit"
       style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;">
       ENTRAR
     </button>
 
     <div style="font-size:0.7rem;color:#9CA3AF;margin-top:1.5rem;">© 2026 Enel Brasil · Uso interno</div>
+    </form>
   </div>
 </div>
 
@@ -1826,12 +1763,11 @@ if (localStorage.getItem('enel_auth') === '1') {
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.11 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.21h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.21 16z"/></svg>
       Notificar
     </button>
-    <!-- Botão Reunião removido - agora está dentro do Dashboard -->
-    <!-- <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:rgba(129,140,248,0.8);">
+    <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:rgba(129,140,248,0.8);">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Reunião
       <span class="sidebar-badge" id="tabBadgeReuniao" style="display:none;background:#6366F1;">0</span>
-    </button> -->
+    </button>
     <button class="sidebar-item" id="tabBtnAcao" onclick="switchTab('acao')" style="color:rgba(252,165,165,0.8);">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Ação
@@ -1897,14 +1833,6 @@ if (localStorage.getItem('enel_auth') === '1') {
         <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span class="topbar-metric-value pending-val" id="topbarPending">0</span>
         <span class="topbar-metric-label">Pendentes</span>
-      </div>
-      <div class="topbar-sep"></div>
-      <!-- Usuário logado -->
-      <div class="topbar-metric">
-        <button onclick="toggleUserMenuTopbar()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;display:flex;align-items:center;gap:0.4rem;padding:0.5rem;font-size:0.85rem;font-weight:700;">
-          <span style="font-size:1rem;">👤</span>
-          <span id="topbarUserName">Usuário</span>
-        </button>
       </div>
     </div>
   </div>
@@ -2199,14 +2127,14 @@ if (localStorage.getItem('enel_auth') === '1') {
   <div style="max-width:1100px;margin:0 auto;padding:1.5rem 2rem 3rem;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
       <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Visão Detalhada</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Painel de Reunião</div>
         <div style="font-size:0.8rem;color:var(--gray-400);">Registros selecionados para apresentação · Visão gerencial</div>
       </div>
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🖨️ Imprimir</button>
       </div>
     </div>
-    <!-- <div id="reuniaoList"></div> --> <!-- ANTIGO - agora está em dashSubReuniao -->
+    <div id="reuniaoList"></div>
   </div>
 </div><!-- /tabReuniao -->
 
@@ -2253,11 +2181,6 @@ if (localStorage.getItem('enel_auth') === '1') {
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
       Banco de Dados
     </button>
-    <button id="dashSubBtnReuniao" onclick="switchDashSub('reuniao')"
-      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
-      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Visão Detalhada
-    </button>
   </div>
 
   <!-- Conteúdo sub-aba Dashboard -->
@@ -2267,6 +2190,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div style="margin-bottom:1.25rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
       <div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;letter-spacing:0.02em;">📊 Dashboard de Gestão</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Visão executiva das ocorrências e ações</div>
       </div>
       <button onclick="renderDashboard()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:6px 14px;border-radius:8px;border:1.5px solid #6EE7B7;background:white;color:#065F46;cursor:pointer;">🔄 Atualizar</button>
     </div>
@@ -2411,36 +2335,6 @@ if (localStorage.getItem('enel_auth') === '1') {
     </div>
   </div><!-- /dashSubDB -->
 
-  <!-- Conteúdo sub-aba Visão Detalhada -->
-  <div id="dashSubReuniao" style="display:none;">
-    <div style="margin-bottom:1.25rem;padding:1.5rem;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Visão Detalhada</div>
-      <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Painel Visão Detalhada</div>
-    </div>
-    
-    <!-- Filtros -->
-    <div style="padding:0 1.5rem;margin-bottom:1.5rem;display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-      <div style="display:flex;flex-direction:column;gap:0.3rem;">
-        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--gray-600);">📅 Data Início</label>
-        <input type="date" id="reuniaoFilterDataInicio" style="padding:0.5rem;border:1px solid var(--gray-300);border-radius:6px;font-size:0.85rem;">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:0.3rem;">
-        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--gray-600);">📅 Data Fim</label>
-        <input type="date" id="reuniaoFilterDataFim" style="padding:0.5rem;border:1px solid var(--gray-300);border-radius:6px;font-size:0.85rem;">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:0.3rem;">
-        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--gray-600);">👷 Equipe</label>
-        <input type="text" id="reuniaoFilterEquipe" placeholder="Buscar equipe..." style="padding:0.5rem;border:1px solid var(--gray-300);border-radius:6px;font-size:0.85rem;">
-      </div>
-      <div style="display:flex;gap:0.5rem;align-items:flex-end;">
-        <button onclick="renderReuniao()" style="padding:0.5rem 1.5rem;background:#065F46;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.85rem;">🔍 Buscar</button>
-        <button onclick="clearReuniaoFilters()" style="padding:0.5rem 1rem;background:#E5E7EB;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.85rem;">✕ Limpar</button>
-      </div>
-    </div>
-    
-    <div id="reuniaoList" style="padding:0 1.5rem;"></div>
-  </div><!-- /dashSubReuniao -->
-
 </div><!-- /tabDashboard -->
 
 <div id="tabConfig" style="display:none;">
@@ -2525,6 +2419,15 @@ if (localStorage.getItem('enel_auth') === '1') {
     </div>
   </div>
 
+  <!-- Seção 3: Supervisores por Turno -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">👤 Supervisores por Turno</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Supervisores sugeridos automaticamente ao selecionar o turno no Registro.</div>
+      <div id="cfgSupervisoresList"></div>
+    </div>
+  </div>
+
   <!-- Seção: Responsáveis de Ação -->
   <div class="cfg-card">
     <div class="cfg-card-header">⚡ Responsáveis de Ação</div>
@@ -2552,9 +2455,6 @@ if (localStorage.getItem('enel_auth') === '1') {
       <div id="cfgRespOcList" class="cfg-tag-list"></div>
     </div>
   </div>
-
-  <!-- Seção: Gestão de Usuários (Admin Only) -->
-  <div id="cfgUsuariosContainer"></div>
 
   <!-- Seção 4: Contatos WhatsApp -->
   <div class="cfg-card">
@@ -2871,6 +2771,24 @@ if (localStorage.getItem('enel_auth') === '1') {
   };
 
   let entryCounter = 0; // global unique ID for each entry
+
+  // ════════════════════════════════════════════════════════════════
+  //  CONSTANTES DE CONFIGURAÇÃO (DECLARADAS NO INÍCIO)
+  // ════════════════════════════════════════════════════════════════
+  const DB_KEY = 'enel_prod_records';
+  const CFG_CAT_LIMITES_KEY = 'enel_cfg_cat_limites';
+  const CFG_EQUIPES_KEY = 'enel_cfg_equipes';
+  const CFG_CAUSAS_KEY = 'enel_cfg_causas';
+  const CFG_OBS_KEY = 'enel_cfg_obs_placeholder';
+  const CFG_PASS_KEY = 'enel_cfg_pass';
+  const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
+  const CFG_LIMITES_KEY = 'enel_cfg_incidencia_limites';
+  const CFG_SUPERVISORES_KEY = 'enel_cfg_supervisores';
+  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
+  const CFG_RESP_OC_KEY = 'enel_cfg_resp_oc';
+  const DRAFT_KEY = 'enel_form_draft';
+  const ACOES_KEY = 'enel_acoes';
+  const FB_ACOES_PATH = 'produtividade/acoes';
 
   function addEntry(catKey) {
     const wrap = document.getElementById('justWrap');
@@ -3404,8 +3322,6 @@ if (localStorage.getItem('enel_auth') === '1') {
     }
   }
 
-  const CFG_CAT_LIMITES_KEY = 'enel_cfg_cat_limites';
-
   // Default limits — overridden by admin config
   let DESLOC_LIMITE_MIN    = 30;
   let OCIOSO_LIMITE_MIN    = 10;
@@ -3898,10 +3814,6 @@ if (localStorage.getItem('enel_auth') === '1') {
     'SG001SXE-A','SG003SXE-A','SG004SXE-A','SG005SX-A','SG007SXE-A',
     'SG010SXE-A','SG011SXE-A','SG026RXE-A',
   ];
-  const CFG_EQUIPES_KEY  = 'enel_cfg_equipes';
-  const CFG_CAUSAS_KEY   = 'enel_cfg_causas';
-  const CFG_OBS_KEY      = 'enel_cfg_obs_placeholder';
-  const CFG_PASS_KEY     = 'enel_cfg_pass';
 
   // ── Central config cache (synced from Firebase) ──
   let _cfgCache = {};
@@ -3945,7 +3857,7 @@ if (localStorage.getItem('enel_auth') === '1') {
         renderContactChips();
         applyCatLimites();
       }).catch(e => {
-        console.warn(`Config sync error:`, e);
+        // Aviso silencioso - Firebase pode não estar configurado
         initDefaults();
       });
   }
@@ -4288,15 +4200,133 @@ if (localStorage.getItem('enel_auth') === '1') {
   //  BANCO DE DADOS (localStorage)
   // ══════════════════════════════════════════
 
-  const DB_KEY = 'enel_prod_records';
-  const ACOES_KEY = 'enel_acoes';
-  const FB_ACOES_PATH = 'produtividade/acoes';
-  
-  // Usuários globais
-  let _currentUser = null;
-  let _users = [];
+  const catColors = {
+    plataforma:   '#00843D',
+    deslocamento: '#1E4DA1',
+    reparo:       '#B45309',
+    intervalo:    '#6B21A8',
+    ocioso:       '#9F1239',
+    incidencia:   '#D97706',
+  };
 
-  // Inicializar usuários padrão
+  // ══════════════════════════════════════════
+  //  CAMADA DE DADOS
+  // ══════════════════════════════════════════
+
+  let _dbCache      = [];
+  let _firebaseReady = false;
+  let _deleting     = false;
+  let _deletedIds   = new Set(); // IDs permanentemente deletados — nunca restaurar
+
+  function loadDB() {
+    // Always return _dbCache if populated
+    if (_dbCache.length > 0) return [..._dbCache];
+    // Fallback: read directly from localStorage (covers page reload before Firebase responds)
+    try {
+      const local = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+      const filtered = local.filter(r => !_deletedIds.has(String(r.id)));
+      if (filtered.length > 0) {
+        _dbCache = filtered; // populate cache
+        return [...filtered];
+      }
+    } catch(e) {}
+    return [];
+  }
+
+  // Salva um único registro no Firebase via REST
+  function saveRecordToFirebase(record) {
+    _dbCache = _dbCache.filter(r => String(r.id) !== String(record.id));
+    _dbCache.unshift(record);
+    _dbCache.sort((a, b) => b.id - a.id);
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+
+    const doSave = (attempt) => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${record.id}.json`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(record)
+      })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(() => { setFbStatus(true); })
+      .catch(e => {
+        console.error('[REST] Tentativa', attempt, 'falhou:', e.message);
+        if (attempt < 3) {
+          setTimeout(() => doSave(attempt + 1), 2000 * attempt);
+        } else {
+          showFirebaseRulesWarning();
+          setFbStatus(false);
+        }
+      });
+    };
+    doSave(1);
+  }
+
+  // Fallback REST API — já integrado no db object acima
+  function _saveViaREST(record) { saveRecordToFirebase(record); }
+  function _fetchViaREST() {
+    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json`)
+      .then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(data => {
+        if (!data || typeof data !== 'object') return [];
+        return Object.values(data).filter(r => r && r.id).sort((a,b) => b.id - a.id);
+      });
+  }
+
+  // Atualiza múltiplos registros (edição, status)
+  function saveDB(records) {
+    _dbCache = [...records].sort((a, b) => b.id - a.id);
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+    records.forEach(r => {
+      db.ref('produtividade/records/r_' + r.id).set(r)
+        .catch(e => console.warn('SaveDB error:', e));
+    });
+    setFbStatus(true);
+  }
+
+  // Exclui um registro definitivamente via REST
+  function doDeleteRecord(id) {
+    const idStr = String(id);
+    _deletedIds.add(idStr);
+
+    // Persiste lista de deletados no localStorage (sobrevive reload)
+    try {
+      const saved = JSON.parse(localStorage.getItem('enel_deleted_ids') || '[]');
+      if (!saved.includes(idStr)) saved.push(idStr);
+      localStorage.setItem('enel_deleted_ids', JSON.stringify(saved));
+    } catch(e) {}
+
+    // Remove do cache imediatamente
+    _dbCache = _dbCache.filter(r => String(r.id) !== idStr);
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+
+    // Atualiza UI imediatamente
+    updateTabBadge();
+    updateTabBadgeRetorno(_dbCache.filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
+    applyDBFilters();
+    renderRetorno();
+    showCopyToast('🗑 Registro excluído com sucesso.');
+
+    // Deleta no Firebase via REST (tenta até 5x)
+    const tryDelete = (attempt) => {
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${idStr}.json`, {
+        method: 'DELETE'
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        setFbStatus(true);
+            // Grava tombstone no Firebase para outros usuários saberem
+        fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted/${idStr}.json`, {
+          method: 'PUT',
+          body: JSON.stringify(Date.now()),
+          headers: {'Content-Type': 'application/json'}
+        }).catch(() => {});
+      })
+      .catch(e => {
+        console.error('[REST] Delete tentativa', attempt, ':', e.message);
+        if (attempt < 5) setTimeout(() => tryDelete(attempt + 1), 3000);
+      });
+    };
+    tryDelete(1);
   }
 
   // Listener Firebase — fonte de verdade para todos os usuários
@@ -4348,7 +4378,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnNotify')    renderNotifyTab();
-    // if (activeBtn === 'tabBtnReuniao')   renderReuniao(); // Reunião agora está dentro do Dashboard
+    if (activeBtn === 'tabBtnReuniao')   renderReuniao();
     if (activeBtn === 'tabBtnDashboard') renderDashboard();
   }
 
@@ -4587,9 +4617,6 @@ if (localStorage.getItem('enel_auth') === '1') {
       id: Date.now(),
       registroId,
       savedAt: new Date().toISOString(),
-      criadoPor: _currentUser ? _currentUser.nome : 'Desconhecido',
-      criadoPorId: _currentUser ? _currentUser.id : null,
-      reuniao: true, // Automaticamente incluído na reunião
       ...form
     };
 
@@ -4611,16 +4638,6 @@ if (localStorage.getItem('enel_auth') === '1') {
     const allRec = loadDB();
     const pendingCount = allRec.filter(r => needsJustificativa(r) && r.status !== 'revisado' && r.status !== 'parcial').length;
     updateTabBadgeRetorno(pendingCount);
-    
-    // Add record to cache immediately so it appears in dashboard/db tables
-    _dbCache = [record, ..._dbCache.filter(r => String(r.id) !== String(record.id))];
-    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch {}
-    
-    // Update dashboard if it's currently visible
-    if (_currentTab === 'dashboard') {
-      if (_dashSub === 'dashboard') renderDashboard();
-      if (_dashSub === 'db') applyDBFilters();
-    }
 
     // Switch to Notify tab
     switchTab('notify');
@@ -4676,8 +4693,6 @@ if (localStorage.getItem('enel_auth') === '1') {
 
   function renderDB(dataVal, turnoVal, equipeVal) {
     const allRecords = loadDB();
-    const acoes = loadAcoes();
-    const PRAZO_RESPOSTA_DIAS = 2;
 
     let records = allRecords.filter(r => {
       if (dataVal  && r.data  !== dataVal)  return false;
@@ -4780,6 +4795,8 @@ if (localStorage.getItem('enel_auth') === '1') {
             <div class="db-record-actions">
               <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
               <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
+              <button class="db-action-btn" data-action="meeting" data-id="${r.id}" title="${r.reuniao ? 'Remover da reunião' : 'Incluir na reunião'}"
+                style="color:${r.reuniao ? '#6366F1' : 'var(--gray-400)'};font-size:0.9rem;">${r.reuniao ? '📋' : '📋'}</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -4793,6 +4810,10 @@ if (localStorage.getItem('enel_auth') === '1') {
       listEl.appendChild(card);
 
       // Direct event listeners — most reliable approach
+      card.querySelector('[data-action="meeting"]')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleReuniao(r.id);
+      });
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
@@ -5306,7 +5327,7 @@ if (localStorage.getItem('enel_auth') === '1') {
     inicio:      'Início',
     form:        'Registro',
     notify:      'Notificar Supervisor',
-    reuniao:     'Visão Detalhada',
+    reuniao:     'Painel de Reunião',
     acao:        'Módulo de Ação',
     dashboard:   'Dashboard de Gestão',
     config:      'Configuração'
@@ -5319,15 +5340,10 @@ if (localStorage.getItem('enel_auth') === '1') {
     _dashSub = sub;
     const subDash = document.getElementById('dashSubDashboard');
     const subDB   = document.getElementById('dashSubDB');
-    const subReuniao = document.getElementById('dashSubReuniao');
     const btnD    = document.getElementById('dashSubBtnDashboard');
     const btnDB   = document.getElementById('dashSubBtnDB');
-    const btnReuniao = document.getElementById('dashSubBtnReuniao');
-    
     if (subDash) subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
     if (subDB)   subDB.style.display   = sub === 'db'        ? 'block' : 'none';
-    if (subReuniao) subReuniao.style.display = sub === 'reuniao' ? 'block' : 'none';
-    
     if (btnD) {
       btnD.style.borderBottomColor = sub === 'dashboard' ? '#065F46' : 'transparent';
       btnD.style.color             = sub === 'dashboard' ? '#065F46' : '#9CA3AF';
@@ -5336,24 +5352,11 @@ if (localStorage.getItem('enel_auth') === '1') {
       btnDB.style.borderBottomColor = sub === 'db' ? '#065F46' : 'transparent';
       btnDB.style.color             = sub === 'db' ? '#065F46' : '#9CA3AF';
     }
-    if (btnReuniao) {
-      btnReuniao.style.borderBottomColor = sub === 'reuniao' ? '#4F46E5' : 'transparent';
-      btnReuniao.style.color             = sub === 'reuniao' ? '#4F46E5' : '#9CA3AF';
-    }
-    
     if (sub === 'db') {
       applyDBFilters();
       setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
     }
-    if (sub === 'reuniao') {
-      renderReuniao();
-    }
-    if (sub === 'dashboard') {
-      // Limpar filtros ao entrar na aba dashboard
-      ['dash-f-equipe','dash-f-turno','dash-f-resp-oc','dash-f-resp-ac','dash-f-status','dash-f-data-ini','dash-f-data-fim','dash-busca']
-        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      renderDashboard();
-    }
+    if (sub === 'dashboard') renderDashboard();
     window.scrollTo({ top:0, behavior:'smooth' });
   }
 
@@ -5381,8 +5384,6 @@ if (localStorage.getItem('enel_auth') === '1') {
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
   }
-
-  const DRAFT_KEY = 'enel_form_draft';
 
   function saveDraft() {
     try {
@@ -6626,7 +6627,6 @@ entryLines.join('\n\n') + '\n' +
   }
 
   // ── Imagem Início ──
-  const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
 
   function renderConfigPanel() {
     renderCfgEquipes();
@@ -6637,9 +6637,6 @@ entryLines.join('\n\n') + '\n' +
     renderCfgContacts();
     renderCfgRespAcao();
     renderCfgRespOc();
-    if (_currentUser && _currentUser.perfil === 'admin') {
-      renderCfgUsuarios();
-    }
   }
 
   // ── Equipes ──
@@ -6761,12 +6758,6 @@ entryLines.join('\n\n') + '\n' +
       list.appendChild(tag);
     });
   }
-
-  const CFG_LIMITES_KEY = 'enel_cfg_incidencia_limites';
-  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
-  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
-  const CFG_RESP_OC_KEY  = 'enel_cfg_resp_oc';
-  const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
 
   function getCustomLimites() {
     return getCfg(CFG_LIMITES_KEY, {});
@@ -7318,20 +7309,20 @@ entryLines.join('\n\n') + '\n' +
 
   // ── Inicialização ──
   try {
-    // Inicializar usuários primeiro
-    initUsers();
-    
-    // Verificar se já está autenticado
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      document.getElementById('loginScreen').style.display = 'flex';
-    } else {
-      _currentUser = currentUser;
-      document.getElementById('loginScreen').style.display = 'none';
-      initApp();
-    }
+    const _inicioImg = document.querySelector('.inicio-img');
+    if (_inicioImg) _inicioImg.dataset.origSrc = _inicioImg.src;
+    applyInicioImage();
+    initDefaults();
+    initFirebaseSync();
+    initConfigSync();
+    initAcoesSync();
+    applyCatLimites();
+    const _custom = getCustomLimites();
+    Object.entries(_custom).forEach(([k,v]) => { INCIDENCIA_LIMITES[k] = v; });
+    switchTab('inicio');
   } catch(e) {
     console.error('Erro na inicialização:', e);
+    try { switchTab('inicio'); } catch(e2) {}
   }
 
   // ══════════════════════════════════════════
@@ -7379,10 +7370,32 @@ entryLines.join('\n\n') + '\n' +
     document.body.style.overflow = '';
   }
 
+  // ── Supervisores por Turno ──
+  const SUPERVISORES_DEFAULT = {
+    A: ['Lucas Costa'],
+    B: ['Dalmir', 'Darvison', 'Alexandre'],
+    C: ['Marcelo', 'Adriano', 'Helio']
+  };
+  function getSupervisores() { return getCfg(CFG_SUPERVISORES_KEY, JSON.parse(JSON.stringify(SUPERVISORES_DEFAULT))); }
+  function saveSupervisores(obj) { saveCfg(CFG_SUPERVISORES_KEY, obj); }
+
+  function onTurnoChange(turno) {
+    const field = document.getElementById('supervisorField');
+    const display = document.getElementById('supervisorDisplay');
+    if (!field || !display) return;
+    const sups = getSupervisores();
+    const lista = sups[turno] || [];
+    if (lista.length) {
+      display.textContent = lista.join(', ');
+      field.style.display = '';
+    } else {
+      field.style.display = 'none';
+    }
+  }
+
   // ══════════════════════════════════════════
   //  ABA REUNIÃO
   // ══════════════════════════════════════════
-
 
   function toggleReuniao(id) {
     const records = loadDB();
@@ -7391,7 +7404,6 @@ entryLines.join('\n\n') + '\n' +
     r.reuniao = !r.reuniao;
     saveDB(records);
     applyDBFilters();
-    renderReuniao();
     updateBadgeReuniao();
     showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
   }
@@ -7402,36 +7414,18 @@ entryLines.join('\n\n') + '\n' +
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
   }
 
-  function clearReuniaoFilters() {
-    document.getElementById('reuniaoFilterDataInicio').value = '';
-    document.getElementById('reuniaoFilterDataFim').value = '';
-    document.getElementById('reuniaoFilterEquipe').value = '';
-    renderReuniao();
-  }
-
   function renderReuniao() {
     const listEl = document.getElementById('reuniaoList');
     if (!listEl) return;
-    
-    const dataInicio = document.getElementById('reuniaoFilterDataInicio')?.value || '';
-    const dataFim = document.getElementById('reuniaoFilterDataFim')?.value || '';
-    const equipeFilter = (document.getElementById('reuniaoFilterEquipe')?.value || '').trim().toUpperCase();
-    
     const all = loadDB();
-    const marked = all.filter(r => {
-      if (!r.reuniao) return false;
-      if (dataInicio && r.data < dataInicio) return false;
-      if (dataFim && r.data > dataFim) return false;
-      if (equipeFilter && !r.equipe.toUpperCase().includes(equipeFilter)) return false;
-      return true;
-    });
+    const marked = all.filter(r => r.reuniao);
     updateBadgeReuniao();
 
     if (!marked.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-        <div style="font-size:1rem;font-weight:700;">Nenhum registro na reunião</div>
-        <div style="font-size:0.82rem;margin-top:0.5rem;">Novos registros aparecem automaticamente aqui</div>
+        <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
+        <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
       </div>`;
       return;
     }
@@ -7508,6 +7502,7 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
+            <button onclick="toggleReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
           </div>
         </div>
 
@@ -7597,7 +7592,6 @@ entryLines.join('\n\n') + '\n' +
     const records = loadDB();
     const acoes   = loadAcoes();
     const now     = Date.now();
-    
     const PRAZO_DIAS = 2; // Prazo máximo de resposta em dias
 
     // Populate resp ação filter
@@ -7629,29 +7623,27 @@ entryLines.join('\n\n') + '\n' +
       if (fDataIni && r.data < fDataIni) return;
       if (fDataFim && r.data > fDataFim) return;
       (r.entries || []).forEach(e => {
-        // Normalize entry to ensure status is calculated
-        const normE = normalizeEntry({...e});
-        const foraDoTempo = entryNeedsJustificativa(normE);
-        const temAcao = normE.acaoNecessaria === 'sim' && normE.acaoResponsavel;
-        const key   = getAcaoKey(r.id, normE);
+        const foraDoTempo = entryNeedsJustificativa(e);
+        const temAcao = e.acaoNecessaria === 'sim' && e.acaoResponsavel;
+        const key   = getAcaoKey(r.id, e);
         const saved = temAcao ? (acoes[key] || {}) : {};
         const isRealizada = saved.status === 'realizada';
-        if (fRespOc && normE.acaoResponsavel !== fRespOc) return;
+        if (fRespOc && e.acaoResponsavel !== fRespOc) return;
         if (fRespAc && saved.respExec    !== fRespAc) return;
         if (fStatus === 'pendente'  &&  isRealizada) return;
         if (fStatus === 'realizada' && !isRealizada) return;
-        const catNome = categorias[normE.catKey]?.nome || normE.catKey;
+        const catNome = categorias[e.catKey]?.nome || e.catKey;
         const dataTs  = r.data ? new Date(r.data + 'T12:00:00').getTime() : 0;
         const diasPend = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
         const tempoRespDias = (isRealizada && saved.dataAcao && r.data)
           ? Math.max(0, Math.floor((new Date(saved.dataAcao+'T12:00:00') - new Date(r.data+'T12:00:00')) / 86400000))
           : null;
         const foraPrazo = temAcao && !isRealizada && diasPend > PRAZO_DIAS;
-        items.push({ r, e: normE, key, saved, isRealizada, temAcao, foraDoTempo, catNome, diasPend, tempoRespDias, foraPrazo,
-          equipe: r.equipe, turno: r.turno, data: r.data, respOc: normE.acaoResponsavel || '—',
-          acaoRespAcao: normE.acaoRespAcao || [],
-          respAc: saved.respExec || '—', causaStr: normE.causas?.join(', ') || normE.obsCausa || normE.obs || '—',
-          tempoStr: normE.mins ? `${Math.floor(normE.mins/60)}h${String(normE.mins%60).padStart(2,'0')}min` : '—' });
+        items.push({ r, e, key, saved, isRealizada, temAcao, foraDoTempo, catNome, diasPend, tempoRespDias, foraPrazo,
+          equipe: r.equipe, turno: r.turno, data: r.data, respOc: e.acaoResponsavel || '—',
+          acaoRespAcao: e.acaoRespAcao || [],
+          respAc: saved.respExec || '—', causaStr: e.causas?.join(', ') || e.obsCausa || e.obs || '—',
+          tempoStr: e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '—' });
       });
     });
 
@@ -7668,7 +7660,7 @@ entryLines.join('\n\n') + '\n' +
       return true;
     }).length;
     const total      = filtered.length;
-    const foraTotal  = filtered.length;
+    const foraTotal  = filtered.filter(i => i.foraDoTempo).length;
     const pendentes  = filtered.filter(i => i.temAcao && !i.isRealizada).length;
     const realizadas = filtered.filter(i => i.isRealizada).length;
     const tempos     = filtered.filter(i => i.tempoRespDias !== null).map(i => i.tempoRespDias);
@@ -7826,7 +7818,7 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Status</th>
         <th style="${thStyle}">Data Ação</th>
       </tr></thead>
-      <tbody>${filtered.map(i => {
+      <tbody>${filtered.filter(i => i.foraDoTempo).map(i => {
         const [y,m,d] = i.data.split('-');
         const dataBR = `${d}/${m}/${y}`;
         const sla = i.isRealizada
@@ -7957,6 +7949,10 @@ entryLines.join('\n\n') + '\n' +
 
 
 
+  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
+
+  const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
+
   function getRespAcao() {
     return getCfg(CFG_RESP_ACAO_KEY, [...RESP_ACAO_DEFAULT]);
   }
@@ -8003,119 +7999,6 @@ entryLines.join('\n\n') + '\n' +
     const nomes = getRespOc().filter(n => n !== nome);
     saveRespOc(nomes);
     renderCfgRespOc();
-  }
-
-  function renderCfgUsuarios() {
-    const container = document.getElementById('cfgUsuariosContainer');
-    if (!container) return;
-    
-    let html = `
-      <div style="margin-top:2rem;padding:1.5rem;background:#F9FAFB;border-radius:12px;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:800;color:#065F46;margin-bottom:1rem;">👥 Gestão de Usuários</div>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.5rem;margin-bottom:1rem;">
-          <input type="text" id="cfgNewUserName" placeholder="Nome" style="padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;">
-          <input type="text" id="cfgNewUserLogin" placeholder="br0000000000" style="padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;">
-          <select id="cfgNewUserPerfil" style="padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;">
-            <option value="">Perfil</option>
-            <option value="admin">Admin</option>
-            <option value="usuario">Usuário</option>
-          </select>
-          <button onclick="cfgAddUser()" style="padding:0.5rem 1rem;background:#065F46;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Criar</button>
-        </div>
-        
-        <table style="width:100%;border-collapse:collapse;">
-          <tr style="border-bottom:2px solid #D1D5DB;background:#FFFFFF;">
-            <th style="padding:0.75rem;text-align:left;font-weight:700;color:#374151;">Nome</th>
-            <th style="padding:0.75rem;text-align:left;font-weight:700;color:#374151;">Login</th>
-            <th style="padding:0.75rem;text-align:left;font-weight:700;color:#374151;">Perfil</th>
-            <th style="padding:0.75rem;text-align:center;font-weight:700;color:#374151;">Ações</th>
-          </tr>
-    `;
-    
-    _users.forEach(u => {
-      html += `
-        <tr style="border-bottom:1px solid #E5E7EB;background:#F3F4F6;">
-          <td style="padding:0.75rem;color:#374151;">${u.nome}</td>
-          <td style="padding:0.75rem;color:#6B7280;font-family:monospace;font-size:0.85rem;">${u.login}</td>
-          <td style="padding:0.75rem;"><span style="display:inline-block;padding:0.25rem 0.75rem;background:${u.perfil === 'admin' ? '#DBEAFE' : '#DCFCE7'};color:${u.perfil === 'admin' ? '#0369A1' : '#166534'};border-radius:4px;font-size:0.8rem;font-weight:700;">${u.perfil || 'usuário'}</span></td>
-          <td style="padding:0.75rem;text-align:center;">
-            <button onclick="cfgResetUserPassword(${u.id})" style="padding:0.3rem 0.6rem;background:#F59E0B;color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-right:0.3rem;">🔑 Reset</button>
-            <button onclick="cfgDeleteUser(${u.id})" style="padding:0.3rem 0.6rem;background:#DC2626;color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">🗑</button>
-          </td>
-        </tr>
-      `;
-    });
-    
-    html += `</table></div>`;
-    container.innerHTML = html;
-  }
-
-  function cfgAddUser() {
-    const nome = document.getElementById('cfgNewUserName').value.trim();
-    const login = document.getElementById('cfgNewUserLogin').value.trim().toLowerCase();
-    const perfil = document.getElementById('cfgNewUserPerfil').value;
-    
-    if (!nome || !login || !perfil) {
-      showToast('⚠️ Preencha todos os campos');
-      return;
-    }
-    
-    if (!login.startsWith('br')) {
-      showToast('⚠️ Login deve começar com "br"');
-      return;
-    }
-    
-    if (_users.find(u => u.login === login)) {
-      showToast('⚠️ Login já existe');
-      return;
-    }
-    
-    const newUser = {
-      id: Math.max(..._users.map(u => u.id), 0) + 1,
-      nome,
-      login,
-      perfil,
-      senha: 'brasil',
-      primeiroAcesso: true
-    };
-    
-    _users.push(newUser);
-    saveUsers();
-    renderCfgUsuarios();
-    
-    document.getElementById('cfgNewUserName').value = '';
-    document.getElementById('cfgNewUserLogin').value = '';
-    document.getElementById('cfgNewUserPerfil').value = '';
-    
-    showToast(`✅ Usuário ${nome} criado com senha padrão "brasil"`);
-  }
-
-  function cfgResetUserPassword(userId) {
-    if (!confirm('Deseja resetar a senha deste usuário para "brasil"?')) return;
-    
-    const idx = _users.findIndex(u => u.id === userId);
-    if (idx !== -1) {
-      _users[idx].senha = 'brasil';
-      _users[idx].primeiroAcesso = true;
-      saveUsers();
-      renderCfgUsuarios();
-      showToast('✅ Senha resetada para "brasil"');
-    }
-  }
-
-  function cfgDeleteUser(userId) {
-    if (_users.length <= 1) {
-      showToast('⚠️ Não é possível deletar o único usuário');
-      return;
-    }
-    
-    if (!confirm('Deseja deletar este usuário?')) return;
-    
-    _users = _users.filter(u => u.id !== userId);
-    saveUsers();
-    renderCfgUsuarios();
-    showToast('✅ Usuário deletado');
   }
 
   function renderCfgRespAcao() {
@@ -8503,10 +8386,6 @@ entryLines.join('\n\n') + '\n' +
           ${foundE.justificativa ? `<div style="grid-column:1/-1;background:#FEF9EC;border:1px solid #FCD34D;border-radius:8px;padding:0.6rem 0.85rem;">
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#92400E;">⚠️ Justificativa do registro</div>
             <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.justificativa}</div>
-          </div>` : ''}
-          ${foundE.obs ? `<div style="grid-column:1/-1;background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:0.6rem 0.85rem;">
-            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#1E40AF;">💬 Comentário do registro</div>
-            <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.obs}</div>
           </div>` : ''}
         </div>
       </div>
@@ -8964,20 +8843,6 @@ entryLines.join('\n\n') + '\n' +
           if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro ao enviar: ${e.message}</b>`;
         });
     });
-  }
-
-  function doLogin() {
-    const user = document.getElementById('loginUser')?.value.trim().toLowerCase();
-    const pass = document.getElementById('loginPass')?.value.trim().toLowerCase();
-    const err  = document.getElementById('loginErr');
-    if (user === 'enel' && pass === 'brasil') {
-      document.getElementById('loginScreen').style.display = 'none';
-      localStorage.setItem('enel_auth', '1');
-    } else {
-      if (err) err.style.display = 'block';
-      document.getElementById('loginPass').value = '';
-      document.getElementById('loginPass').focus();
-    }
   }
 
   function resetForm() {
