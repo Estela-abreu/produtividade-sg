@@ -1667,7 +1667,14 @@ function applyInicioImage() {
 
 initUsersImmediate();
 const loggedInUser = getCurrentUserImmediate();
-if (loggedInUser) {
+if (!loggedInUser) {
+  // Sem usuário - mostrar login
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) loginScreen.style.display = 'flex';
+  });
+} else {
+  // Tem usuário - esconder login
   document.addEventListener('DOMContentLoaded', () => {
     const loginScreen = document.getElementById('loginScreen');
     if (loginScreen) loginScreen.style.display = 'none';
@@ -1696,7 +1703,7 @@ if (localStorage.getItem('enel_auth') === '1') {
 }
 </script>
 <!-- ── TELA DE LOGIN ── -->
-<div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:flex;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
+<div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:none;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
   <div style="background:white;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
     <div style="font-size:2.5rem;margin-bottom:0.5rem;">⚡</div>
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#003087;text-transform:uppercase;letter-spacing:0.05em;">ENEL BRASIL</div>
