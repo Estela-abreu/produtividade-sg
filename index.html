@@ -7843,9 +7843,9 @@ entryLines.join('\n\n') + '\n' +
   function updateConfigButtonVisibility() {
     const btn = document.getElementById('tabBtnConfig');
     if (!btn) return;
-    const isAdmin = isAdmin();
-    btn.style.display = isAdmin ? 'flex' : 'none';
-    btn.style.pointerEvents = isAdmin ? 'auto' : 'none';
+    const isAdminUser = isAdmin();
+    btn.style.display = isAdminUser ? 'flex' : 'none';
+    btn.style.pointerEvents = isAdminUser ? 'auto' : 'none';
   }
 
   function limparFiltrosReuniao() {
