@@ -1653,8 +1653,6 @@ function _doLogin(user) {
   if (user.primeiroAcesso) {
     showChangePasswordDialogImmediate(true);
   } else {
-    // Update config button visibility before reload
-    setTimeout(() => updateConfigButtonVisibility?.(), 100);
     window.location.reload();
   }
 }
@@ -2670,7 +2668,7 @@ if (!loggedInUser) {
         </div>
         <div class="db-search-field">
           <label class="db-search-label">🔄 Turno</label>
-          <select id="dbFilterTurno" class="db-search-input">
+          <select id="dbFilterTurno" class="db-search-input" onchange="applyDBFilters()">
             <option value="">Todos</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -2679,7 +2677,7 @@ if (!loggedInUser) {
         </div>
         <div class="db-search-field" style="flex:2;">
           <label class="db-search-label">👷 Equipe</label>
-          <input type="text" id="dbFilterEquipe" placeholder="Buscar equipe..." onkeydown="if(event.key==='Enter')applyDBFilters()" class="db-search-input">
+          <input type="text" id="dbFilterEquipe" placeholder="Buscar equipe..." onkeydown="if(event.key==='Enter')applyDBFilters()" onkeyup="applyDBFilters()" class="db-search-input">
         </div>
         <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:0.4rem;">
           <button class="db-btn-search" onclick="applyDBFilters()">🔍 Buscar</button>
@@ -4740,7 +4738,6 @@ if (!loggedInUser) {
     updateTopbarMetrics();
     updateBadgeReuniao();
     updateTabBadgeAcao();
-    updateConfigButtonVisibility();  // ← Verifica se deve mostrar config
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnNotify')    renderNotifyTab();
@@ -5763,7 +5760,7 @@ if (!loggedInUser) {
       window.scrollTo({ top:0, behavior:'smooth' });
     }
     if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'dashboard') { switchDashSub(_dashSub); }
+    if (tab === 'dashboard') { updateConfigButtonVisibility(); switchDashSub(_dashSub); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
