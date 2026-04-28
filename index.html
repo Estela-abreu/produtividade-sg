@@ -204,7 +204,11 @@
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
-    padding-top: 60px;
+  }
+
+  /* Todos os tabs precisam de margin-top para não serem cobertos pelo topbar fixo */
+  .main-content > div[id^="tab"] {
+    margin-top: 60px;
   }
 
   .topbar {
@@ -222,6 +226,8 @@
     box-shadow: 0 2px 12px rgba(0,0,0,0.2);
     min-width: 0;
     overflow: hidden;
+    width: auto;
+    height: auto;
   }
   .topbar-title {
     font-family: 'Barlow Condensed', sans-serif;
