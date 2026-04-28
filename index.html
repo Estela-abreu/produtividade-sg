@@ -1521,58 +1521,131 @@
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
-//  SISTEMA DE LOGIN E AUTENTICAÇÃO
+//  SISTEMA DE LOGIN E AUTENTICAÇÃO — v3 (Login Individual)
 // ════════════════════════════════════════════════════════════════
 
-const USERS_KEY = 'enel_users';
+const USERS_KEY        = 'enel_users_v3';
 const CURRENT_USER_KEY = 'enel_current_user';
+const FB_USERS_PATH    = 'produtividade/usuarios';
 
+// ── Usuário logado ──────────────────────────────────────────────
+function getCurrentUserImmediate() {
+  try { const s = localStorage.getItem(CURRENT_USER_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+}
+function isAdmin() { const u = getCurrentUserImmediate(); return u && u.perfil === 'admin'; }
+function nomeUsuario() { const u = getCurrentUserImmediate(); return u ? u.nome : ''; }
+
+// ── Cache local de usuários ─────────────────────────────────────
+function getUsersLocal() {
+  try { return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch { return []; }
+}
+function saveUsersLocal(users) {
+  try { localStorage.setItem(USERS_KEY, JSON.stringify(users)); } catch {}
+}
+
+// ── Firebase: lê todos os usuários ─────────────────────────────
+function fetchUsersFromFirebase() {
+  return fetch(`${FB_URL}/${FB_USERS_PATH}.json`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data || typeof data !== 'object') return [];
+      return Object.values(data).filter(Boolean);
+    })
+    .catch(() => []);
+}
+
+// ── Firebase: salva/atualiza um usuário ────────────────────────
+function saveUserToFirebase(user) {
+  return fetch(`${FB_URL}/${FB_USERS_PATH}/${user.login}.json`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(user)
+  }).catch(e => console.warn('saveUserToFirebase err:', e));
+}
+
+// ── Firebase: exclui usuário ────────────────────────────────────
+function deleteUserFromFirebase(login) {
+  return fetch(`${FB_URL}/${FB_USERS_PATH}/${login}.json`, { method: 'DELETE' })
+    .catch(e => console.warn('deleteUserFromFirebase err:', e));
+}
+
+// ── Inicializa: garante admin padrão + migra v2 → v3 ──────────
 function initUsersImmediate() {
-  const stored = localStorage.getItem(USERS_KEY);
-  if (!stored) {
-    const defaultUsers = [{
-      id: 1,
-      nome: 'Administrador',
-      login: 'br0148272697',
-      senha: 'brasil',
-      perfil: 'admin',
-      primeiroAcesso: true
-    }];
-    localStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+  // Migração de enel_users_v2 → v3 (uma única vez)
+  const oldData = localStorage.getItem('enel_users_v2');
+  if (oldData && !localStorage.getItem(USERS_KEY)) {
+    try {
+      const old = JSON.parse(oldData);
+      if (Array.isArray(old) && old.length > 0) {
+        saveUsersLocal(old);
+        console.log('[Auth] Migrado', old.length, 'usuários de v2 → v3');
+      }
+    } catch(e) {}
+  }
+
+  // Tenta carregar do Firebase de forma assíncrona
+  fetchUsersFromFirebase().then(fbUsers => {
+    if (fbUsers.length > 0) {
+      saveUsersLocal(fbUsers);
+    } else {
+      // Firebase vazio: garante usuário admin padrão
+      const local = getUsersLocal();
+      if (local.length === 0) {
+        const admin = { id: 1, nome: 'Administrador', login: 'enel', senha: 'brasil', perfil: 'admin', primeiroAcesso: false };
+        saveUsersLocal([admin]);
+        saveUserToFirebase(admin);
+      } else {
+        local.forEach(u => saveUserToFirebase(u));
+      }
+    }
+  });
+  // Garante ao menos o admin localmente antes da resposta do Firebase
+  const local = getUsersLocal();
+  if (local.length === 0) {
+    const admin = { id: 1, nome: 'Administrador', login: 'enel', senha: 'brasil', perfil: 'admin', primeiroAcesso: false };
+    saveUsersLocal([admin]);
   }
 }
 
-function getCurrentUserImmediate() {
-  const stored = localStorage.getItem(CURRENT_USER_KEY);
-  return stored ? JSON.parse(stored) : null;
-}
-
+// ── Validação de login ─────────────────────────────────────────
 function validateLoginImmediate(login, senha) {
-  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  const user = users.find(u => u.login === login);
-  if (!user) return null;
-  if (user.senha !== senha) return null;
+  const users = getUsersLocal();
+  const user = users.find(u => u.login.toLowerCase() === login.toLowerCase());
+  if (!user || user.senha !== senha) return null;
   return user;
 }
 
+// ── Submit de login ────────────────────────────────────────────
 function submitLoginImmediate(event) {
   event.preventDefault();
-  const login = document.getElementById('loginUser').value;
-  const senha = document.getElementById('loginPass').value;
-  const errorEl = document.getElementById('loginError');
-  
-  const user = validateLoginImmediate(login, senha);
+  const loginVal = document.getElementById('loginUser').value.trim();
+  const senhaVal = document.getElementById('loginPass').value;
+  const errorEl  = document.getElementById('loginError');
+
+  // Tenta local primeiro
+  let user = validateLoginImmediate(loginVal, senhaVal);
+
   if (!user) {
-    if (errorEl) {
-      errorEl.textContent = 'Login ou senha incorretos';
-      errorEl.style.display = 'block';
-    }
+    // Tenta no Firebase (caso o usuário não esteja no cache local)
+    fetchUsersFromFirebase().then(fbUsers => {
+      if (fbUsers.length > 0) saveUsersLocal(fbUsers);
+      const fbUser = fbUsers.find(u => u.login.toLowerCase() === loginVal.toLowerCase() && u.senha === senhaVal);
+      if (fbUser) {
+        _doLogin(fbUser);
+      } else {
+        if (errorEl) { errorEl.textContent = '❌ Login ou senha incorretos.'; errorEl.style.display = 'block'; }
+      }
+    }).catch(() => {
+      if (errorEl) { errorEl.textContent = '❌ Login ou senha incorretos.'; errorEl.style.display = 'block'; }
+    });
     return;
   }
-  
+  _doLogin(user);
+}
+
+function _doLogin(user) {
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   localStorage.setItem('enel_auth', '1');
-  
   if (user.primeiroAcesso) {
     showChangePasswordDialogImmediate(true);
   } else {
@@ -1580,81 +1653,248 @@ function submitLoginImmediate(event) {
   }
 }
 
-function showChangePasswordDialogImmediate(isFirstAccess = false) {
-  const html = `
-    <div id="pwdDialog" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;">
-      <div style="background:white;border-radius:12px;padding:2rem;max-width:400px;width:90%;">
-        <div style="font-size:1.2rem;font-weight:700;margin-bottom:1rem;color:#1F2937;">
-          🔑 ${isFirstAccess ? 'Alterar Senha Inicial' : 'Alterar Senha'}
-        </div>
-        ${!isFirstAccess ? `<div style="margin-bottom:1rem;"><label style="font-size:0.78rem;font-weight:700;color:#374151;">Senha Atual</label><input type="password" id="currentPwdInput" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;margin-top:0.25rem;"></div>` : ''}
-        <div style="margin-bottom:1rem;"><label style="font-size:0.78rem;font-weight:700;color:#374151;">Nova Senha</label><input type="password" id="newPwdInput" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;margin-top:0.25rem;"></div>
-        <div style="margin-bottom:1rem;"><label style="font-size:0.78rem;font-weight:700;color:#374151;">Confirmar Senha</label><input type="password" id="confirmPwdInput" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;margin-top:0.25rem;"></div>
-        <div id="pwdError" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem;border-radius:6px;"></div>
-        <div style="display:flex;gap:0.5rem;"><button onclick="submitChangePasswordImmediate(${isFirstAccess})" style="flex:1;background:#003087;color:white;padding:0.5rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Confirmar</button>${!isFirstAccess ? `<button onclick="document.getElementById('pwdDialog').remove()" style="flex:1;background:#E5E7EB;color:#374151;padding:0.5rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Cancelar</button>` : ''}</div>
-      </div>
-    </div>
-  `;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function submitChangePasswordImmediate(isFirstAccess) {
-  const newPwd = document.getElementById('newPwdInput').value;
-  const confirmPwd = document.getElementById('confirmPwdInput').value;
-  const errorEl = document.getElementById('pwdError');
-  
-  if (!newPwd || !confirmPwd) {
-    errorEl.textContent = 'Preencha todos os campos';
-    errorEl.style.display = 'block';
-    return;
-  }
-  
-  if (newPwd !== confirmPwd) {
-    errorEl.textContent = 'As senhas não conferem';
-    errorEl.style.display = 'block';
-    return;
-  }
-  
-  if (!isFirstAccess) {
-    const currentPwd = document.getElementById('currentPwdInput').value;
-    const user = getCurrentUserImmediate();
-    if (!user || user.senha !== currentPwd) {
-      errorEl.textContent = 'Senha atual incorreta';
-      errorEl.style.display = 'block';
-      return;
-    }
-  }
-  
-  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  const user = getCurrentUserImmediate();
-  const idx = users.findIndex(u => u.id === user.id);
-  users[idx].senha = newPwd;
-  users[idx].primeiroAcesso = false;
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(users[idx]));
-  
-  document.getElementById('pwdDialog').remove();
-  
-  if (isFirstAccess) {
-    window.location.reload();
-  } else {
-    alert('✅ Senha alterada com sucesso!');
-  }
-}
-
+// ── Logout ─────────────────────────────────────────────────────
 function logoutImmediate() {
-  localStorage.removeItem('enel_current_user');
+  localStorage.removeItem(CURRENT_USER_KEY);
   localStorage.removeItem('enel_auth');
   window.location.reload();
 }
 
+// ── Alterar senha ──────────────────────────────────────────────
+function showChangePasswordDialogImmediate(isFirstAccess = false) {
+  const existing = document.getElementById('pwdDialog');
+  if (existing) existing.remove();
+  const html = `
+    <div id="pwdDialog" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:100000;padding:1rem;">
+      <div style="background:white;border-radius:14px;padding:2rem;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:800;color:#1E3A5F;margin-bottom:1.25rem;">
+          🔑 ${isFirstAccess ? 'Criar sua senha de acesso' : 'Alterar Senha'}
+        </div>
+        ${isFirstAccess ? `<div style="font-size:0.82rem;color:#6B7280;background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:0.65rem 0.85rem;margin-bottom:1rem;">⚠️ Este é seu primeiro acesso. Por favor, crie uma nova senha pessoal.</div>` : ''}
+        ${!isFirstAccess ? `<div style="margin-bottom:1rem;"><label style="font-size:0.75rem;font-weight:700;color:#374151;display:block;margin-bottom:0.3rem;">SENHA ATUAL</label><input type="password" id="currentPwdInput" autocomplete="current-password" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.55rem 0.8rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;"></div>` : ''}
+        <div style="margin-bottom:1rem;"><label style="font-size:0.75rem;font-weight:700;color:#374151;display:block;margin-bottom:0.3rem;">NOVA SENHA</label><input type="password" id="newPwdInput" autocomplete="new-password" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.55rem 0.8rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;"></div>
+        <div style="margin-bottom:1.25rem;"><label style="font-size:0.75rem;font-weight:700;color:#374151;display:block;margin-bottom:0.3rem;">CONFIRMAR NOVA SENHA</label><input type="password" id="confirmPwdInput" autocomplete="new-password" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.55rem 0.8rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;"></div>
+        <div id="pwdError" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:8px;"></div>
+        <div style="display:flex;gap:0.5rem;">
+          <button onclick="submitChangePasswordImmediate(${isFirstAccess})" style="flex:1;font-family:'Barlow',sans-serif;font-size:0.95rem;font-weight:800;background:linear-gradient(135deg,#003087,#00843D);color:white;padding:0.6rem;border:none;border-radius:8px;cursor:pointer;">✅ Confirmar</button>
+          ${!isFirstAccess ? `<button onclick="document.getElementById('pwdDialog').remove()" style="flex:1;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;background:#E5E7EB;color:#374151;padding:0.6rem;border:none;border-radius:8px;cursor:pointer;">Cancelar</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitChangePasswordImmediate(isFirstAccess) {
+  const newPwd     = document.getElementById('newPwdInput')?.value || '';
+  const confirmPwd = document.getElementById('confirmPwdInput')?.value || '';
+  const errorEl    = document.getElementById('pwdError');
+  if (!newPwd || !confirmPwd) { errorEl.textContent = 'Preencha todos os campos.'; errorEl.style.display = 'block'; return; }
+  if (newPwd !== confirmPwd)  { errorEl.textContent = 'As senhas não conferem.';    errorEl.style.display = 'block'; return; }
+  if (newPwd.length < 4)      { errorEl.textContent = 'Senha deve ter ao menos 4 caracteres.'; errorEl.style.display = 'block'; return; }
+  if (!isFirstAccess) {
+    const currentPwd = document.getElementById('currentPwdInput')?.value || '';
+    const user = getCurrentUserImmediate();
+    if (!user || user.senha !== currentPwd) { errorEl.textContent = 'Senha atual incorreta.'; errorEl.style.display = 'block'; return; }
+  }
+  const users = getUsersLocal();
+  const user  = getCurrentUserImmediate();
+  const idx   = users.findIndex(u => u.login === user.login);
+  if (idx === -1) return;
+  users[idx].senha = newPwd;
+  users[idx].primeiroAcesso = false;
+  saveUsersLocal(users);
+  saveUserToFirebase(users[idx]);
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(users[idx]));
+  document.getElementById('pwdDialog').remove();
+  if (isFirstAccess) {
+    window.location.reload();
+  } else {
+    _showToastAuth('✅ Senha alterada com sucesso!');
+  }
+}
+
+function _showToastAuth(msg) {
+  const t = document.getElementById('saveToast');
+  const m = document.getElementById('saveToastMsg');
+  if (t && m) { m.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+  else alert(msg);
+}
+
+// ── Menu do usuário na topbar ──────────────────────────────────
 function toggleUserMenuTopbar() {
-  const user = getCurrentUserImmediate();
-  const html = `<div id="userMenu" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;padding:1.5rem;z-index:10001;box-shadow:0 10px 40px rgba(0,0,0,0.3);" onclick="event.stopPropagation()"><div style="font-weight:700;margin-bottom:1rem;color:#1F2937;">Opções do Usuário</div><button onclick="showChangePasswordDialogImmediate(false)" style="width:100%;background:none;border:none;padding:0.75rem;text-align:left;cursor:pointer;color:#374151;margin-bottom:0.5rem;border-radius:6px;">🔑 Alterar Senha</button><button onclick="logoutImmediate()" style="width:100%;background:none;border:none;padding:0.75rem;text-align:left;cursor:pointer;color:#DC2626;border-radius:6px;">🚪 Sair</button></div>`;
   const existing = document.getElementById('userMenu');
   if (existing) { existing.remove(); return; }
+  const user = getCurrentUserImmediate();
+  const html = `
+    <div id="userMenu" style="position:fixed;top:46px;right:1rem;background:white;border-radius:12px;padding:0.25rem;z-index:10001;box-shadow:0 8px 32px rgba(0,0,0,0.2);min-width:220px;border:1px solid #E5E7EB;" onclick="event.stopPropagation()">
+      <div style="padding:0.75rem 1rem 0.5rem;border-bottom:1px solid #F3F4F6;">
+        <div style="font-size:0.75rem;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;">Usuário logado</div>
+        <div style="font-size:0.95rem;font-weight:800;color:#1E3A5F;margin-top:2px;">${user?.nome || '—'}</div>
+        <div style="font-size:0.72rem;color:#9CA3AF;">${user?.login || ''} · ${user?.perfil === 'admin' ? '👑 Admin' : '👤 Usuário'}</div>
+      </div>
+      <button onclick="showChangePasswordDialogImmediate(false)" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;background:none;border:none;padding:0.65rem 1rem;text-align:left;cursor:pointer;color:#374151;border-radius:8px;display:flex;align-items:center;gap:0.5rem;">🔑 Alterar Senha</button>
+      <button onclick="logoutImmediate()" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;background:none;border:none;padding:0.65rem 1rem;text-align:left;cursor:pointer;color:#DC2626;border-radius:8px;display:flex;align-items:center;gap:0.5rem;border-top:1px solid #F3F4F6;">🚪 Sair</button>
+    </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
-  document.addEventListener('click', () => { const m = document.getElementById('userMenu'); if (m) m.remove(); }, { once: true });
+  setTimeout(() => {
+    document.addEventListener('click', () => { const m = document.getElementById('userMenu'); if (m) m.remove(); }, { once: true });
+  }, 100);
+}
+
+// ── Gestão de usuários (admin) — chamada da aba config ─────────
+function renderCfgUsuarios() {
+  const el = document.getElementById('cfgUsuariosList');
+  if (!el) return;
+  const current = getCurrentUserImmediate();
+  const isAdm = current && current.perfil === 'admin';
+
+  // Controla visibilidade da seção inteira
+  const card = document.getElementById('cfgCardUsuarios');
+  if (card) card.style.display = isAdm ? 'block' : 'none';
+  if (!isAdm) { el.innerHTML = '<div style="font-size:0.85rem;color:#DC2626;">⛔ Acesso restrito a administradores.</div>'; return; }
+
+  const users = getUsersLocal();
+
+  el.innerHTML = `
+    <div style="margin-bottom:1.25rem;">
+      <div style="font-size:0.75rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.6rem;">➕ Novo Usuário</div>
+      <div class="cfg-add-row" style="flex-wrap:wrap;gap:0.5rem;align-items:flex-end;">
+        <div>
+          <div style="font-size:0.68rem;font-weight:700;color:#6B7280;margin-bottom:3px;">Nome completo</div>
+          <input type="text" id="cfgUserNome" placeholder="Ex: João Silva" class="cfg-input" style="min-width:160px;">
+        </div>
+        <div>
+          <div style="font-size:0.68rem;font-weight:700;color:#6B7280;margin-bottom:3px;">Login (BR + matrícula)</div>
+          <input type="text" id="cfgUserLogin" placeholder="Ex: br0148272697" class="cfg-input" style="max-width:190px;" oninput="this.value=this.value.toLowerCase()">
+        </div>
+        <div>
+          <div style="font-size:0.68rem;font-weight:700;color:#6B7280;margin-bottom:3px;">Perfil</div>
+          <select id="cfgUserPerfil" class="cfg-input" style="max-width:130px;">
+            <option value="usuario">👤 Usuário</option>
+            <option value="admin">👑 Admin</option>
+          </select>
+        </div>
+        <button class="cfg-btn-add" onclick="cfgAddUser()" style="margin-top:auto;">+ Adicionar</button>
+      </div>
+      <div id="cfgUserMsg" style="font-size:0.8rem;margin-top:0.5rem;display:none;padding:0.4rem 0.65rem;border-radius:6px;"></div>
+    </div>
+
+    <div style="border:1px solid var(--gray-200);border-radius:var(--radius-sm);overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#F3F4F6;">
+            <th style="padding:0.6rem 0.85rem;text-align:left;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Nome</th>
+            <th style="padding:0.6rem 0.85rem;text-align:left;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Login</th>
+            <th style="padding:0.6rem 0.85rem;text-align:center;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Perfil</th>
+            <th style="padding:0.6rem 0.85rem;text-align:center;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Status</th>
+            <th style="padding:0.6rem 0.85rem;text-align:center;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${users.map(u => `
+            <tr style="border-top:1px solid #F3F4F6;${u.login === current?.login ? 'background:#F0FDF4;' : ''}">
+              <td style="padding:0.6rem 0.85rem;font-size:0.88rem;font-weight:700;color:#1E3A5F;">
+                ${u.nome}
+                ${u.login === current?.login ? '<span style="font-size:0.6rem;background:#DCFCE7;color:#16A34A;padding:2px 7px;border-radius:99px;font-weight:800;margin-left:4px;">você</span>' : ''}
+              </td>
+              <td style="padding:0.6rem 0.85rem;font-size:0.82rem;color:#6B7280;font-family:monospace;">${u.login}</td>
+              <td style="padding:0.6rem 0.85rem;text-align:center;">
+                <span style="font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:99px;background:${u.perfil==='admin'?'#EDE9FE':'#EFF6FF'};color:${u.perfil==='admin'?'#7C3AED':'#1E4DA1'};">
+                  ${u.perfil === 'admin' ? '👑 Admin' : '👤 Usuário'}
+                </span>
+              </td>
+              <td style="padding:0.6rem 0.85rem;text-align:center;">
+                <span style="font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:99px;background:${u.primeiroAcesso?'#FEF3C7':'#DCFCE7'};color:${u.primeiroAcesso?'#92400E':'#15803D'};">
+                  ${u.primeiroAcesso ? '⚠️ Senha padrão' : '✅ Ativo'}
+                </span>
+              </td>
+              <td style="padding:0.6rem 0.85rem;text-align:center;">
+                <div style="display:flex;gap:0.35rem;justify-content:center;flex-wrap:wrap;">
+                  <button onclick="cfgResetUserPass('${u.login}')" title="Resetar senha para: brasil"
+                    style="font-family:'Barlow',sans-serif;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid #D97706;background:#FEF3C7;color:#92400E;cursor:pointer;">🔄 Reset</button>
+                  ${u.login !== current?.login ? `
+                    <button onclick="cfgTogglePerfil('${u.login}')" title="Alternar admin/usuário"
+                      style="font-family:'Barlow',sans-serif;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid #A5B4FC;background:#EEF2FF;color:#3730A3;cursor:pointer;">⇅ Perfil</button>
+                    <button onclick="cfgDeleteUser('${u.login}')" title="Excluir usuário"
+                      style="font-family:'Barlow',sans-serif;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;">🗑</button>
+                  ` : ''}
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:0.72rem;color:#9CA3AF;margin-top:0.75rem;">
+      💡 Senha padrão para novos usuários: <strong>brasil</strong> · O usuário deverá alterar no primeiro acesso.
+    </div>`;
+}
+
+function cfgAddUser() {
+  const nome   = document.getElementById('cfgUserNome')?.value.trim();
+  const login  = document.getElementById('cfgUserLogin')?.value.trim().toLowerCase();
+  const perfil = document.getElementById('cfgUserPerfil')?.value || 'usuario';
+  const msgEl  = document.getElementById('cfgUserMsg');
+
+  const showMsg = (txt, ok) => {
+    if (!msgEl) return;
+    msgEl.textContent = txt;
+    msgEl.style.background = ok ? '#DCFCE7' : '#FEE2E2';
+    msgEl.style.color = ok ? '#15803D' : '#DC2626';
+    msgEl.style.display = 'block';
+    setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+  };
+
+  if (!nome || !login) { showMsg('⚠️ Preencha nome e login.', false); return; }
+  if (!login.startsWith('br') && login !== 'enel') { showMsg('⚠️ Login deve começar com "br" (ex: br0148272697).', false); return; }
+  const users = getUsersLocal();
+  if (users.find(u => u.login === login)) { showMsg('⚠️ Este login já existe no sistema.', false); return; }
+
+  const novo = { id: Date.now(), nome, login, senha: 'brasil', perfil, primeiroAcesso: true };
+  users.push(novo);
+  saveUsersLocal(users);
+  saveUserToFirebase(novo);
+  document.getElementById('cfgUserNome').value  = '';
+  document.getElementById('cfgUserLogin').value = '';
+  renderCfgUsuarios();
+  showMsg(`✅ Usuário "${nome}" criado com sucesso. Senha inicial: brasil`, true);
+}
+
+function cfgDeleteUser(login) {
+  const users = getUsersLocal();
+  const u = users.find(x => x.login === login);
+  if (!confirm(`Excluir o usuário "${u?.nome || login}"?\n\nEsta ação não pode ser desfeita.`)) return;
+  const updated = users.filter(x => x.login !== login);
+  saveUsersLocal(updated);
+  deleteUserFromFirebase(login);
+  renderCfgUsuarios();
+  _showToastAuth(`🗑 Usuário ${u?.nome || login} excluído.`);
+}
+
+function cfgResetUserPass(login) {
+  const users = getUsersLocal();
+  const u = users.find(x => x.login === login);
+  if (!confirm(`Resetar a senha de "${u?.nome || login}" para "brasil"?\n\nO usuário precisará criar uma nova senha no próximo acesso.`)) return;
+  const idx = users.findIndex(x => x.login === login);
+  if (idx === -1) return;
+  users[idx].senha = 'brasil';
+  users[idx].primeiroAcesso = true;
+  saveUsersLocal(users);
+  saveUserToFirebase(users[idx]);
+  renderCfgUsuarios();
+  _showToastAuth(`✅ Senha de ${users[idx].nome} resetada para "brasil".`);
+}
+
+function cfgTogglePerfil(login) {
+  const users = getUsersLocal();
+  const idx = users.findIndex(u => u.login === login);
+  if (idx === -1) return;
+  const novoPerf = users[idx].perfil === 'admin' ? 'usuario' : 'admin';
+  if (!confirm(`Alterar o perfil de "${users[idx].nome}" para ${novoPerf === 'admin' ? '👑 Admin' : '👤 Usuário'}?`)) return;
+  users[idx].perfil = novoPerf;
+  saveUsersLocal(users);
+  saveUserToFirebase(users[idx]);
+  renderCfgUsuarios();
+  _showToastAuth(`✅ Perfil de ${users[idx].nome} alterado para ${novoPerf}.`);
 }
 
 function applyInicioImage() {
@@ -1668,16 +1908,14 @@ function applyInicioImage() {
 initUsersImmediate();
 const loggedInUser = getCurrentUserImmediate();
 if (!loggedInUser) {
-  // Sem usuário - mostrar login
   document.addEventListener('DOMContentLoaded', () => {
-    const loginScreen = document.getElementById('loginScreen');
-    if (loginScreen) loginScreen.style.display = 'flex';
+    const ls = document.getElementById('loginScreen');
+    if (ls) ls.style.display = 'flex';
   });
 } else {
-  // Tem usuário - esconder login
   document.addEventListener('DOMContentLoaded', () => {
-    const loginScreen = document.getElementById('loginScreen');
-    if (loginScreen) loginScreen.style.display = 'none';
+    const ls = document.getElementById('loginScreen');
+    if (ls) ls.style.display = 'none';
   });
 }
 </script>
@@ -1705,34 +1943,42 @@ if (localStorage.getItem('enel_auth') === '1') {
 <!-- ── TELA DE LOGIN ── -->
 <div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:none;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
   <div style="background:white;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
-    <div style="font-size:2.5rem;margin-bottom:0.5rem;">⚡</div>
+    <div style="width:56px;height:56px;background:linear-gradient(135deg,#003087,#00843D);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;font-size:1.6rem;">⚡</div>
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#003087;text-transform:uppercase;letter-spacing:0.05em;">ENEL BRASIL</div>
-    <div style="font-size:0.85rem;color:#6B7280;margin-bottom:2rem;">Análise de Produtividade · Polo São Gonçalo</div>
+    <div style="font-size:0.82rem;color:#6B7280;margin-bottom:0.25rem;">Análise de Produtividade · Polo São Gonçalo</div>
+    <div style="font-size:0.72rem;color:#9CA3AF;margin-bottom:1.75rem;">Use seu login BR + matrícula e senha pessoal</div>
 
-    <form onsubmit="submitLoginImmediate(event)" style="display:flex;flex-direction:column;gap:1rem;">
+    <form onsubmit="submitLoginImmediate(event)" style="display:flex;flex-direction:column;gap:0;">
     <div style="margin-bottom:1rem;text-align:left;">
-      <label style="font-size:0.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.35rem;">Usuário</label>
-      <input type="text" id="loginUser" placeholder="Digite seu login"
-        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;"
+      <label style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.35rem;">Login</label>
+      <input type="text" id="loginUser" placeholder="Ex: br0148272697" autocomplete="username"
+        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;transition:border 0.15s;"
+        onfocus="this.style.borderColor='#003087'" onblur="this.style.borderColor='#D1D5DB'"
         onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
     </div>
 
-    <div style="margin-bottom:1.5rem;text-align:left;">
-      <label style="font-size:0.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.35rem;">Senha</label>
-      <input type="password" id="loginPass" placeholder="Digite sua senha"
-        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;">
+    <div style="margin-bottom:1.25rem;text-align:left;">
+      <label style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.35rem;">Senha</label>
+      <div style="position:relative;">
+        <input type="password" id="loginPass" placeholder="Digite sua senha" autocomplete="current-password"
+          style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 2.6rem 0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;transition:border 0.15s;"
+          onfocus="this.style.borderColor='#003087'" onblur="this.style.borderColor='#D1D5DB'">
+        <button type="button" onclick="(function(){ const i=document.getElementById('loginPass'); const b=document.getElementById('loginPassEye'); i.type=i.type==='password'?'text':'password'; b.textContent=i.type==='password'?'👁':'🙈'; })()" id="loginPassEye"
+          style="position:absolute;right:0.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;padding:0;color:#6B7280;">👁</button>
+      </div>
     </div>
 
-    <div id="loginError" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:6px;">
-      ❌ Usuário ou senha incorretos.
+    <div id="loginError" style="font-size:0.82rem;color:#DC2626;margin-bottom:0.85rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:6px;text-align:left;">
+      ❌ Login ou senha incorretos.
     </div>
 
     <button type="submit"
-      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;">
+      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;transition:opacity 0.15s;"
+      onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
       ENTRAR
     </button>
 
-    <div style="font-size:0.7rem;color:#9CA3AF;margin-top:1.5rem;">© 2026 Enel Brasil · Uso interno</div>
+    <div style="font-size:0.7rem;color:#D1D5DB;margin-top:1.5rem;text-align:center;">© 2026 Enel Brasil · Uso interno</div>
     </form>
   </div>
 </div>
@@ -1841,8 +2087,13 @@ if (localStorage.getItem('enel_auth') === '1') {
         <span class="topbar-metric-value pending-val" id="topbarPending">0</span>
         <span class="topbar-metric-label">Pendentes</span>
       </div>
-    </div>
-  </div>
+      <div class="topbar-sep"></div>
+      <!-- Usuário logado -->
+      <button onclick="toggleUserMenuTopbar()" style="display:flex;align-items:center;gap:0.45rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:0.3rem 0.7rem;cursor:pointer;color:white;font-family:'Barlow',sans-serif;font-size:0.8rem;font-weight:700;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+        <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span id="topbarUserName" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+        <svg style="width:10px;height:10px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
 
 <script>
 // ── Relógio independente — imune a erros do resto do JS ──
@@ -2474,6 +2725,15 @@ if (localStorage.getItem('enel_auth') === '1') {
         <button class="cfg-btn-add" onclick="cfgAddContact()">+ Adicionar</button>
       </div>
       <div id="cfgContactList" class="cfg-tag-list"></div>
+    </div>
+  </div>
+
+  <!-- Seção: Gestão de Usuários -->
+  <div class="cfg-card" id="cfgCardUsuarios">
+    <div class="cfg-card-header">👥 Gestão de Usuários</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Gerencie os usuários com acesso à plataforma. Somente administradores podem criar, editar ou excluir usuários.</div>
+      <div id="cfgUsuariosList"></div>
     </div>
   </div>
 
@@ -4624,6 +4884,8 @@ if (localStorage.getItem('enel_auth') === '1') {
       id: Date.now(),
       registroId,
       savedAt: new Date().toISOString(),
+      criadoPor: nomeUsuario() || '—',
+      criadoPorLogin: (getCurrentUserImmediate()?.login) || '—',
       ...form
     };
 
@@ -4783,6 +5045,7 @@ if (localStorage.getItem('enel_auth') === '1') {
               <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
               <span class="db-meta-pill">👷 ${r.equipe}</span>
               <span class="db-meta-pill">🔖 ${r.entries.length} lançamento${r.entries.length!==1?'s':''}</span>
+              ${r.criadoPor ? `<span class="db-meta-pill" style="background:#EFF6FF;color:#1E4DA1;" title="Criado por ${r.criadoPor}">👤 ${r.criadoPor}</span>` : ''}
               ${(() => {
                 const acoes = loadAcoes();
                 const comAcao = (r.entries||[]).filter(e => e.acaoNecessaria === 'sim' && e.acaoResponsavel);
@@ -5029,7 +5292,8 @@ if (localStorage.getItem('enel_auth') === '1') {
     }
 
     const savedDate = new Date(r.savedAt);
-    set('rFooterDate', `Salvo em ${savedDate.toLocaleDateString('pt-BR')} às ${savedDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`);
+    const autorStr = r.criadoPor ? ` · por ${r.criadoPor}` : '';
+    set('rFooterDate', `Salvo em ${savedDate.toLocaleDateString('pt-BR')} às ${savedDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${autorStr}`);
 
     // Build timeline
     buildTimeline(r);
@@ -5782,6 +6046,7 @@ if (localStorage.getItem('enel_auth') === '1') {
               <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
               <span class="db-meta-pill">👷 ${r.equipe}</span>
               <span class="db-meta-pill">🔖 ${r.entries.length} ocorrência${r.entries.length !== 1 ? 's' : ''}</span>
+              ${r.criadoPor ? `<span class="db-meta-pill" style="background:#EFF6FF;color:#1E4DA1;" title="Criado por ${r.criadoPor}">👤 ${r.criadoPor}</span>` : ''}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:0.65rem;">
@@ -6613,7 +6878,17 @@ entryLines.join('\n\n') + '\n' +
   function checkConfigPass() {
     const inp = document.getElementById('configPassInput');
     const err = document.getElementById('configPassErr');
-    if (inp.value === getConfigPass()) {
+    const currentUser = getCurrentUserImmediate();
+
+    // Se usuário logado é admin, aceita a senha dele OU a senha de config legada
+    let ok = false;
+    if (currentUser && currentUser.perfil === 'admin' && inp.value === currentUser.senha) {
+      ok = true;
+    } else if (inp.value === getConfigPass()) {
+      ok = true;
+    }
+
+    if (ok) {
       document.getElementById('configLock').style.display = 'none';
       document.getElementById('configPanel').style.display = 'block';
       inp.value = '';
@@ -6621,6 +6896,7 @@ entryLines.join('\n\n') + '\n' +
       renderConfigPanel();
     } else {
       err.style.display = 'block';
+      err.textContent = 'Senha incorreta. Use sua senha de acesso (apenas admins).';
       inp.value = '';
       inp.focus();
     }
@@ -6644,6 +6920,11 @@ entryLines.join('\n\n') + '\n' +
     renderCfgContacts();
     renderCfgRespAcao();
     renderCfgRespOc();
+    // Gestão de usuários — recarrega do Firebase antes de renderizar
+    fetchUsersFromFirebase().then(fbUsers => {
+      if (fbUsers.length > 0) saveUsersLocal(fbUsers);
+      renderCfgUsuarios();
+    }).catch(() => renderCfgUsuarios());
   }
 
   // ── Equipes ──
@@ -7261,6 +7542,19 @@ entryLines.join('\n\n') + '\n' +
       if (tc) tc.textContent = todayCount;
       if (tt) tt.textContent = records.length;
       if (tp) tp.textContent = pending;
+
+      // Atualiza nome do usuário logado na topbar
+      const topbarUN = document.getElementById('topbarUserName');
+      if (topbarUN) {
+        const cu = getCurrentUserImmediate();
+        if (cu) {
+          const isAdm = cu.perfil === 'admin';
+          topbarUN.textContent = cu.nome;
+          topbarUN.title = `${cu.login} · ${isAdm ? 'Administrador' : 'Usuário'}`;
+        } else {
+          topbarUN.textContent = '—';
+        }
+      }
 
       // Atualiza badge de ações pendentes (sidebar) a cada segundo
       try {
