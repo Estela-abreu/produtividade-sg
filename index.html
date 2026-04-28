@@ -2428,12 +2428,48 @@ if (!loggedInUser) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
       <div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Painel de Reunião</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);">Registros selecionados para apresentação · Visão gerencial</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);">Todos os registros · Filtráveis por data, turno e equipe</div>
       </div>
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🖨️ Imprimir</button>
       </div>
     </div>
+
+    <!-- ── FILTROS ── -->
+    <div style="background:white;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:0 1px 6px rgba(0,0,0,0.06);border:1px solid #E5E7EB;display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap;">
+      <!-- Data Início -->
+      <div style="flex:1;min-width:140px;">
+        <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Data Início</label>
+        <input type="date" id="reuniaoFilterDataInicio" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
+      </div>
+
+      <!-- Data Fim -->
+      <div style="flex:1;min-width:140px;">
+        <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Data Fim</label>
+        <input type="date" id="reuniaoFilterDataFim" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
+      </div>
+
+      <!-- Turno -->
+      <div style="flex:1;min-width:120px;">
+        <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Turno</label>
+        <select id="reuniaoFilterTurno" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
+          <option value="">Todos</option>
+          <option value="A">Turno A</option>
+          <option value="B">Turno B</option>
+          <option value="C">Turno C</option>
+        </select>
+      </div>
+
+      <!-- Equipe (busca) -->
+      <div style="flex:2;min-width:180px;">
+        <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Equipe</label>
+        <input type="text" id="reuniaoFilterEquipe" placeholder="Buscar equipe..." style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onkeyup="renderReuniao()">
+      </div>
+
+      <!-- Botão Limpar Filtros -->
+      <button onclick="limparFiltrosReuniao()" style="padding:0.6rem 1.2rem;background:#6B7280;color:white;border:none;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#4B5563'" onmouseout="this.style.background='#6B7280'">🔄 Limpar</button>
+    </div>
+
     <div id="reuniaoList"></div>
   </div>
 </div><!-- /tabReuniao -->
@@ -4950,8 +4986,8 @@ if (!loggedInUser) {
     const pendingCount = allRec.filter(r => needsJustificativa(r) && r.status !== 'revisado' && r.status !== 'parcial').length;
     updateTabBadgeRetorno(pendingCount);
 
-    // Switch to Notify tab
-    switchTab('notify');
+    // Switch to Reunião tab automatically
+    switchTab('reuniao');
 
     // Auto-clear form for next entry
     document.getElementById('data').value = today;
@@ -5690,7 +5726,15 @@ if (!loggedInUser) {
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
-    if (tab === 'reuniao')   { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'reuniao') {
+      // Set default date filter to today
+      const dataInicio = document.getElementById('reuniaoFilterDataInicio');
+      if (dataInicio && !dataInicio.value) {
+        dataInicio.value = today;
+      }
+      renderReuniao();
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
     if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'dashboard') { switchDashSub(_dashSub); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -7753,15 +7797,14 @@ entryLines.join('\n\n') + '\n' +
   //  ABA REUNIÃO
   // ══════════════════════════════════════════
 
-  function toggleReuniao(id) {
+  function removeFromReuniao(id) {
     const records = loadDB();
     const r = records.find(rec => rec.id === id);
     if (!r) return;
-    r.reuniao = !r.reuniao;
+    r.reuniao = false;  // Remove explicitly
     saveDB(records);
-    applyDBFilters();
-    updateBadgeReuniao();
-    showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
+    renderReuniao();
+    showCopyToast('📋 Removido da reunião.');
   }
 
   function updateBadgeReuniao() {
@@ -7770,18 +7813,55 @@ entryLines.join('\n\n') + '\n' +
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
   }
 
+  function limparFiltrosReuniao() {
+    document.getElementById('reuniaoFilterDataInicio').value = '';
+    document.getElementById('reuniaoFilterDataFim').value = '';
+    document.getElementById('reuniaoFilterTurno').value = '';
+    document.getElementById('reuniaoFilterEquipe').value = '';
+    renderReuniao();
+  }
+
   function renderReuniao() {
     const listEl = document.getElementById('reuniaoList');
     if (!listEl) return;
     const all = loadDB();
-    const marked = all.filter(r => r.reuniao);
+    
+    // Apply filters
+    const dataInicio = document.getElementById('reuniaoFilterDataInicio')?.value || '';
+    const dataFim = document.getElementById('reuniaoFilterDataFim')?.value || '';
+    const turno = document.getElementById('reuniaoFilterTurno')?.value || '';
+    const equipe = document.getElementById('reuniaoFilterEquipe')?.value.trim().toUpperCase() || '';
+    
+    let filtered = all;
+    
+    // Filter by date range
+    if (dataInicio) {
+      filtered = filtered.filter(r => r.data >= dataInicio);
+    }
+    if (dataFim) {
+      filtered = filtered.filter(r => r.data <= dataFim);
+    }
+    
+    // Filter by turno
+    if (turno) {
+      filtered = filtered.filter(r => r.turno === turno);
+    }
+    
+    // Filter by equipe (case-insensitive partial match)
+    if (equipe) {
+      filtered = filtered.filter(r => r.equipe.toUpperCase().includes(equipe));
+    }
+    
+    // Sort by data descending
+    filtered = filtered.sort((a, b) => b.data.localeCompare(a.data));
+    
     updateBadgeReuniao();
 
-    if (!marked.length) {
+    if (!filtered.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-        <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
-        <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
+        <div style="font-size:1rem;font-weight:700;">Nenhum registro encontrado</div>
+        <div style="font-size:0.82rem;margin-top:0.5rem;">Ajuste os filtros ou crie novos registros</div>
       </div>`;
       return;
     }
@@ -7790,7 +7870,7 @@ entryLines.join('\n\n') + '\n' +
     const toMins = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; };
 
     listEl.innerHTML = '';
-    marked.forEach(r => {
+    filtered.forEach(r => {
       const [ry,rm,rd] = r.data.split('-');
       const dataBR = rd+'/'+rm+'/'+ry;
       const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
@@ -7858,7 +7938,7 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
-            <button onclick="toggleReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
+            <button onclick="removeFromReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
           </div>
         </div>
 
