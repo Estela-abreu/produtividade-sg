@@ -1906,11 +1906,28 @@ function applyInicioImage() {
 }
 
 initUsersImmediate();
+
+// Valida sessão: se enel_auth=1 mas não há currentUser válido, limpa
+(function validateSession() {
+  const auth = localStorage.getItem('enel_auth');
+  const userRaw = localStorage.getItem('enel_current_user');
+  let userValid = false;
+  try {
+    const u = userRaw ? JSON.parse(userRaw) : null;
+    if (u && u.login && u.nome) userValid = true;
+  } catch(e) {}
+  if (auth === '1' && !userValid) {
+    localStorage.removeItem('enel_auth');
+    localStorage.removeItem('enel_current_user');
+  }
+})();
+
 const loggedInUser = getCurrentUserImmediate();
 if (!loggedInUser) {
   document.addEventListener('DOMContentLoaded', () => {
     const ls = document.getElementById('loginScreen');
     if (ls) ls.style.display = 'flex';
+    setTimeout(() => document.getElementById('loginUser')?.focus(), 150);
   });
 } else {
   document.addEventListener('DOMContentLoaded', () => {
@@ -1935,10 +1952,27 @@ if (!loggedInUser) {
 </div>
 
 <script>
-// Esconde login imediatamente se já autenticado — evita flash
-if (localStorage.getItem('enel_auth') === '1') {
-  document.write('<style>#loginScreen{display:none!important}</style>');
-}
+// Esconde login imediatamente se já autenticado com usuário válido — evita flash
+// Mas invalida sessão órfã (enel_auth sem currentUser)
+(function() {
+  const auth = localStorage.getItem('enel_auth');
+  const userRaw = localStorage.getItem('enel_current_user');
+  let userValid = false;
+  try {
+    const u = userRaw ? JSON.parse(userRaw) : null;
+    if (u && u.login && u.nome) userValid = true;
+  } catch(e) {}
+
+  if (auth === '1' && !userValid) {
+    // Sessão órfã — limpar tudo e forçar login
+    localStorage.removeItem('enel_auth');
+    localStorage.removeItem('enel_current_user');
+  }
+
+  if (localStorage.getItem('enel_auth') === '1' && userValid) {
+    document.write('<style>#loginScreen{display:none!important}</style>');
+  }
+})();
 </script>
 <!-- ── TELA DE LOGIN ── -->
 <div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:none;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
@@ -7596,10 +7630,23 @@ entryLines.join('\n\n') + '\n' +
 
   // ── Verificação de autenticação (roda primeiro) ──
   (function checkAuth() {
-    if (localStorage.getItem('enel_auth') === '1') {
+    const auth = localStorage.getItem('enel_auth');
+    const userRaw = localStorage.getItem('enel_current_user');
+    let userValid = false;
+    try {
+      const u = userRaw ? JSON.parse(userRaw) : null;
+      if (u && u.login && u.nome) userValid = true;
+    } catch(e) {}
+
+    if (auth === '1' && userValid) {
       const screen = document.getElementById('loginScreen');
       if (screen) screen.style.display = 'none';
     } else {
+      // Limpa sessão inválida e mostra login
+      localStorage.removeItem('enel_auth');
+      localStorage.removeItem('enel_current_user');
+      const screen = document.getElementById('loginScreen');
+      if (screen) screen.style.display = 'flex';
       setTimeout(() => document.getElementById('loginUser')?.focus(), 100);
     }
   })();
