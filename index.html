@@ -1978,7 +1978,7 @@ if (localStorage.getItem('enel_auth') === '1') {
         <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🖨️ Imprimir</button>
       </div>
     </div>
-    <div id="reuniaoList"></div>
+    <!-- <div id="reuniaoList"></div> --> <!-- ANTIGO - agora está em dashSubReuniao -->
   </div>
 </div><!-- /tabReuniao -->
 
@@ -2198,6 +2198,27 @@ if (localStorage.getItem('enel_auth') === '1') {
     <div style="margin-bottom:1.25rem;padding:1.5rem;">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Painel de Reunião</div>
     </div>
+    
+    <!-- Filtros -->
+    <div style="padding:0 1.5rem;margin-bottom:1.5rem;display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:0.3rem;">
+        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--gray-600);">📅 Data Início</label>
+        <input type="date" id="reuniaoFilterDataInicio" style="padding:0.5rem;border:1px solid var(--gray-300);border-radius:6px;font-size:0.85rem;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.3rem;">
+        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--gray-600);">📅 Data Fim</label>
+        <input type="date" id="reuniaoFilterDataFim" style="padding:0.5rem;border:1px solid var(--gray-300);border-radius:6px;font-size:0.85rem;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.3rem;">
+        <label style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--gray-600);">👷 Equipe</label>
+        <input type="text" id="reuniaoFilterEquipe" placeholder="Buscar equipe..." style="padding:0.5rem;border:1px solid var(--gray-300);border-radius:6px;font-size:0.85rem;">
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:flex-end;">
+        <button onclick="renderReuniao()" style="padding:0.5rem 1.5rem;background:#065F46;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.85rem;">🔍 Buscar</button>
+        <button onclick="clearReuniaoFilters()" style="padding:0.5rem 1rem;background:#E5E7EB;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.85rem;">✕ Limpar</button>
+      </div>
+    </div>
+    
     <div id="reuniaoList" style="padding:0 1.5rem;"></div>
   </div><!-- /dashSubReuniao -->
 
@@ -4492,7 +4513,7 @@ if (localStorage.getItem('enel_auth') === '1') {
       id: Date.now(),
       registroId,
       savedAt: new Date().toISOString(),
-      reuniao: false, // Inicializar como false
+      reuniao: true, // Automaticamente incluído na reunião
       ...form
     };
 
@@ -4715,8 +4736,6 @@ if (localStorage.getItem('enel_auth') === '1') {
             <div class="db-record-actions">
               <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
               <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
-              <button class="db-action-btn" data-action="meeting" data-id="${r.id}" title="${r.reuniao ? 'Remover da reunião' : 'Incluir na reunião'}"
-                style="color:${r.reuniao ? '#6366F1' : 'var(--gray-400)'};font-size:0.9rem;">${r.reuniao ? '📋' : '📋'}</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -4730,10 +4749,6 @@ if (localStorage.getItem('enel_auth') === '1') {
       listEl.appendChild(card);
 
       // Direct event listeners — most reliable approach
-      card.querySelector('[data-action="meeting"]')?.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleReuniao(r.id);
-      });
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
@@ -7323,28 +7338,15 @@ entryLines.join('\n\n') + '\n' +
 
 
   function toggleReuniao(id) {
-    alert('1. Clicou no botão reunião para ID: ' + id);
     const records = loadDB();
-    alert('2. Registros carregados: ' + records.length);
     const r = records.find(rec => rec.id === id);
-    alert('3. Registro encontrado: ' + (r ? 'SIM' : 'NÃO'));
-    if (!r) {
-      alert('Registro não encontrado!');
-      return;
-    }
-    alert('4. Reuniao ANTES: ' + r.reuniao);
+    if (!r) return;
     r.reuniao = !r.reuniao;
-    alert('5. Reuniao DEPOIS: ' + r.reuniao);
     saveDB(records);
-    alert('6. Salvo no DB');
     applyDBFilters();
-    
     renderReuniao();
-    alert('7. renderReuniao chamado');
-    
     updateBadgeReuniao();
     showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
-    alert('8. Toast mostrado');
   }
 
   function updateBadgeReuniao() {
@@ -7353,35 +7355,39 @@ entryLines.join('\n\n') + '\n' +
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
   }
 
+  function clearReuniaoFilters() {
+    document.getElementById('reuniaoFilterDataInicio').value = '';
+    document.getElementById('reuniaoFilterDataFim').value = '';
+    document.getElementById('reuniaoFilterEquipe').value = '';
+    renderReuniao();
+  }
+
   function renderReuniao() {
-    alert('[renderReuniao] Iniciando');
     const listEl = document.getElementById('reuniaoList');
-    alert('[renderReuniao] Element reuniaoList encontrado: ' + (listEl ? 'SIM' : 'NÃO'));
-    if (!listEl) {
-      alert('[renderReuniao] ERROR: reuniaoList não encontrado!');
-      return;
-    }
+    if (!listEl) return;
+    
+    const dataInicio = document.getElementById('reuniaoFilterDataInicio')?.value || '';
+    const dataFim = document.getElementById('reuniaoFilterDataFim')?.value || '';
+    const equipeFilter = (document.getElementById('reuniaoFilterEquipe')?.value || '').trim().toUpperCase();
     
     const all = loadDB();
-    alert('[renderReuniao] Total registros: ' + all.length);
-    
-    const marked = all.filter(r => r.reuniao);
-    alert('[renderReuniao] Registros marcados: ' + marked.length);
-    
+    const marked = all.filter(r => {
+      if (!r.reuniao) return false;
+      if (dataInicio && r.data < dataInicio) return false;
+      if (dataFim && r.data > dataFim) return false;
+      if (equipeFilter && !r.equipe.toUpperCase().includes(equipeFilter)) return false;
+      return true;
+    });
     updateBadgeReuniao();
-    alert('[renderReuniao] Badge atualizado');
-    
+
     if (!marked.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-        <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
-        <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
+        <div style="font-size:1rem;font-weight:700;">Nenhum registro na reunião</div>
+        <div style="font-size:0.82rem;margin-top:0.5rem;">Novos registros aparecem automaticamente aqui</div>
       </div>`;
-      alert('[renderReuniao] Nenhum marcado - mensagem exibida');
       return;
     }
-    
-    alert('[renderReuniao] Iniciando renderização de ' + marked.length + ' registros');
 
     const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     const toMins = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; };
