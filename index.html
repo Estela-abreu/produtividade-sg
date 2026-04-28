@@ -1521,8 +1521,151 @@
 </head>
 <body>
 
+<script>
+// ─── FUNÇÕES DE AUTENTICAÇÃO (executadas IMEDIATAMENTE) ───
+const USERS_KEY = 'enel_users';
+const CURRENT_USER_KEY = 'enel_current_user';
+
+function initUsersImmediate() {
+  const stored = localStorage.getItem(USERS_KEY);
+  if (!stored) {
+    const defaultUsers = [{
+      id: 1,
+      nome: 'Administrador',
+      login: 'br0148272697',
+      senha: 'brasil',
+      perfil: 'admin',
+      primeiroAcesso: true
+    }];
+    localStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+  }
+}
+
+function getCurrentUserImmediate() {
+  const stored = localStorage.getItem(CURRENT_USER_KEY);
+  return stored ? JSON.parse(stored) : null;
+}
+
+function validateLoginImmediate(login, senha) {
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  const user = users.find(u => u.login === login);
+  if (!user) return null;
+  if (user.senha !== senha) return null;
+  return user;
+}
+
+function submitLoginImmediate(event) {
+  event.preventDefault();
+  const login = document.getElementById('loginInput').value;
+  const senha = document.getElementById('senhaInput').value;
+  const errorEl = document.getElementById('loginError');
+  
+  const user = validateLoginImmediate(login, senha);
+  if (!user) {
+    errorEl.textContent = 'Login ou senha incorretos';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  
+  if (user.primeiroAcesso) {
+    showChangePasswordDialogImmediate(true);
+  } else {
+    document.getElementById('loginScreen').style.display = 'none';
+    window.location.reload();
+  }
+}
+
+function showChangePasswordDialogImmediate(isFirstAccess = false) {
+  const html = `
+    <div id="pwdDialog" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;">
+      <div style="background:white;border-radius:12px;padding:2rem;max-width:400px;width:90%;">
+        <div style="font-size:1.2rem;font-weight:700;margin-bottom:1rem;color:#1F2937;">
+          🔑 ${isFirstAccess ? 'Alterar Senha Inicial' : 'Alterar Senha'}
+        </div>
+        ${!isFirstAccess ? `<div style="margin-bottom:1rem;">
+          <label style="display:block;margin-bottom:0.5rem;font-weight:700;font-size:0.85rem;">Senha Atual</label>
+          <input type="password" id="currentPwdInput" placeholder="••••••••" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;">
+        </div>` : ''}
+        <div style="margin-bottom:1rem;">
+          <label style="display:block;margin-bottom:0.5rem;font-weight:700;font-size:0.85rem;">Nova Senha</label>
+          <input type="password" id="newPwdInput" placeholder="••••••••" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label style="display:block;margin-bottom:0.5rem;font-weight:700;font-size:0.85rem;">Confirmar Senha</label>
+          <input type="password" id="confirmPwdInput" placeholder="••••••••" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div id="pwdError" style="color:#DC2626;font-size:0.85rem;margin-bottom:1rem;display:none;"></div>
+        <div style="display:flex;gap:0.5rem;">
+          ${!isFirstAccess ? `<button onclick="document.getElementById('pwdDialog').remove()" style="flex:1;padding:0.5rem;background:#E5E7EB;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Cancelar</button>` : ''}
+          <button onclick="submitChangePasswordImmediate(${isFirstAccess})" style="flex:1;padding:0.5rem;background:#065F46;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  document.body.appendChild(container.firstElementChild);
+}
+
+function submitChangePasswordImmediate(isFirstAccess) {
+  const newPwd = document.getElementById('newPwdInput').value;
+  const confirmPwd = document.getElementById('confirmPwdInput').value;
+  const errorEl = document.getElementById('pwdError');
+  
+  if (!newPwd || !confirmPwd) {
+    errorEl.textContent = 'Preencha todos os campos';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  if (newPwd !== confirmPwd) {
+    errorEl.textContent = 'As senhas não conferem';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  if (!isFirstAccess) {
+    const currentPwd = document.getElementById('currentPwdInput').value;
+    const user = getCurrentUserImmediate();
+    if (!user || user.senha !== currentPwd) {
+      errorEl.textContent = 'Senha atual incorreta';
+      errorEl.style.display = 'block';
+      return;
+    }
+  }
+  
+  // Atualizar senha
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  const user = getCurrentUserImmediate();
+  const idx = users.findIndex(u => u.id === user.id);
+  users[idx].senha = newPwd;
+  users[idx].primeiroAcesso = false;
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(users[idx]));
+  
+  document.getElementById('pwdDialog').remove();
+  
+  if (isFirstAccess) {
+    document.getElementById('loginScreen').style.display = 'none';
+    window.location.reload();
+  } else {
+    alert('✅ Senha alterada com sucesso!');
+  }
+}
+
+// Inicializar usuários e verificar login
+initUsersImmediate();
+const loggedInUser = getCurrentUserImmediate();
+if (loggedInUser) {
+  document.getElementById('loginScreen').style.display = 'none';
+}
+</script>
+
 <!-- TELA DE LOGIN -->
-<div id="loginScreen" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#065F46 0%,#047857 100%);display:flex;align-items:center;justify-content:center;z-index:9999;">
+<div id="loginScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#065F46 0%,#047857 100%);display:flex;align-items:center;justify-content:center;z-index:9999;">
   <div style="background:white;border-radius:16px;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:400px;width:90%;">
     <div style="text-align:center;margin-bottom:2rem;">
       <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔐</div>
