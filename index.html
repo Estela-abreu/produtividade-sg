@@ -1573,7 +1573,10 @@ function submitLoginImmediate(event) {
     showChangePasswordDialogImmediate(true);
   } else {
     document.getElementById('loginScreen').style.display = 'none';
-    window.location.reload();
+    // Mostrar plataforma
+    document.querySelector('.sidebar')?.style.display = '';
+    document.querySelector('.main')?.style.display = '';
+    document.querySelector('.topbar')?.style.display = '';
   }
 }
 
@@ -1650,7 +1653,10 @@ function submitChangePasswordImmediate(isFirstAccess) {
   
   if (isFirstAccess) {
     document.getElementById('loginScreen').style.display = 'none';
-    window.location.reload();
+    // Mostrar plataforma
+    document.querySelector('.sidebar')?.style.display = '';
+    document.querySelector('.main')?.style.display = '';
+    document.querySelector('.topbar')?.style.display = '';
   } else {
     alert('✅ Senha alterada com sucesso!');
   }
@@ -1665,7 +1671,11 @@ document.getElementById('loginScreen').style.display = 'flex';
 
 function logoutImmediate() {
   localStorage.removeItem('enel_current_user');
-  location.href = location.href; // Recarrega a página
+  document.getElementById('loginScreen').style.display = 'flex';
+  // Limpar o restante da plataforma
+  document.querySelector('.sidebar')?.style.display = 'none';
+  document.querySelector('.main')?.style.display = 'none';
+  document.querySelector('.topbar')?.style.display = 'none';
 }
 
 function toggleUserMenuTopbar() {
