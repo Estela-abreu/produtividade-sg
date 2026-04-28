@@ -7339,11 +7339,8 @@ entryLines.join('\n\n') + '\n' +
     alert('6. Salvo no DB');
     applyDBFilters();
     
-    // Forçar renderização da reunião
-    setTimeout(() => {
-      renderReuniao();
-      alert('7. renderReuniao chamado');
-    }, 100);
+    renderReuniao();
+    alert('7. renderReuniao chamado');
     
     updateBadgeReuniao();
     showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
