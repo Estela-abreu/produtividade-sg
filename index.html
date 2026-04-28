@@ -7357,20 +7357,34 @@ entryLines.join('\n\n') + '\n' +
   }
 
   function renderReuniao() {
+    alert('[renderReuniao] Iniciando');
     const listEl = document.getElementById('reuniaoList');
-    if (!listEl) return;
+    alert('[renderReuniao] Element reuniaoList encontrado: ' + (listEl ? 'SIM' : 'NÃO'));
+    if (!listEl) {
+      alert('[renderReuniao] ERROR: reuniaoList não encontrado!');
+      return;
+    }
+    
     const all = loadDB();
+    alert('[renderReuniao] Total registros: ' + all.length);
+    
     const marked = all.filter(r => r.reuniao);
+    alert('[renderReuniao] Registros marcados: ' + marked.length);
+    
     updateBadgeReuniao();
-
+    alert('[renderReuniao] Badge atualizado');
+    
     if (!marked.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
         <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
         <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
       </div>`;
+      alert('[renderReuniao] Nenhum marcado - mensagem exibida');
       return;
     }
+    
+    alert('[renderReuniao] Iniciando renderização de ' + marked.length + ' registros');
 
     const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     const toMins = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; };
