@@ -4824,33 +4824,33 @@ if (!loggedInUser) {
         .then(data => {
           setFbStatus(true);
 
-          const fbRecords = (data && typeof data === 'object')
-            ? Object.values(data)
-                .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
-                .sort((a, b) => b.id - a.id)
-            : [];
+          // Processa dados do Firebase - pode vir como objeto ou array
+          let fbRecords = [];
+          if (data && typeof data === 'object') {
+            // Se for um objeto com chaves (estrutura /records/r_123), converte para array
+            if (Array.isArray(data)) {
+              fbRecords = data;
+            } else {
+              fbRecords = Object.values(data);
+            }
+            // Filtra valores válidos
+            fbRecords = fbRecords
+              .filter(r => r && typeof r === 'object' && r.id && !_deletedIds.has(String(r.id)))
+              .sort((a, b) => b.id - a.id);
+          }
 
           const fbCount    = fbRecords.length;
           const cacheCount = _dbCache.length;
 
+          // SEMPRE atualizar cache e localStorage quando Firebase tem dados
           if (fbCount > 0) {
-            const fbIds    = new Set(fbRecords.map(r => String(r.id)));
-            const cacheIds = new Set(_dbCache.map(r => String(r.id)));
-            const hasNew     = fbRecords.some(r => !cacheIds.has(String(r.id)));
-            const hasDeleted = [...cacheIds].some(id => !fbIds.has(id));
-            const hasEdited  = fbRecords.some(fr => {
-              const c = _dbCache.find(r => String(r.id) === String(fr.id));
-              return c && JSON.stringify(c) !== JSON.stringify(fr);
-            });
-
-            // Always update cache and UI when Firebase has data
             _dbCache = fbRecords;
             try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
-            if (hasNew || hasDeleted || hasEdited || fbCount !== cacheCount) {
-              refreshAllUI(fbRecords);
-            }
+            refreshAllUI(fbRecords);
+            console.log(`[SYNC] ${fbCount} registros sincronizados do Firebase`);
           } else if (fbCount === 0 && cacheCount > 0) {
             // Firebase vazio mas cache tem dados → faz upload
+            console.warn('[SYNC] Firebase vazio, enviando dados do cache...');
             _dbCache.forEach(r => {
               fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
                 method: 'PUT',
@@ -4858,9 +4858,14 @@ if (!loggedInUser) {
                 body: JSON.stringify(r)
               }).catch(() => {});
             });
+          } else {
+            console.log('[SYNC] Firebase vazio e cache vazio');
           }
         })
-        .catch(() => { setFbStatus(false); });
+        .catch(err => { 
+          console.error('[SYNC] Erro ao sincronizar:', err.message);
+          setFbStatus(false); 
+        });
     };
 
     // Sync imediato + polling a cada 2s (mais agressivo)
@@ -5026,27 +5031,8 @@ if (!loggedInUser) {
     const pendingCount = allRec.filter(r => needsJustificativa(r) && r.status !== 'revisado' && r.status !== 'parcial').length;
     updateTabBadgeRetorno(pendingCount);
 
-    // Trigger immediate sync for other users
-    setTimeout(() => {
-      const syncFromFirebase = () => {
-        fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
-          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-          .then(data => {
-            const fbRecords = (data && typeof data === 'object')
-              ? Object.values(data)
-                  .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
-                  .sort((a, b) => b.id - a.id)
-              : [];
-            if (fbRecords.length > 0) {
-              _dbCache = fbRecords;
-              try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
-              refreshAllUI(fbRecords);
-            }
-          })
-          .catch(() => {});
-      };
-      syncFromFirebase();
-    }, 500);
+    // Refresh UI imediatamente (o polling global vai sincronizar com Firebase em 2s)
+    refreshAllUI(allRec);
 
     // Switch to Dashboard > Visão Detalhada automatically
     switchTab('dashboard');
