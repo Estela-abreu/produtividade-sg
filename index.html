@@ -3185,6 +3185,7 @@ if (!loggedInUser) {
   const CFG_SUPERVISORES_KEY = 'enel_cfg_supervisores';
   const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
   const CFG_RESP_OC_KEY = 'enel_cfg_resp_oc';
+  const CFG_TIPOS_ACAO_KEY = 'enel_cfg_tipos_acao';
   const DRAFT_KEY = 'enel_form_draft';
   const ACOES_KEY = 'enel_acoes';
   const FB_ACOES_PATH = 'produtividade/acoes';
@@ -7503,24 +7504,19 @@ entryLines.join('\n\n') + '\n' +
 
   // ── Tipos de Ação ──
   function getTiposAcao() {
-    const cfg = getConfig();
-    if (!Array.isArray(cfg.tiposAcao)) {
-      return [
-        'Aplicado Feedback',
-        'Aplicado Advertência',
-        'Realinhamento de processo',
-        'Orientação à equipe',
-        'Ação corretiva operacional',
-        'Não se aplica'
-      ];
-    }
-    return cfg.tiposAcao;
+    const defaultTipos = [
+      'Aplicado Feedback',
+      'Aplicado Advertência',
+      'Realinhamento de processo',
+      'Orientação à equipe',
+      'Ação corretiva operacional',
+      'Não se aplica'
+    ];
+    return getCfg(CFG_TIPOS_ACAO_KEY, defaultTipos);
   }
 
   function saveTiposAcao(tipos) {
-    const cfg = getConfig();
-    cfg.tiposAcao = tipos;
-    saveConfig(cfg);
+    saveCfg(CFG_TIPOS_ACAO_KEY, tipos);
   }
 
   function renderCfgTiposAcao() {
