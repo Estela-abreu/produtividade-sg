@@ -2921,6 +2921,12 @@ if (!loggedInUser) {
       <div id="rAcoes"></div>
     </div>
 
+    <!-- Comentários Geral -->
+    <div class="resumo-section" id="rComentariosSection" style="display:none;">
+      <div class="resumo-section-title">💬 Comentários Geral</div>
+      <div class="resumo-obs" id="rComentarios"></div>
+    </div>
+
     <!-- Mapa de Deslocamento -->
     <div class="resumo-section" id="rMapSection" style="display:none;">
       <div class="resumo-section-title">🗺️ Mapa de Deslocamento</div>
@@ -5493,6 +5499,15 @@ if (!loggedInUser) {
       if (acoesSection) acoesSection.style.display = 'block';
     } else {
       if (acoesSection) acoesSection.style.display = 'none';
+    }
+
+    // Comentários Geral
+    const comentariosSection = document.getElementById('rComentariosSection');
+    if (r.comentariosReg && comentariosSection) {
+      document.getElementById('rComentarios').innerHTML = r.comentariosReg;
+      comentariosSection.style.display = 'block';
+    } else if (comentariosSection) {
+      comentariosSection.style.display = 'none';
     }
 
     const savedDate = new Date(r.savedAt);
