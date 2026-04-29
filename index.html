@@ -2915,6 +2915,12 @@ if (!loggedInUser) {
       <div class="resumo-obs" id="rObs"></div>
     </div>
 
+    <!-- Ações -->
+    <div class="resumo-section" id="rAcoesSection" style="display:none;">
+      <div class="resumo-section-title">⚡ Ações</div>
+      <div id="rAcoes"></div>
+    </div>
+
     <!-- Mapa de Deslocamento -->
     <div class="resumo-section" id="rMapSection" style="display:none;">
       <div class="resumo-section-title">🗺️ Mapa de Deslocamento</div>
@@ -5436,6 +5442,56 @@ if (!loggedInUser) {
       if (obsSection) obsSection.style.display = 'block';
     } else {
       if (obsSection) obsSection.style.display = 'none';
+    }
+
+    // Ações
+    const acoes = loadAcoes();
+    const acoesDoRegistro = [];
+    r.entries.forEach(e => {
+      if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
+        const key = getAcaoKey(r.id, e);
+        const acao = acoes[key] || {};
+        acoesDoRegistro.push({
+          entry: e,
+          acao: acao,
+          key: key
+        });
+      }
+    });
+
+    const acoesSection = document.getElementById('rAcoesSection');
+    const rAcoes = document.getElementById('rAcoes');
+    if (acoesDoRegistro.length > 0 && rAcoes) {
+      rAcoes.innerHTML = '';
+      const acoesList = document.createElement('div');
+      acoesList.style.cssText = 'display:flex;flex-direction:column;gap:0.85rem;';
+      
+      acoesDoRegistro.forEach(({entry, acao}) => {
+        const acaoCard = document.createElement('div');
+        acaoCard.style.cssText = 'background:white;border:1.5px solid #E5E7EB;border-radius:10px;padding:0.9rem 1rem;';
+        
+        const status = acao.status === 'realizada' ? '🟢 Realizada' : '🔴 Pendente';
+        const statusColor = acao.status === 'realizada' ? '#16A34A' : '#DC2626';
+        
+        acaoCard.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+            <div style="flex:1;">
+              <div style="font-size:0.75rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:0.3rem;">${entry.catKey === 'incidencia' ? '🔢 ' : ''}${categorias[entry.catKey]?.nome || entry.catKey}</div>
+              <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.4rem;">Resp: <strong>${entry.acaoResponsavel}</strong></div>
+              ${acao.respExec ? `<div style="font-size:0.78rem;color:#6B7280;">Exec: ${acao.respExec}</div>` : ''}
+              ${acao.descricao ? `<div style="font-size:0.78rem;color:#4B5563;margin-top:0.4rem;"><strong>Descrição:</strong> ${acao.descricao}</div>` : ''}
+            </div>
+            <span style="font-size:0.75rem;font-weight:700;background:#F3F4F6;color:${statusColor};padding:3px 10px;border-radius:99px;white-space:nowrap;">${status}</span>
+          </div>
+          ${acao.dataAcao ? `<div style="font-size:0.75rem;color:#9CA3AF;margin-top:0.5rem;">📅 Data: ${acao.dataAcao.split('-').reverse().join('/')}</div>` : ''}
+        `;
+        acoesList.appendChild(acaoCard);
+      });
+      
+      rAcoes.appendChild(acoesList);
+      if (acoesSection) acoesSection.style.display = 'block';
+    } else {
+      if (acoesSection) acoesSection.style.display = 'none';
     }
 
     const savedDate = new Date(r.savedAt);
@@ -8420,7 +8476,7 @@ entryLines.join('\n\n') + '\n' +
         const just = i.e.justificativa || '—';
         const obsAcao = i.saved.descricao || '—';
         return `<tr>
-          <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.id}</td>
+          <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.registroId || '—'}</td>
           <td style="${tdStyle}">${dataBR}</td>
           <td style="${tdStyle};font-weight:700;">${i.equipe}</td>
           <td style="${tdStyle}">${i.turno}</td>
