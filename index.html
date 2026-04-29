@@ -2535,6 +2535,11 @@ if (!loggedInUser) {
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
       Banco de Dados
     </button>
+    <button id="dashSubBtnReuniao" onclick="switchDashSub('reuniao')"
+      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
+      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16v2H4zm0 4h16v10H4zm0 12h16v2H4z"/><line x1="9" y1="8" x2="9" y2="14"/><line x1="15" y1="8" x2="15" y2="14"/></svg>
+      Visão Detalhada
+    </button>
   </div>
 
   <!-- Conteúdo sub-aba Dashboard -->
@@ -2688,6 +2693,58 @@ if (!loggedInUser) {
       <div id="dbList"></div>
     </div>
   </div><!-- /dashSubDB -->
+
+  <!-- Conteúdo sub-aba Reunião (Visão Detalhada) -->
+  <div id="dashSubReuniao" style="display:none;">
+    <div style="max-width:1100px;margin:0 auto;padding:1.5rem 2rem 3rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;text-transform:uppercase;letter-spacing:0.05em;">👁️ Visão Detalhada</div>
+          <div style="font-size:0.8rem;color:var(--gray-400);">Todos os registros · Filtráveis por data, turno e equipe</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6EE7B7;background:white;color:#065F46;cursor:pointer;">🖨️ Imprimir</button>
+        </div>
+      </div>
+
+      <!-- ── FILTROS ── -->
+      <div style="background:white;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:0 1px 6px rgba(0,0,0,0.06);border:1px solid #E5E7EB;display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap;">
+        <!-- Data Início -->
+        <div style="flex:1;min-width:140px;">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Data Início</label>
+          <input type="date" id="reuniaoFilterDataInicio" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
+        </div>
+
+        <!-- Data Fim -->
+        <div style="flex:1;min-width:140px;">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Data Fim</label>
+          <input type="date" id="reuniaoFilterDataFim" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
+        </div>
+
+        <!-- Turno -->
+        <div style="flex:1;min-width:120px;">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Turno</label>
+          <select id="reuniaoFilterTurno" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
+            <option value="">Todos</option>
+            <option value="A">Turno A</option>
+            <option value="B">Turno B</option>
+            <option value="C">Turno C</option>
+          </select>
+        </div>
+
+        <!-- Equipe (busca) -->
+        <div style="flex:2;min-width:180px;">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Equipe</label>
+          <input type="text" id="reuniaoFilterEquipe" placeholder="Buscar equipe..." style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onkeyup="renderReuniao()">
+        </div>
+
+        <!-- Botão Limpar Filtros -->
+        <button onclick="limparFiltrosReuniao()" style="padding:0.6rem 1.2rem;background:#6B7280;color:white;border:none;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#4B5563'" onmouseout="this.style.background='#6B7280'">🔄 Limpar</button>
+      </div>
+
+      <div id="reuniaoList"></div>
+    </div>
+  </div><!-- /dashSubReuniao -->
 
 </div><!-- /tabDashboard -->
 
@@ -5704,52 +5761,60 @@ if (!loggedInUser) {
   let _dashSub    = 'dashboard'; // 'dashboard' | 'db'
 
   function switchDashSub(sub) {
-    console.log('switchDashSub called with:', sub);
+    _dashSub = sub;
     
-    // Try immediately first
-    setTimeout(() => {
-      _dashSub = sub;
-      const subDash = document.getElementById('dashSubDashboard');
-      const subDB   = document.getElementById('dashSubDB');
-      const btnD    = document.getElementById('dashSubBtnDashboard');
-      const btnDB   = document.getElementById('dashSubBtnDB');
-      
-      console.log('Elements found:', {subDash: !!subDash, subDB: !!subDB, btnD: !!btnD, btnDB: !!btnDB});
-      console.log('Current sub:', sub);
-      
-      // Check button visibility
-      if (btnD) console.log('dashSubBtnDashboard computed style:', {display: window.getComputedStyle(btnD).display, opacity: window.getComputedStyle(btnD).opacity});
-      if (btnDB) console.log('dashSubBtnDB computed style:', {display: window.getComputedStyle(btnDB).display, opacity: window.getComputedStyle(btnDB).opacity});
-      
-      if (!subDash && !subDB) {
-        console.error('❌ dashSubDashboard and dashSubDB not found in DOM!');
-        console.log('Available elements:', document.body.innerHTML.includes('dashSubDB'));
-        return;
-      }
-      
-      if (subDash) {
-        subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
-        console.log('dashSubDashboard display:', subDash.style.display);
-      }
-      if (subDB) {
-        subDB.style.display = sub === 'db' ? 'block' : 'none';
-        console.log('dashSubDB display:', subDB.style.display);
-      }
+    const subDash = document.getElementById('dashSubDashboard');
+    const subDB   = document.getElementById('dashSubDB');
+    const subReu  = document.getElementById('dashSubReuniao');
+    const btnD    = document.getElementById('dashSubBtnDashboard');
+    const btnDB   = document.getElementById('dashSubBtnDB');
+    const btnReu  = document.getElementById('dashSubBtnReuniao');
+    
+    // Hide all sub-tabs
+    if (subDash) subDash.style.display = 'none';
+    if (subDB)   subDB.style.display   = 'none';
+    if (subReu)  subReu.style.display  = 'none';
+    
+    // Reset button styles
+    if (btnD) {
+      btnD.style.borderBottomColor = 'transparent';
+      btnD.style.color = '#9CA3AF';
+    }
+    if (btnDB) {
+      btnDB.style.borderBottomColor = 'transparent';
+      btnDB.style.color = '#9CA3AF';
+    }
+    if (btnReu) {
+      btnReu.style.borderBottomColor = 'transparent';
+      btnReu.style.color = '#9CA3AF';
+    }
+    
+    // Show selected sub-tab and highlight button
+    if (sub === 'dashboard') {
+      if (subDash) subDash.style.display = 'block';
       if (btnD) {
-        btnD.style.borderBottomColor = sub === 'dashboard' ? '#065F46' : 'transparent';
-        btnD.style.color             = sub === 'dashboard' ? '#065F46' : '#9CA3AF';
+        btnD.style.borderBottomColor = '#065F46';
+        btnD.style.color = '#065F46';
       }
+      renderDashboard();
+    } else if (sub === 'db') {
+      if (subDB) subDB.style.display = 'block';
       if (btnDB) {
-        btnDB.style.borderBottomColor = sub === 'db' ? '#065F46' : 'transparent';
-        btnDB.style.color             = sub === 'db' ? '#065F46' : '#9CA3AF';
+        btnDB.style.borderBottomColor = '#065F46';
+        btnDB.style.color = '#065F46';
       }
-      if (sub === 'db') {
-        applyDBFilters();
-        setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
+      applyDBFilters();
+      setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
+    } else if (sub === 'reuniao') {
+      if (subReu) subReu.style.display = 'block';
+      if (btnReu) {
+        btnReu.style.borderBottomColor = '#065F46';
+        btnReu.style.color = '#065F46';
       }
-      if (sub === 'dashboard') renderDashboard();
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }, 10);
+      renderReuniao();
+    }
+    
+    window.scrollTo({ top:0, behavior:'smooth' });
   }
 
   function switchTab(tab) {
@@ -5771,8 +5836,6 @@ if (!loggedInUser) {
     const dashTab = document.getElementById('tabDashboard');
     if (dashTab) {
       dashTab.style.display = tab === 'dashboard' ? 'block' : 'none';
-      console.log('tabDashboard display set to:', dashTab.style.display);
-      console.log('tabDashboard HTML exists:', !!dashTab.querySelector('#dashSubDashboard'));
     }
     document.getElementById('tabConfig').style.display      = tab === 'config'    ? 'block' : 'none';
     ['Inicio','Form','Notify','Reuniao','Acao','Dashboard','Config'].forEach(t => {
@@ -5781,16 +5844,26 @@ if (!loggedInUser) {
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
     if (tab === 'reuniao') {
-      // Set default date filter to today
+      // Redirect Reunião to Dashboard > Visão Detalhada
+      _currentTab = 'dashboard';
+      document.getElementById('tabDashboard').style.display = 'block';
+      document.getElementById('tabReuniao').style.display = 'none';
+      ['Inicio','Form','Notify','Reuniao','Acao','Dashboard','Config'].forEach(t => {
+        document.getElementById('tabBtn' + t)?.classList.toggle('active', t.toLowerCase() === 'reuniao');
+      });
+      const titleEl = document.getElementById('topbarTitle');
+      if (titleEl) titleEl.textContent = 'Painel de Reunião';
       const dataInicio = document.getElementById('reuniaoFilterDataInicio');
       if (dataInicio && !dataInicio.value) {
         dataInicio.value = today;
       }
-      renderReuniao();
+      updateConfigButtonVisibility();
+      switchDashSub('reuniao');
       window.scrollTo({ top:0, behavior:'smooth' });
+      return;
     }
     if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'dashboard') { console.log('Dashboard tab activated'); updateConfigButtonVisibility(); switchDashSub(_dashSub); }
+    if (tab === 'dashboard') { updateConfigButtonVisibility(); switchDashSub(_dashSub); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -8000,7 +8073,6 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
-            <button onclick="removeFromReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
           </div>
         </div>
 
