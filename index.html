@@ -2459,7 +2459,7 @@ if (!loggedInUser) {
 </div><!-- /tabAcao -->
 
 <!-- Painel de tratativa — fora de qualquer container para overlay correto -->
-<div id="acaoTratativaPanel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;align-items:flex-start;justify-content:center;padding:2rem 1rem;box-sizing:border-box;" onclick="fecharTratativa(event)">
+<div id="acaoTratativaPanel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;box-sizing:border-box;" onclick="fecharTratativa(event)">
   <div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
     <div id="acaoTratativaContent"></div>
   </div>
@@ -9041,7 +9041,7 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
             <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
-            <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+            <button onclick="event.stopPropagation(); abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
           </div>
         </div>
         ${blinkingNames}
@@ -9056,6 +9056,7 @@ entryLines.join('\n\n') + '\n' +
   let _tratativaCards = {};
 
   function abrirTratativa(key) {
+    console.log('abrirTratativa called with key:', key);
     _tratativaKey = key;
     const records = loadDB();
     const acoes = loadAcoes();
@@ -9068,7 +9069,17 @@ entryLines.join('\n\n') + '\n' +
         if (getAcaoKey(r.id, e) === key) { foundR = r; foundE = e; }
       });
     });
-    if (!foundR || !foundE) return;
+    if (!foundR || !foundE) {
+      console.warn('Registro ou entry não encontrados para key:', key);
+      return;
+    }
+
+    const panel = document.getElementById('acaoTratativaPanel');
+    const content = document.getElementById('acaoTratativaContent');
+    if (!panel || !content) {
+      console.warn('Panel ou content não encontrados');
+      return;
+    }
 
     const [ry,rm,rd] = (foundR.data||'').split('-');
     const dataBR = rd && rm && ry ? `${rd}/${rm}/${ry}` : foundR.data || '—';
@@ -9077,10 +9088,6 @@ entryLines.join('\n\n') + '\n' +
     const causaStr = foundE.causas?.length ? foundE.causas.join(', ') : foundE.obsCausa || '—';
     const tempoStr = foundE.mins ? `${Math.floor(foundE.mins/60)}h ${String(foundE.mins%60).padStart(2,'0')}min` : '—';
     const isRealizada = saved.status === 'realizada';
-
-    const panel = document.getElementById('acaoTratativaPanel');
-    const content = document.getElementById('acaoTratativaContent');
-    if (!panel || !content) return;
 
     content.innerHTML = `
       <!-- Header -->
@@ -9226,7 +9233,6 @@ entryLines.join('\n\n') + '\n' +
 
     panel.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    panel.scrollTop = 0;
   }
 
   function toggleTratativaDecisao() {
