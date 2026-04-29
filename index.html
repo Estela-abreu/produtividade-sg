@@ -8243,6 +8243,7 @@ entryLines.join('\n\n') + '\n' +
         return `<tr style="border-bottom:1px solid #F3F4F6;">
           <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">
             ${cat?.icon||''} ${cat?.nome||e.catKey}
+            ${e.hinicio && e.hfim ? `<div style="font-size:0.75rem;font-weight:600;color:#1E4DA1;margin-top:3px;">🕐 ${e.hinicio} - ${e.hfim}</div>` : ''}
             ${e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.68rem;font-weight:800;color:#92400E;margin-top:2px;">🔢 Nº ${e.numinc}</div>` : ''}
           </td>
           <td style="padding:0.55rem 0.75rem;color:#374151;">
