@@ -2437,7 +2437,7 @@ if (!loggedInUser) {
 
 <!-- ── ABA REUNIÃO ── -->
 <!-- ── ABA AÇÃO ── -->
-<div id="tabAcao" style="display:none;">
+<div id="tabAcao" style="display:none;padding-top:60px;">
   <div style="max-width:860px;margin:0 auto;padding:1.5rem 1rem;">
 
     <!-- Cabeçalho + contador -->
@@ -4843,9 +4843,9 @@ if (!loggedInUser) {
         .catch(() => { setFbStatus(false); });
     };
 
-    // Sync imediato + polling a cada 3s
+    // Sync imediato + polling a cada 2s (mais agressivo)
     syncFromFirebase();
-    setInterval(syncFromFirebase, 3000);
+    setInterval(syncFromFirebase, 2000);
 
     // Sync de contatos (10s)
     setInterval(() => {
@@ -5006,8 +5006,31 @@ if (!loggedInUser) {
     const pendingCount = allRec.filter(r => needsJustificativa(r) && r.status !== 'revisado' && r.status !== 'parcial').length;
     updateTabBadgeRetorno(pendingCount);
 
-    // Switch to Reunião tab automatically
-    switchTab('reuniao');
+    // Trigger immediate sync for other users
+    setTimeout(() => {
+      const syncFromFirebase = () => {
+        fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
+          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(data => {
+            const fbRecords = (data && typeof data === 'object')
+              ? Object.values(data)
+                  .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
+                  .sort((a, b) => b.id - a.id)
+              : [];
+            if (fbRecords.length > 0) {
+              _dbCache = fbRecords;
+              try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
+              refreshAllUI(fbRecords);
+            }
+          })
+          .catch(() => {});
+      };
+      syncFromFirebase();
+    }, 500);
+
+    // Switch to Dashboard > Visão Detalhada automatically
+    switchTab('dashboard');
+    setTimeout(() => { switchDashSub('reuniao'); }, 100);
 
     // Auto-clear form for next entry
     document.getElementById('data').value = today;
@@ -5193,11 +5216,43 @@ if (!loggedInUser) {
 
   function deleteRecord(id) {
     const records = loadDB().filter(r => r.id !== id);
+    _deletedIds.add(String(id));
+    try { localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds])); } catch {}
     saveDB(records);
+    
+    // Add to tombstones on Firebase
+    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted/${id}.json`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({deletedAt: new Date().toISOString()})
+    }).catch(() => {});
+    
     updateTabBadge();
     updateTabBadgeRetorno(loadDB().filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     applyDBFilters();
     showCopyToast('🗑 Registro excluído.');
+    
+    // Trigger immediate sync for other users
+    setTimeout(() => {
+      const syncFromFirebase = () => {
+        fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
+          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(data => {
+            const fbRecords = (data && typeof data === 'object')
+              ? Object.values(data)
+                  .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
+                  .sort((a, b) => b.id - a.id)
+              : [];
+            if (fbRecords.length >= 0) {
+              _dbCache = fbRecords;
+              try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
+              refreshAllUI(fbRecords);
+            }
+          })
+          .catch(() => {});
+      };
+      syncFromFirebase();
+    }, 500);
   }
 
   function toggleDBRecord(id) {
@@ -8197,7 +8252,6 @@ entryLines.join('\n\n') + '\n' +
     // ── Cards de resumo ──
     const cardsEl = document.getElementById('dash-cards');
     if (cardsEl) cardsEl.innerHTML = [
-      ['','Fora do Tempo',      foraTotal,      '#DC2626','#FEF2F2','#FCA5A5'],
       ['','Ações Realizadas',   realizadas,     '#16A34A','#F0FDF4','#6EE7B7'],
       ['','Ações Pendentes',    pendentes,      '#D97706','#FFFBEB','#FCD34D'],
       ['','Fora do tempo de resposta', foraPrazo, '#9F1239','#FFF1F2','#FDA4AF'],
@@ -8333,6 +8387,7 @@ entryLines.join('\n\n') + '\n' +
       const thStyle = 'padding:0.5rem 0.65rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:2px solid #F3F4F6;white-space:nowrap;';
       const tdStyle = 'padding:0.45rem 0.65rem;font-size:0.78rem;border-bottom:1px solid #F9FAFB;';
       table.innerHTML = `<thead><tr>
+        <th style="${thStyle}">ID</th>
         <th style="${thStyle}">Data</th>
         <th style="${thStyle}">Equipe</th>
         <th style="${thStyle}">Turno</th>
@@ -8365,6 +8420,7 @@ entryLines.join('\n\n') + '\n' +
         const just = i.e.justificativa || '—';
         const obsAcao = i.saved.descricao || '—';
         return `<tr>
+          <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.id}</td>
           <td style="${tdStyle}">${dataBR}</td>
           <td style="${tdStyle};font-weight:700;">${i.equipe}</td>
           <td style="${tdStyle}">${i.turno}</td>
