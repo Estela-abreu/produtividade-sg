@@ -2524,7 +2524,7 @@ if (!loggedInUser) {
 <!-- ── ABA DASHBOARD ── -->
 <div id="tabDashboard" style="display:none;">
   <!-- Sub-abas -->
-  <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;background:white;padding:0 1.5rem;">
+  <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;background:white;padding:60px 1.5rem 0 1.5rem;margin-top:0;">
     <button id="dashSubBtnDashboard" onclick="switchDashSub('dashboard')"
       style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid #065F46;background:transparent;color:#065F46;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -5717,6 +5717,10 @@ if (!loggedInUser) {
       console.log('Elements found:', {subDash: !!subDash, subDB: !!subDB, btnD: !!btnD, btnDB: !!btnDB});
       console.log('Current sub:', sub);
       
+      // Check button visibility
+      if (btnD) console.log('dashSubBtnDashboard computed style:', {display: window.getComputedStyle(btnD).display, opacity: window.getComputedStyle(btnD).opacity});
+      if (btnDB) console.log('dashSubBtnDB computed style:', {display: window.getComputedStyle(btnDB).display, opacity: window.getComputedStyle(btnDB).opacity});
+      
       if (!subDash && !subDB) {
         console.error('❌ dashSubDashboard and dashSubDB not found in DOM!');
         console.log('Available elements:', document.body.innerHTML.includes('dashSubDB'));
@@ -5764,7 +5768,12 @@ if (!loggedInUser) {
     document.getElementById('tabNotify').style.display      = tab === 'notify'    ? 'block' : 'none';
     document.getElementById('tabReuniao').style.display     = tab === 'reuniao'   ? 'block' : 'none';
     document.getElementById('tabAcao').style.display        = tab === 'acao'      ? 'block' : 'none';
-    document.getElementById('tabDashboard').style.display   = tab === 'dashboard' ? 'block' : 'none';
+    const dashTab = document.getElementById('tabDashboard');
+    if (dashTab) {
+      dashTab.style.display = tab === 'dashboard' ? 'block' : 'none';
+      console.log('tabDashboard display set to:', dashTab.style.display);
+      console.log('tabDashboard HTML exists:', !!dashTab.querySelector('#dashSubDashboard'));
+    }
     document.getElementById('tabConfig').style.display      = tab === 'config'    ? 'block' : 'none';
     ['Inicio','Form','Notify','Reuniao','Acao','Dashboard','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
@@ -5781,7 +5790,7 @@ if (!loggedInUser) {
       window.scrollTo({ top:0, behavior:'smooth' });
     }
     if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'dashboard') { updateConfigButtonVisibility(); switchDashSub(_dashSub); }
+    if (tab === 'dashboard') { console.log('Dashboard tab activated'); updateConfigButtonVisibility(); switchDashSub(_dashSub); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
