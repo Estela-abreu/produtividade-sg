@@ -5163,8 +5163,6 @@ if (!loggedInUser) {
             <div class="db-record-actions">
               <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
               <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
-              <button class="db-action-btn" data-action="meeting" data-id="${r.id}" title="${r.reuniao ? 'Remover da reunião' : 'Incluir na reunião'}"
-                style="color:${r.reuniao ? '#6366F1' : 'var(--gray-400)'};font-size:0.9rem;">${r.reuniao ? '📋' : '📋'}</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -5178,10 +5176,6 @@ if (!loggedInUser) {
       listEl.appendChild(card);
 
       // Direct event listeners — most reliable approach
-      card.querySelector('[data-action="meeting"]')?.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleReuniao(r.id);
-      });
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
@@ -8123,13 +8117,19 @@ entryLines.join('\n\n') + '\n' +
 
     // Populate resp ação filter
     const respSel = document.getElementById('dash-f-resp-ac');
-    if (respSel && respSel.options.length <= 1) {
-      getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
+    if (respSel) {
+      respSel.value = ''; // Clear any existing value
+      if (respSel.options.length <= 1) {
+        getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
+      }
     }
     // Populate resp ocorrência filter
     const respOcSel = document.getElementById('dash-f-resp-oc');
-    if (respOcSel && respOcSel.options.length <= 1) {
-      getRespOc().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respOcSel.appendChild(o); });
+    if (respOcSel) {
+      respOcSel.value = ''; // Clear any existing value
+      if (respOcSel.options.length <= 1) {
+        getRespOc().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respOcSel.appendChild(o); });
+      }
     }
 
     // Filters
