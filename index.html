@@ -2849,6 +2849,20 @@ if (!loggedInUser) {
     </div>
   </div>
 
+  <!-- Seção: Gestão de Tipos de Ação -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">⚡ Gestão de Tipos de Ação</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Tipos de ação disponíveis para seleção na Tratativa da Ação.</div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgNewTipoAcao" placeholder="Ex: Aplicado Feedback" class="cfg-input" style="max-width:250px;"
+          onkeydown="if(event.key==='Enter')cfgAddTipoAcao()">
+        <button class="cfg-btn-add" onclick="cfgAddTipoAcao()">+ Adicionar</button>
+      </div>
+      <div id="cfgTipoAcaoList" class="cfg-tag-list"></div>
+    </div>
+  </div>
+
   </div>
 
 </div><!-- /tabConfig -->
@@ -5486,6 +5500,7 @@ if (!loggedInUser) {
               <div style="font-size:0.75rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:0.3rem;">${entry.catKey === 'incidencia' ? '🔢 ' : ''}${categorias[entry.catKey]?.nome || entry.catKey}</div>
               <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.4rem;">Resp: <strong>${entry.acaoResponsavel}</strong></div>
               ${acao.respExec ? `<div style="font-size:0.78rem;color:#6B7280;">Exec: ${acao.respExec}</div>` : ''}
+              ${acao.tipoAcao ? `<div style="font-size:0.75rem;color:#7C3AED;font-weight:700;margin-top:0.3rem;">🏷️ Tipo: ${acao.tipoAcao}</div>` : ''}
               ${acao.descricao ? `<div style="font-size:0.78rem;color:#4B5563;margin-top:0.4rem;"><strong>Descrição:</strong> ${acao.descricao}</div>` : ''}
             </div>
             <span style="font-size:0.75rem;font-weight:700;background:#F3F4F6;color:${statusColor};padding:3px 10px;border-radius:99px;white-space:nowrap;">${status}</span>
@@ -7211,6 +7226,7 @@ entryLines.join('\n\n') + '\n' +
     renderCfgContacts();
     renderCfgRespAcao();
     renderCfgRespOc();
+    renderCfgTiposAcao();
     // Gestão de usuários — recarrega do Firebase antes de renderizar
     fetchUsersFromFirebase().then(fbUsers => {
       if (fbUsers.length > 0) saveUsersLocal(fbUsers);
@@ -7455,6 +7471,60 @@ entryLines.join('\n\n') + '\n' +
     saveContacts(loadContacts().filter(c => c.phone !== phone));
     renderCfgContacts();
     renderContactChips();
+  }
+
+  // ── Tipos de Ação ──
+  function getTiposAcao() {
+    const cfg = getConfig();
+    if (!Array.isArray(cfg.tiposAcao)) {
+      return [
+        'Aplicado Feedback',
+        'Aplicado Advertência',
+        'Realinhamento de processo',
+        'Orientação à equipe',
+        'Ação corretiva operacional',
+        'Não se aplica'
+      ];
+    }
+    return cfg.tiposAcao;
+  }
+
+  function saveTiposAcao(tipos) {
+    const cfg = getConfig();
+    cfg.tiposAcao = tipos;
+    saveConfig(cfg);
+  }
+
+  function renderCfgTiposAcao() {
+    const listEl = document.getElementById('cfgTipoAcaoList');
+    if (!listEl) return;
+    const tipos = getTiposAcao();
+    listEl.innerHTML = tipos.map((t, idx) => `
+      <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.85rem;background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:99px;width:fit-content;font-size:0.85rem;font-weight:700;color:var(--gray-800);">
+        ${t}
+        <button onclick="cfgRemoveTipoAcao(${idx})"
+          style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:1rem;padding:0;display:flex;align-items:center;">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function cfgAddTipoAcao() {
+    const inp = document.getElementById('cfgNewTipoAcao');
+    const val = inp.value.trim();
+    if (!val) return;
+    const tipos = getTiposAcao();
+    if (!tipos.includes(val)) { tipos.push(val); saveTiposAcao(tipos); }
+    inp.value = '';
+    renderCfgTiposAcao();
+    showCopyToast('✅ Tipo de ação adicionado!');
+  }
+
+  function cfgRemoveTipoAcao(idx) {
+    const tipos = getTiposAcao();
+    tipos.splice(idx, 1);
+    saveTiposAcao(tipos);
+    renderCfgTiposAcao();
+    showCopyToast('🗑 Tipo de ação removido.');
   }
 
   // ── Senha ──
@@ -9104,6 +9174,14 @@ entryLines.join('\n\n') + '\n' +
             </div>
           </div>
           <div style="margin-bottom:0.75rem;">
+            <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Tipo de Ação</label>
+            <select id="trat-tipo-acao"
+              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;border:1.5px solid #D1FAE5;border-radius:8px;padding:7px 10px;outline:none;background:white;">
+              <option value="">— Selecione —</option>
+              ${getTiposAcao().map(t => `<option value="${t}"${saved.tipoAcao===t?' selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div style="margin-bottom:0.75rem;">
             <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Descrição da ação tomada</label>
             <textarea id="trat-desc" rows="3" placeholder="Descreva o que foi feito..."
               style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #D1FAE5;border-radius:8px;padding:8px 10px;resize:vertical;outline:none;background:white;box-sizing:border-box;">${saved.descricao||''}</textarea>
@@ -9185,11 +9263,12 @@ entryLines.join('\n\n') + '\n' +
     if (val === 'sim') {
       const respExec = document.getElementById('trat-resp')?.value || '';
       const dataAcao = document.getElementById('trat-data')?.value || '';
+      const tipoAcao = document.getElementById('trat-tipo-acao')?.value || '';
       if (!respExec || !dataAcao) { showCopyToast('⚠️ Preencha o Responsável e a Data da ação.'); return; }
       const desc = document.getElementById('trat-desc')?.value || '';
 
       // Salva status realizada IMEDIATAMENTE no localStorage (antes do FileReader)
-      acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, descricao: desc };
+      acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, tipoAcao, descricao: desc };
       persistAcoes(acoes);
 
       // Anexo — leitura assíncrona, atualiza depois sem bloquear o fluxo
