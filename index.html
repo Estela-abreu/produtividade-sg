@@ -8004,13 +8004,33 @@ entryLines.join('\n\n') + '\n' +
   setInterval(() => {
     if (_deleting) return;
     
-    // Busca registros do Firebase e atualiza TODOS os usuários
+    // PASSO 1: Busca registros DELETADOS do Firebase PRIMEIRO
+    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
+      .then(r => r.json())
+      .then(deletedData => {
+        // Sincroniza deletados com todos os usuários
+        if (deletedData && typeof deletedData === 'object') {
+          let hasNewDeletes = false;
+          Object.keys(deletedData).forEach(id => {
+            if (!_deletedIds.has(String(id))) {
+              _deletedIds.add(String(id));
+              hasNewDeletes = true;
+            }
+          });
+          if (hasNewDeletes) {
+            try { localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds])); } catch {}
+          }
+        }
+      })
+      .catch(() => {});
+    
+    // PASSO 2: Busca registros ATIVOS do Firebase
     fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(data => {
         setFbStatus(true);
 
-        // Processa dados do Firebase
+        // Processa dados do Firebase - filtra pelos deletados
         let fbRecords = [];
         if (data && typeof data === 'object') {
           if (Array.isArray(data)) {
@@ -8024,13 +8044,14 @@ entryLines.join('\n\n') + '\n' +
         }
 
         const fbCount = fbRecords.length;
+        const cacheCount = _dbCache.length;
         
-        // SEMPRE atualizar quando Firebase tem dados
-        if (fbCount > 0 && JSON.stringify(_dbCache) !== JSON.stringify(fbRecords)) {
+        // SEMPRE atualizar quando há diferenças
+        if (fbCount !== cacheCount || JSON.stringify(_dbCache) !== JSON.stringify(fbRecords)) {
           _dbCache = fbRecords;
           try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
           refreshAllUI(fbRecords);
-          console.log(`[POLLING] ${fbCount} registros sincronizados do Firebase`);
+          console.log(`[POLLING] ${fbCount} registros sincronizados (${_deletedIds.size} deletados)`);
         }
       })
       .catch(err => { 
