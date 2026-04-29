@@ -4229,8 +4229,11 @@ if (!loggedInUser) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     try {
       const fbKey = key.replace(/[.#$[\]]/g,'_');
-      db.ref('produtividade/config/' + fbKey).set(value)
-        .catch(e => console.warn('Config save error:', e));
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config/${fbKey}.json`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(value)
+      }).catch(e => console.warn('Config save error:', e));
     } catch(e) {}
   }
 
@@ -4676,9 +4679,13 @@ if (!loggedInUser) {
   function saveDB(records) {
     _dbCache = [...records].sort((a, b) => b.id - a.id);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
+    // Save each record to Firebase via REST API
     records.forEach(r => {
-      db.ref('produtividade/records/r_' + r.id).set(r)
-        .catch(e => console.warn('SaveDB error:', e));
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(r)
+      }).catch(e => console.warn('SaveDB error:', e));
     });
     setFbStatus(true);
   }
@@ -4729,31 +4736,10 @@ if (!loggedInUser) {
     tryDelete(1);
   }
 
-  // Listener Firebase — fonte de verdade para todos os usuários
+  // Listener Firebase desabilitado — usando REST API polling exclusivamente
   function _attachListener() {
-    db.ref('produtividade/records').off('value');
-
-    db.ref('produtividade/records').on('value', snap => {
-      if (_deleting) return;
-
-      const data = snap.val();
-      const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
-  
-      if (records.length === 0 && _dbCache.length > 0) {
-        console.warn('[FB] Vazio ignorado — cache tem', _dbCache.length);
-        return;
-      }
-
-      _dbCache = records;
-      _firebaseReady = true;
-      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-      refreshAllUI(records);
-
-    }, err => {
-      console.error('[FB] Erro listener:', err.code, err.message);
-      if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
-      else setFbStatus(false);
-    });
+    // Disabled: Firebase SDK listener removed
+    // Using REST API polling via syncFromFirebase() every 2 seconds instead
   }
 
   function showFirebaseRulesWarning() {
@@ -6730,10 +6716,13 @@ if (!loggedInUser) {
 
   function saveContacts(contacts) {
     saveCfg(CONTACTS_KEY, contacts);
-    // Also push directly to contacts node for real-time sync
+    // Also push directly to contacts node via REST API for real-time sync
     try {
-      db.ref('produtividade/contacts').set(contacts)
-        .catch(e => console.warn('Firebase contacts save error:', e));
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(contacts)
+      }).catch(e => console.warn('Firebase contacts save error:', e));
     } catch(e) {}
   }
 
@@ -8576,6 +8565,7 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Justificativa</th>
         <th style="${thStyle}">Resp. Ação</th>
         <th style="${thStyle}">Obs. da Ação</th>
+        <th style="${thStyle}">Tipo de Ação</th>
         <th style="${thStyle}">Status</th>
         <th style="${thStyle}">Data Ação</th>
       </tr></thead>
@@ -8599,6 +8589,7 @@ entryLines.join('\n\n') + '\n' +
         const just = i.e.justificativa || '—';
         const obsAcao = i.saved.descricao || '—';
         const comentarios = i.r.comentariosReg || '—';
+        const tipoAcao = i.saved.tipoAcao || '—';
         return `<tr>
           <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.registroId || '—'}</td>
           <td style="${tdStyle}">${dataBR}</td>
@@ -8611,6 +8602,7 @@ entryLines.join('\n\n') + '\n' +
           <td style="${tdStyle};max-width:200px;color:#7C3AED;">${just}</td>
           <td style="${tdStyle};font-weight:600;">${i.respAc}</td>
           <td style="${tdStyle};max-width:220px;color:#374151;">${obsAcao}</td>
+          <td style="${tdStyle};color:#7C3AED;font-weight:600;">${tipoAcao}</td>
           <td style="${tdStyle}">${statusBadge}</td>
           <td style="${tdStyle}">${i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '—'}</td>
         </tr>`;
@@ -9548,55 +9540,61 @@ entryLines.join('\n\n') + '\n' +
 
     el.innerHTML = lines.join('<br>') + '<br>⏳ Lendo Firebase...';
 
-    // Read directly from Firebase
-    db.ref('produtividade/records').once('value').then(snap => {
-      const data = snap.val();
-      const fbCount = data ? Object.keys(data).length : 0;
-      const fbIds = data ? Object.keys(data).slice(0,3).join(', ') : '—';
-      lines.push(`<br>🔥 Firebase tem: <b style="color:${fbCount>0?'#4ADE80':'#F87171'}">${fbCount} registros</b>`);
-      lines.push(`🔑 Primeiros IDs: <span style="color:#FCD34D;font-size:0.65rem">${fbIds}</span>`);
+    // Read directly from Firebase via REST API
+    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
+      .then(r => r.json())
+      .then(data => {
+        const fbCount = data && typeof data === 'object' ? Object.keys(data).length : 0;
+        const fbIds = data && typeof data === 'object' ? Object.keys(data).slice(0,3).join(', ') : '—';
+        lines.push(`<br>🔥 Firebase tem: <b style="color:${fbCount>0?'#4ADE80':'#F87171'}">${fbCount} registros</b>`);
+        lines.push(`🔑 Primeiros IDs: <span style="color:#FCD34D;font-size:0.65rem">${fbIds}</span>`);
 
-      if (fbCount > _dbCache.length) {
-        lines.push(`<br>⚠️ <b style="color:#FBBF24">Firebase tem MAIS registros que o cache!</b>`);
-        lines.push(`→ Forçando sincronização...`);
-        const records = Object.values(data).sort((a,b) => b.id - a.id);
-        _dbCache = records;
-        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-        refreshAllUI(records);
-        lines.push(`✅ <b style="color:#4ADE80">Sincronizado! ${records.length} registros carregados.</b>`);
-      } else if (fbCount === _dbCache.length) {
-        lines.push(`<br>✅ <b style="color:#4ADE80">Cache e Firebase sincronizados.</b>`);
-      } else if (fbCount < _dbCache.length && fbCount > 0) {
-        lines.push(`<br>⚠️ <b style="color:#FBBF24">Cache tem mais dados que Firebase. Enviando...</b>`);
-        _dbCache.forEach(r => {
-          db.ref('produtividade/records/r_' + r.id).set(r).catch(()=>{});
-        });
-      }
+        if (fbCount > _dbCache.length) {
+          lines.push(`<br>⚠️ <b style="color:#FBBF24">Firebase tem MAIS registros que o cache!</b>`);
+          lines.push(`→ Forçando sincronização...`);
+          const records = Object.values(data).filter(Boolean).sort((a,b) => b.id - a.id);
+          _dbCache = records;
+          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+          refreshAllUI(records);
+          lines.push(`✅ <b style="color:#4ADE80">Sincronizado! ${records.length} registros carregados.</b>`);
+        } else if (fbCount === _dbCache.length) {
+          lines.push(`<br>✅ <b style="color:#4ADE80">Cache e Firebase sincronizados.</b>`);
+        } else if (fbCount < _dbCache.length && fbCount > 0) {
+          lines.push(`<br>⚠️ <b style="color:#FBBF24">Cache tem mais dados que Firebase. Enviando...</b>`);
+          _dbCache.forEach(r => {
+            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(r)
+            }).catch(()=>{});
+          });
+        }
 
-      el.innerHTML = lines.join('<br>');
-    }).catch(err => {
-      lines.push(`<br>❌ <b style="color:#F87171">Erro Firebase: ${err.message}</b>`);
-      el.innerHTML = lines.join('<br>');
-    });
+        el.innerHTML = lines.join('<br>');
+      }).catch(err => {
+        lines.push(`<br>❌ <b style="color:#F87171">Erro Firebase: ${err.message}</b>`);
+        el.innerHTML = lines.join('<br>');
+      });
   }
 
   function forceSyncNow() {
     const el = document.getElementById('fbDebugContent');
     if (el) el.innerHTML = '⏳ Buscando dados do Firebase...';
-    db.ref('produtividade/records').once('value').then(snap => {
-      const data = snap.val();
-      const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
-      if (records.length > 0) {
-        _dbCache = records;
-        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-        refreshAllUI(records);
-        if (el) el.innerHTML = `✅ <b style="color:#4ADE80">${records.length} registros carregados do Firebase!</b>`;
-      } else {
-        if (el) el.innerHTML = `⚠️ <b style="color:#FBBF24">Firebase vazio. Use "Enviar dados locais" se tiver registros.</b>`;
-      }
-    }).catch(e => {
-      if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro: ${e.message}</b>`;
-    });
+    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
+      .then(r => r.json())
+      .then(data => {
+        const records = data && typeof data === 'object' ? Object.values(data).filter(Boolean).sort((a,b) => b.id - a.id) : [];
+        if (records.length > 0) {
+          _dbCache = records;
+          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+          refreshAllUI(records);
+          if (el) el.innerHTML = `✅ <b style="color:#4ADE80">${records.length} registros carregados do Firebase!</b>`;
+        } else {
+          if (el) el.innerHTML = `⚠️ <b style="color:#FBBF24">Firebase vazio. Use "Enviar dados locais" se tiver registros.</b>`;
+        }
+      }).catch(e => {
+        if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro: ${e.message}</b>`;
+      });
   }
 
   function pushLocalToFirebase() {
@@ -9609,7 +9607,11 @@ entryLines.join('\n\n') + '\n' +
     if (el) el.innerHTML = `⏳ Enviando ${local.length} registros ao Firebase...`;
     let done = 0;
     local.forEach(r => {
-      db.ref('produtividade/records/r_' + r.id).set(r)
+      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(r)
+      })
         .then(() => {
           done++;
           if (done === local.length) {
