@@ -5199,6 +5199,7 @@ if (!loggedInUser) {
         </div>
         <div class="db-record-body">
           <div class="db-record-cats">${catTags}</div>
+          ${r.comentariosReg ? `<div style="font-size:0.78rem;color:#6B7280;margin:0.5rem 0;padding:0.5rem;background:#F9FAFB;border-radius:6px;border-left:3px solid #1E4DA1;"><strong>💬 Comentários:</strong> ${r.comentariosReg}</div>` : ''}
           <div class="db-entries-mini">${miniEntries}</div>
           ${obsHtml}
         </div>`;
@@ -8138,6 +8139,12 @@ entryLines.join('\n\n') + '\n' +
           </div>
         </div>
 
+        <!-- Comentários Geral -->
+        ${r.comentariosReg ? `<div style="padding:0.85rem 1.25rem;background:#F0FDF4;border-bottom:1px solid #D1F0DF;border-left:4px solid #065F46;">
+          <div style="font-size:0.75rem;font-weight:800;color:#065F46;text-transform:uppercase;margin-bottom:0.5rem;">💬 Comentários Geral</div>
+          <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.comentariosReg}</div>
+        </div>` : ''}
+
         <!-- Timeline -->
         <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
 
@@ -8450,6 +8457,7 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Categoria</th>
         <th style="${thStyle}">Tempo Fora</th>
         <th style="${thStyle}">Resp. Ocorrência</th>
+        <th style="${thStyle}">Comentários Geral</th>
         <th style="${thStyle}">Justificativa</th>
         <th style="${thStyle}">Resp. Ação</th>
         <th style="${thStyle}">Obs. da Ação</th>
@@ -8475,6 +8483,7 @@ entryLines.join('\n\n') + '\n' +
               : `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ Dentro do Tempo</span>`;
         const just = i.e.justificativa || '—';
         const obsAcao = i.saved.descricao || '—';
+        const comentarios = i.r.comentariosReg || '—';
         return `<tr>
           <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.registroId || '—'}</td>
           <td style="${tdStyle}">${dataBR}</td>
@@ -8483,6 +8492,7 @@ entryLines.join('\n\n') + '\n' +
           <td style="${tdStyle}">${i.catNome}</td>
           <td style="${tdStyle};font-weight:700;color:#DC2626;">${i.tempoStr}</td>
           <td style="${tdStyle}">${i.respOc}</td>
+          <td style="${tdStyle};max-width:180px;color:#6B7280;font-size:0.75rem;">${comentarios}</td>
           <td style="${tdStyle};max-width:200px;color:#7C3AED;">${just}</td>
           <td style="${tdStyle};font-weight:600;">${i.respAc}</td>
           <td style="${tdStyle};max-width:220px;color:#374151;">${obsAcao}</td>
