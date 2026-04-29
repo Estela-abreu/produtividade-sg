@@ -4870,7 +4870,49 @@ if (!loggedInUser) {
 
     // Sync imediato + polling a cada 2s (mais agressivo)
     syncFromFirebase();
-    setInterval(syncFromFirebase, 2000);
+  };
+
+  // CRÍTICO: Polling SEMPRE executado, mesmo se houver erros
+  setInterval(() => {
+    if (typeof syncFromFirebase === 'function') {
+      // syncFromFirebase está definida dentro de initFirebaseSync, então usamos fetch direto
+      if (_deleting) return;
+      
+      // Busca registros do Firebase
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(data => {
+          setFbStatus(true);
+
+          // Processa dados do Firebase
+          let fbRecords = [];
+          if (data && typeof data === 'object') {
+            if (Array.isArray(data)) {
+              fbRecords = data;
+            } else {
+              fbRecords = Object.values(data);
+            }
+            fbRecords = fbRecords
+              .filter(r => r && typeof r === 'object' && r.id && !_deletedIds.has(String(r.id)))
+              .sort((a, b) => b.id - a.id);
+          }
+
+          const fbCount = fbRecords.length;
+          
+          // SEMPRE atualizar quando Firebase tem dados
+          if (fbCount > 0) {
+            _dbCache = fbRecords;
+            try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
+            refreshAllUI(fbRecords);
+            console.log(`[POLLING GLOBAL] ${fbCount} registros sincronizados`);
+          }
+        })
+        .catch(err => { 
+          console.error('[POLLING GLOBAL] Erro:', err.message);
+          setFbStatus(false); 
+        });
+    }
+  }, 2000);
 
     // Sync de contatos (10s)
     setInterval(() => {
