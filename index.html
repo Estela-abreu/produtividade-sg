@@ -4959,9 +4959,9 @@ if (!loggedInUser) {
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
     const jornadaSaida   = document.getElementById('jornadaSaida')?.value || '';
-    const comentarios    = (document.getElementById('comentariosReg')?.value || '').trim();
+    const comentariosReg    = (document.getElementById('comentariosReg')?.value || '').trim();
 
-    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentarios, entries, totalMin };
+    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentariosReg, entries, totalMin };
   }
 
   function saveRecord() {
