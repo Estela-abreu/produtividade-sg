@@ -1539,6 +1539,52 @@ function getCurrentUserImmediate() {
 function isAdmin() { const u = getCurrentUserImmediate(); return u && u.perfil === 'admin'; }
 function nomeUsuario() { const u = getCurrentUserImmediate(); return u ? u.nome : ''; }
 
+// ── CONTROLE DE ACESSO POR PERFIL ──────────────────────────────────
+function applyAccessControl() {
+  const admin = isAdmin();
+  
+  // Abas restritas apenas para admin
+  const adminOnlyTabs = ['form', 'notify', 'config'];
+  const adminOnlyButtons = ['tabBtnForm', 'tabBtnNotify', 'tabBtnConfig'];
+  
+  // Ocultar/mostrar abas
+  adminOnlyTabs.forEach(tab => {
+    const el = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+    if (el) el.style.display = admin ? 'block' : 'none';
+  });
+  
+  // Ocultar/mostrar botões da sidebar
+  adminOnlyButtons.forEach(btn => {
+    const el = document.getElementById(btn);
+    if (el) el.style.display = admin ? 'block' : 'none';
+  });
+  
+  // Se usuário comum tentar acessar aba restrita, redireciona
+  const currentTab = document.querySelector('[id^="tab"]:not([style*="display: none"])');
+  if (!admin && currentTab && adminOnlyTabs.includes(currentTab.id.replace('tab', '').toLowerCase())) {
+    switchTab('inicio'); // Redireciona para início
+  }
+  
+  console.log(`[ACCESS] Acesso ${admin ? '👑 ADMIN' : '👤 USUÁRIO'} aplicado`);
+}
+
+// Interceptar switchTab para validar acesso
+const originalSwitchTab = switchTab;
+function switchTab(tab) {
+  const admin = isAdmin();
+  const adminOnlyTabs = ['form', 'notify', 'config'];
+  
+  // Se não é admin e tenta acessar aba restrita, bloqueia
+  if (!admin && adminOnlyTabs.includes(tab)) {
+    console.warn(`[SEGURANÇA] Acesso negado: usuário tentou acessar aba '${tab}'`);
+    showCopyToast('❌ Acesso negado. Esta aba é restrita ao administrador.');
+    return;
+  }
+  
+  // Se passou na validação, executa switchTab original
+  originalSwitchTab(tab);
+}
+
 // ── Cache local de usuários ─────────────────────────────────────
 function getUsersLocal() {
   try { return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch { return []; }
@@ -1924,6 +1970,11 @@ function cfgTogglePerfil(login) {
   saveUserToFirebase(users[idx]);
   renderCfgUsuarios();
   _showToastAuth(`✅ Perfil de ${users[idx].nome} alterado para ${novoPerf}.`);
+  
+  // ── ATUALIZAR CONTROLE DE ACESSO se o perfil do usuário atual mudou ──
+  if (users[idx].login === getCurrentUserImmediate()?.login) {
+    applyAccessControl();
+  }
 }
 
 function applyInicioImage() {
@@ -7992,6 +8043,10 @@ entryLines.join('\n\n') + '\n' +
     applyCatLimites();
     const _custom = getCustomLimites();
     Object.entries(_custom).forEach(([k,v]) => { INCIDENCIA_LIMITES[k] = v; });
+    
+    // ── APLICAR CONTROLE DE ACESSO POR PERFIL ──
+    applyAccessControl();
+    
     switchTab('inicio');
   } catch(e) {
     console.error('Erro na inicialização:', e);
