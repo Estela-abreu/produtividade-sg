@@ -2670,7 +2670,6 @@ if (!loggedInUser) {
           <span style="font-size:1.2rem;">📋</span>
           <div>
             <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA GERAL</div>
-            <div style="font-size:0.7rem;color:#9CA3AF;">Contagem por ID (sem duplicidade)</div>
           </div>
         </div>
         <div id="dash-reincidencia" style="font-size:0.85rem;"></div>
@@ -2682,7 +2681,6 @@ if (!loggedInUser) {
           <span style="font-size:1.2rem;">📁</span>
           <div>
             <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA POR CATEGORIA</div>
-            <div style="font-size:0.7rem;color:#9CA3AF;">Contagem por ID (sem duplicidade)</div>
           </div>
         </div>
         <div id="dash-reincidencia-cat" style="font-size:0.85rem;"></div>
@@ -2694,7 +2692,6 @@ if (!loggedInUser) {
           <span style="font-size:1.2rem;">⭐</span>
           <div>
             <div style="font-size:0.85rem;font-weight:800;color:#374151;">TOP 5 PROBLEMAS</div>
-            <div style="font-size:0.7rem;color:#9CA3AF;">Por ID (sem duplicidade)</div>
           </div>
         </div>
         <div id="dash-top-problemas" style="font-size:0.85rem;"></div>
@@ -8985,9 +8982,10 @@ entryLines.join('\n\n') + '\n' +
       }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     };
 
-    // ── Por Equipe ──
+    // ── Por Equipe (apenas com ações necessárias) ──
     const eqMap = {};
     filtered.forEach(i => {
+      if (!i.temAcao) return; // Só contar se tem ação necessária
       if (!eqMap[i.equipe]) eqMap[i.equipe] = {label:i.equipe,total:0,realizadas:0};
       eqMap[i.equipe].total++;
       if (i.isRealizada) eqMap[i.equipe].realizadas++;
@@ -8995,9 +8993,10 @@ entryLines.join('\n\n') + '\n' +
     barChart('dash-chart-equipe', Object.values(eqMap).sort((a,b)=>b.total-a.total),
       d => d.realizadas/d.total >= 0.7 ? '#16A34A' : d.realizadas/d.total >= 0.4 ? '#D97706' : '#DC2626');
 
-    // ── Por Responsável ──
+    // ── Por Responsável (apenas com ações necessárias) ──
     const respMap = {};
     filtered.forEach(i => {
+      if (!i.temAcao) return; // Só contar se tem ação necessária
       const k = i.respAc || '—';
       if (!respMap[k]) respMap[k] = {label:k,total:0,realizadas:0,tempos:[]};
       respMap[k].total++;
@@ -9074,7 +9073,6 @@ entryLines.join('\n\n') + '\n' +
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid #F3F4F6;">
           <div>
             <div style="font-size:0.82rem;font-weight:700;color:#374151;">${r.eq}</div>
-            <div style="font-size:0.68rem;color:#9CA3AF;">${r.cat} (${r.totalOcorrencias}×)</div>
           </div>
           <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt} IDs</span>
         </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
