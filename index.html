@@ -5027,6 +5027,105 @@ if (!loggedInUser) {
     return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentariosReg, entries, totalMin };
   }
 
+  // ── FUNÇÕES PARA EDITAR OCORRÊNCIAS INDIVIDUALMENTE ──
+
+  function deleteEntryConfirm(idx) {
+    if (!confirm('Deseja excluir esta ocorrência?')) return;
+    deleteEntry(idx);
+  }
+
+  function deleteEntry(idx) {
+    const wrap = document.getElementById('justWrap');
+    if (!wrap) return;
+    const items = wrap.querySelectorAll('.entry-item');
+    if (idx >= 0 && idx < items.length) {
+      items[idx].remove();
+      // Recalcula tudo automaticamente
+      recalculateAfterEdit();
+    }
+  }
+
+  function moveEntryUp(idx) {
+    const wrap = document.getElementById('justWrap');
+    if (!wrap || idx <= 0) return;
+    const items = wrap.querySelectorAll('.entry-item');
+    if (idx > 0 && idx < items.length) {
+      const current = items[idx];
+      const previous = items[idx - 1];
+      previous.parentNode.insertBefore(current, previous);
+      // Recalcula tudo automaticamente
+      recalculateAfterEdit();
+    }
+  }
+
+  function moveEntryDown(idx) {
+    const wrap = document.getElementById('justWrap');
+    if (!wrap || idx < 0) return;
+    const items = wrap.querySelectorAll('.entry-item');
+    if (idx >= 0 && idx < items.length - 1) {
+      const current = items[idx];
+      const next = items[idx + 1];
+      current.parentNode.insertBefore(next, current);
+      // Recalcula tudo automaticamente
+      recalculateAfterEdit();
+    }
+  }
+
+  function recalculateAfterEdit() {
+    // Recarrega o registro da forma atual
+    const form = collectFormData();
+    
+    // Valida sequência de horários
+    if (!validateTimeSequence(form.entries)) {
+      showCopyToast('⚠️ Aviso: A ordem dos horários não é sequencial. Verifique!');
+      return;
+    }
+    
+    // Recalcula tempos totais
+    const totalMins = form.entries.reduce((sum, e) => sum + (e.mins || 0), 0);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    const totalTimeEl = document.getElementById('totalTime');
+    if (totalTimeEl) {
+      totalTimeEl.textContent = `${pad(h)}h ${pad(m)}min`;
+    }
+    
+    // Reexibe o registro (recarrega a visualização)
+    const currentId = new URLSearchParams(window.location.search).get('view');
+    if (!currentId) {
+      const data = document.getElementById('data').value;
+      const allRec = loadDB().filter(r => r.data === data);
+      if (allRec.length > 0) {
+        displayRecord(allRec[0]);
+      }
+    }
+    
+    showCopyToast('✅ Ocorrência atualizada com sucesso!');
+  }
+
+  function validateTimeSequence(entries) {
+    if (entries.length === 0) return true;
+    
+    for (let i = 0; i < entries.length - 1; i++) {
+      const current = entries[i];
+      const next = entries[i + 1];
+      
+      if (!current.hinicio || !current.hfim || !next.hinicio || !next.hfim) continue;
+      
+      const [ch, cm] = current.hfim.split(':').map(Number);
+      const [nh, nm] = next.hinicio.split(':').map(Number);
+      
+      const currentEnd = ch * 60 + cm;
+      const nextStart = nh * 60 + nm;
+      
+      // Permitir uma margem pequena (até 30 minutos de intervalo)
+      if (nextStart < currentEnd - 30 && nextStart > currentEnd + 30) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   function saveRecord() {
     const data = document.getElementById('data').value;
     const turno = document.getElementById('turno').value;
@@ -5440,7 +5539,14 @@ if (!loggedInUser) {
           <div class="r-entry-body">
             <div class="r-entry-top">
               <div class="r-entry-cat"><span>${cat.icon}</span><span>${cat.nome}</span><span class="r-entry-num" style="background:${color}">Nº${catCount[e.catKey]}</span>${deslocBadge}</div>
-              <div class="r-entry-time" style="color:${e.mins>0?color:'var(--gray-400)'}">⏱ ${e.mins>0?timeStr:'Sem tempo'}</div>
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <div class="r-entry-time" style="color:${e.mins>0?color:'var(--gray-400)'}">⏱ ${e.mins>0?timeStr:'Sem tempo'}</div>
+                <div style="display:flex;gap:0.35rem;">
+                  ${idx > 0 ? `<button type="button" onclick="moveEntryUp(${idx})" style="padding:4px 8px;background:#1E4DA1;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#1E3A5F'" onmouseout="this.style.background='#1E4DA1'">⬆ Subir</button>` : ''}
+                  ${idx < (r.entries.length - 1) ? `<button type="button" onclick="moveEntryDown(${idx})" style="padding:4px 8px;background:#1E4DA1;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#1E3A5F'" onmouseout="this.style.background='#1E4DA1'">⬇ Descer</button>` : ''}
+                  <button type="button" onclick="deleteEntryConfirm(${idx})" style="padding:4px 8px;background:#DC2626;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#991B1B'" onmouseout="this.style.background='#DC2626'">🗑 Excluir</button>
+                </div>
+              </div>
             </div>
             <div class="r-entry-fields" style="grid-template-columns:1fr;">
               ${(e.catKey === 'incidencia' || e.catKey === 'deslocamento' || e.catKey === 'plataforma' || e.catKey === 'ocioso') && (e.hinicio || e.hfim) ? `
@@ -5915,6 +6021,7 @@ if (!loggedInUser) {
       document.getElementById('dash-f-status').value = '';
       document.getElementById('dash-f-data-ini').value = '';
       document.getElementById('dash-f-data-fim').value = '';
+      document.getElementById('dash-busca').value = '';
       // Load all data
       renderDashboard();
     } else if (sub === 'db') {
@@ -8440,21 +8547,32 @@ entryLines.join('\n\n') + '\n' +
     const now     = Date.now();
     const PRAZO_DIAS = 2; // Prazo máximo de resposta em dias
 
+    // ── RESETAR TODOS OS FILTROS NA PRIMEIRA RENDERIZAÇÃO ──
+    const dashFilters = ['dash-f-equipe', 'dash-f-turno', 'dash-f-resp-oc', 'dash-f-resp-ac', 'dash-f-status', 'dash-f-data-ini', 'dash-f-data-fim', 'dash-busca'];
+    dashFilters.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (el.type === 'date') {
+          el.value = '';
+        } else if (el.tagName === 'SELECT') {
+          el.value = ''; // Reset select to first option (Todos)
+        } else {
+          el.value = ''; // Reset text input
+        }
+      }
+    });
+
     // Populate resp ação filter
     const respSel = document.getElementById('dash-f-resp-ac');
     if (respSel) {
-      respSel.value = ''; // Clear any existing value
-      if (respSel.options.length <= 1) {
-        getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
-      }
+      respSel.innerHTML = '<option value="">Todos</option>'; // Reset options
+      getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
     }
     // Populate resp ocorrência filter
     const respOcSel = document.getElementById('dash-f-resp-oc');
     if (respOcSel) {
-      respOcSel.value = ''; // Clear any existing value
-      if (respOcSel.options.length <= 1) {
-        getRespOc().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respOcSel.appendChild(o); });
-      }
+      respOcSel.innerHTML = '<option value="">Todos</option>'; // Reset options
+      getRespOc().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respOcSel.appendChild(o); });
     }
 
     // Filters
@@ -8662,6 +8780,7 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Equipe</th>
         <th style="${thStyle}">Turno</th>
         <th style="${thStyle}">Categoria</th>
+        <th style="${thStyle}">Período</th>
         <th style="${thStyle}">Tempo Fora</th>
         <th style="${thStyle}">Resp. Ocorrência</th>
         <th style="${thStyle}">Comentários Geral</th>
@@ -8675,6 +8794,7 @@ entryLines.join('\n\n') + '\n' +
       <tbody>${filtered.filter(i => i.foraDoTempo).map(i => {
         const [y,m,d] = i.data.split('-');
         const dataBR = `${d}/${m}/${y}`;
+        const periodo = i.e.hinicio && i.e.hfim ? `${i.e.hinicio} - ${i.e.hfim}` : '—';
         const sla = i.isRealizada
           ? (i.tempoRespDias !== null && i.tempoRespDias <= PRAZO_DIAS
               ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ No prazo</span>`
@@ -8699,6 +8819,7 @@ entryLines.join('\n\n') + '\n' +
           <td style="${tdStyle};font-weight:700;">${i.equipe}</td>
           <td style="${tdStyle}">${i.turno}</td>
           <td style="${tdStyle}">${i.catNome}</td>
+          <td style="${tdStyle};color:#1E4DA1;font-weight:600;">🕐 ${periodo}</td>
           <td style="${tdStyle};font-weight:700;color:#DC2626;">${i.tempoStr}</td>
           <td style="${tdStyle}">${i.respOc}</td>
           <td style="${tdStyle};max-width:180px;color:#6B7280;font-size:0.75rem;">${comentarios}</td>
@@ -8730,7 +8851,7 @@ entryLines.join('\n\n') + '\n' +
       const fDataFim = document.getElementById('dash-f-data-fim')?.value || '';
       const fBusca   = (document.getElementById('dash-busca')?.value     || '').trim().toUpperCase();
 
-      const rows = [['Data','Equipe','Turno','Categoria','Causa','Tempo Fora','Resp. Ocorrência',
+      const rows = [['Data','Equipe','Turno','Categoria','Período','Causa','Tempo Fora','Resp. Ocorrência',
         'Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação']];
 
       records.forEach(r => {
@@ -8751,6 +8872,7 @@ entryLines.join('\n\n') + '\n' +
           if (fStatus === 'realizada' && !isRealizada) return;
 
           const catNome  = categorias[e.catKey]?.nome || e.catKey;
+          const periodo  = e.hinicio && e.hfim ? `${e.hinicio} - ${e.hfim}` : '';
           const causaStr = e.causas?.join(', ') || e.obsCausa || '';
           const tempoStr = e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '';
           const dataTs   = r.data ? new Date(r.data+'T12:00:00').getTime() : 0;
@@ -8762,6 +8884,7 @@ entryLines.join('\n\n') + '\n' +
             r.equipe || '',
             r.turno  || '',
             catNome,
+            periodo,
             causaStr,
             tempoStr,
             e.acaoResponsavel || '',
