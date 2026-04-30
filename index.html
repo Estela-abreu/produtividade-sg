@@ -8977,12 +8977,20 @@ entryLines.join('\n\n') + '\n' +
       </div>`;
     }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
 
-    // ── Top 5 Problemas ──
+    // ── Top 5 Problemas (por ID único) ──
     const catMap = {};
-    filtered.forEach(i => { catMap[i.catNome] = (catMap[i.catNome]||0)+1; });
+    filtered.forEach(i => {
+      const catKey = `${i.catNome}_${i.r.id}`; // ID único por categoria
+      if (!catMap[i.catNome]) catMap[i.catNome] = new Set();
+      catMap[i.catNome].add(catKey);
+    });
+    const catMapCounts = {};
+    Object.entries(catMap).forEach(([nome, set]) => {
+      catMapCounts[nome] = set.size; // Conta IDs únicos
+    });
     const topEl = document.getElementById('dash-top-problemas');
     if (topEl) {
-      const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const top5 = Object.entries(catMapCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
       const maxC = top5[0]?.[1] || 1;
       topEl.innerHTML = top5.map(([nome,cnt],i) => `
         <div style="margin-bottom:0.55rem;display:flex;align-items:center;gap:0.6rem;">
@@ -8997,26 +9005,35 @@ entryLines.join('\n\n') + '\n' +
         </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     }
 
-    // ── Reincidência ──
+    // ── Reincidência (por ID único) ──
     const reincMap = {};
     filtered.forEach(i => {
       const k = i.equipe;
-      if (!reincMap[k]) reincMap[k] = {};
-      reincMap[k][i.catNome] = (reincMap[k][i.catNome]||0)+1;
+      if (!reincMap[k]) reincMap[k] = { ids: new Set(), cats: {} };
+      reincMap[k].ids.add(i.r.id); // Adiciona ID único
+      
+      // Contar categoria por ID único
+      const catKey = `${i.catNome}_${i.r.id}`;
+      if (!reincMap[k].cats[catKey]) {
+        reincMap[k].cats[i.catNome] = (reincMap[k].cats[i.catNome]||0)+1;
+      }
     });
     const rEl = document.getElementById('dash-reincidencia');
     if (rEl) {
-      const rows = Object.entries(reincMap).map(([eq,cats]) => {
-        const top = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
-        return { eq, cat: top?.[0]||'—', cnt: top?.[1]||0 };
+      const rows = Object.entries(reincMap).map(([eq,data]) => {
+        // Usar IDs únicos para contar reincidência
+        const uniqueIds = data.ids.size;
+        // Categoria com mais ocorrências nesta equipe
+        const top = Object.entries(data.cats).sort((a,b)=>b[1]-a[1])[0];
+        return { eq, cat: top?.[0]||'—', cnt: uniqueIds, totalOcorrencias: top?.[1]||0 };
       }).sort((a,b)=>b.cnt-a.cnt).slice(0,6);
       rEl.innerHTML = rows.map(r => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid #F3F4F6;">
           <div>
             <div style="font-size:0.82rem;font-weight:700;color:#374151;">${r.eq}</div>
-            <div style="font-size:0.68rem;color:#9CA3AF;">${r.cat}</div>
+            <div style="font-size:0.68rem;color:#9CA3AF;">${r.cat} (${r.totalOcorrencias}×)</div>
           </div>
-          <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt}×</span>
+          <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt} IDs</span>
         </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     }
 
