@@ -7842,6 +7842,17 @@ entryLines.join('\n\n') + '\n' +
       const limitBadge = (e.catKey === 'deslocamento' || e.catKey === 'ocioso' || e.catKey === 'plataforma' || e.catKey === 'incidencia')
         ? `<span style="font-size:0.65rem;font-weight:800;padding:2px 8px;border-radius:99px;${needsLimit ? 'background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;' : 'background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;'}">
             ${needsLimit ? '⚠️ Fora do tempo' : '✅ Dentro do tempo'}</span>` : '';
+      
+      // ── CARREGAR DADOS DE AÇÃO ──
+      const acoes = loadAcoes();
+      const acaoKey = getAcaoKey(r.id, e);
+      const acaoData = acoes[acaoKey] || {};
+      const acaoNecessaria = e.acaoNecessaria || (acaoData.status ? 'sim' : '');
+      const acaoResponsavel = e.acaoResponsavel || acaoData.respExec || '';
+      const acaoDescricao = e.acaoDescricao || acaoData.descricao || '';
+      const acaoDataField = e.acaoData || acaoData.dataAcao || '';
+      const acaoTipo = e.acaoTipo || acaoData.tipoAcao || '';
+      const acaoStatus = e.acaoStatus || acaoData.status || '';
 
       card.innerHTML = `
         <div class="edit-entry-header">
@@ -7922,37 +7933,37 @@ entryLines.join('\n\n') + '\n' +
                 Não
               </label>
             </div>
-            ${e.acaoNecessaria === 'sim' ? `
+            ${e.acaoNecessaria === 'sim' || acaoNecessaria === 'sim' ? `
             <div>
               <label class="edit-field-label">👤 Responsável da Ação</label>
-              <input class="edit-field-input" id="edit_acao_resp_${idx}" value="${e.acaoResponsavel||''}" placeholder="Nome do responsável">
+              <input class="edit-field-input" id="edit_acao_resp_${idx}" value="${acaoResponsavel||''}" placeholder="Nome do responsável">
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
               <div>
                 <label class="edit-field-label">📅 Data da Ação</label>
-                <input type="date" class="edit-field-input" id="edit_acao_data_${idx}" value="${e.acaoData||''}">
+                <input type="date" class="edit-field-input" id="edit_acao_data_${idx}" value="${acaoDataField||''}">
               </div>
               <div>
                 <label class="edit-field-label">🏷️ Tipo de Ação</label>
                 <select class="edit-field-input" id="edit_acao_tipo_${idx}" style="cursor:pointer;">
                   <option value="">Selecione tipo</option>
-                  ${getTiposAcao().map(t => `<option value="${t}" ${e.acaoTipo === t ? 'selected' : ''}>${t}</option>`).join('')}
+                  ${getTiposAcao().map(t => `<option value="${t}" ${acaoTipo === t ? 'selected' : ''}>${t}</option>`).join('')}
                 </select>
               </div>
             </div>
             <div>
               <label class="edit-field-label">📝 Descrição da Ação</label>
-              <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?">${e.acaoDescricao||''}</textarea>
+              <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?">${acaoDescricao||''}</textarea>
             </div>
             <div style="border-top:1px solid #E5E7EB;padding-top:0.75rem;margin-top:0.75rem;">
               <label class="edit-field-label" style="color:#059669;">✅ Ação Realizada?</label>
               <div style="display:flex;gap:0.5rem;">
                 <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
-                  <input type="radio" name="edit_acao_status_${idx}" value="realizada" ${e.acaoStatus === 'realizada' ? 'checked' : ''} style="cursor:pointer;">
+                  <input type="radio" name="edit_acao_status_${idx}" value="realizada" ${acaoStatus === 'realizada' ? 'checked' : ''} style="cursor:pointer;">
                   Sim, foi realizada
                 </label>
                 <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
-                  <input type="radio" name="edit_acao_status_${idx}" value="nao_realizada" ${e.acaoStatus === 'nao_realizada' ? 'checked' : ''} style="cursor:pointer;">
+                  <input type="radio" name="edit_acao_status_${idx}" value="nao_realizada" ${acaoStatus === 'nao_realizada' ? 'checked' : ''} style="cursor:pointer;">
                   Não foi realizada
                 </label>
               </div>
@@ -8100,12 +8111,29 @@ entryLines.join('\n\n') + '\n' +
       const acaoNecessariaRadio = document.querySelector(`input[name="edit_acao_${idx}"]:checked`)?.value || 'nao';
       e.acaoNecessaria = acaoNecessariaRadio;
       if (acaoNecessariaRadio === 'sim') {
-        e.acaoResponsavel = (document.getElementById('edit_acao_resp_' + idx)?.value || '').trim();
-        e.acaoDescricao = (document.getElementById('edit_acao_desc_' + idx)?.value || '').trim();
-        e.acaoData = (document.getElementById('edit_acao_data_' + idx)?.value || '').trim();
-        e.acaoTipo = (document.getElementById('edit_acao_tipo_' + idx)?.value || '').trim();
-        e.acaoStatus = document.querySelector(`input[name="edit_acao_status_${idx}"]:checked`)?.value || '';
-        e.acaoRespAcao = e.acaoResponsavel ? [e.acaoResponsavel] : [];
+        const acaoResp = (document.getElementById('edit_acao_resp_' + idx)?.value || '').trim();
+        const acaoDesc = (document.getElementById('edit_acao_desc_' + idx)?.value || '').trim();
+        const acaoDate = (document.getElementById('edit_acao_data_' + idx)?.value || '').trim();
+        const acaoTp = (document.getElementById('edit_acao_tipo_' + idx)?.value || '').trim();
+        const acaoStat = document.querySelector(`input[name="edit_acao_status_${idx}"]:checked`)?.value || '';
+        
+        e.acaoResponsavel = acaoResp;
+        e.acaoDescricao = acaoDesc;
+        e.acaoData = acaoDate;
+        e.acaoTipo = acaoTp;
+        e.acaoStatus = acaoStat;
+        e.acaoRespAcao = acaoResp ? [acaoResp] : [];
+        
+        // Salvar na tabela de ações também
+        if (acaoResp || acaoDesc || acaoDate || acaoTp) {
+          saveAcaoData(id, idx, {
+            respExec: acaoResp,
+            descricao: acaoDesc,
+            dataAcao: acaoDate,
+            tipoAcao: acaoTp,
+            status: acaoStat || 'realizada'
+          });
+        }
       } else {
         e.acaoNecessaria = '';
         e.acaoResponsavel = '';
