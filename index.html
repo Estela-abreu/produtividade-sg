@@ -2596,28 +2596,45 @@ if (!loggedInUser) {
   <!-- Conteúdo sub-aba Dashboard -->
   <div id="dashSubDashboard" style="display:block;">
 
-    <!-- Cabeçalho -->
-    <div style="margin-bottom:1.25rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;letter-spacing:0.02em;">📊 Dashboard de Gestão</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Visão executiva das ocorrências e ações</div>
+    <!-- TOP BAR MELHORADO -->
+    <div style="background:#1F2937;color:white;padding:0.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;margin:-20px -20px 0 -20px;margin-bottom:1.5rem;border-radius:0;">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <div style="font-size:0.9rem;">≡</div>
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:0.05em;">DASHBOARD DE GESTÃO</div>
+          <div style="font-size:0.75rem;color:#D1D5DB;">Gestão de Equipes - Campo Operacional</div>
+        </div>
       </div>
-      <button onclick="renderDashboard()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:6px 14px;border-radius:8px;border:1.5px solid #6EE7B7;background:white;color:#065F46;cursor:pointer;">🔄 Atualizar</button>
+      <div style="display:flex;align-items:center;gap:1.5rem;font-size:0.8rem;">
+        <div style="display:flex;align-items:center;gap:0.3rem;">🟢 Sincronizado</div>
+        <div style="display:flex;align-items:center;gap:0.3rem;">🔍</div>
+        <div style="display:flex;align-items:center;gap:0.3rem;">🕐 15:27:37</div>
+        <div style="display:flex;align-items:center;gap:0.3rem;">📅 Qua, 30/04/2026</div>
+        <div style="border-left:1px solid #4B5563;padding-left:1rem;display:flex;gap:0.75rem;">
+          <div style="cursor:pointer;">📋 Hoje</div>
+          <div style="cursor:pointer;">📊 Total</div>
+          <div style="cursor:pointer;">⏳ Pendentes</div>
+          <div style="cursor:pointer;">⚙️ Administrador</div>
+        </div>
+      </div>
     </div>
 
+    <!-- Cards de Resumo Melhorados -->
+    <div id="dash-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;"></div>
+
     <!-- Filtros -->
-    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
-      <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9CA3AF;margin-bottom:0.75rem;">🔍 Filtros</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.65rem;">
+    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
+      <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9CA3AF;margin-bottom:0.75rem;">🔍 Filtros</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0.5rem;">
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Equipe</label>
           <input type="text" id="dash-f-equipe" placeholder="Todas"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;box-sizing:border-box;">
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Turno</label>
           <select id="dash-f-turno"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;">
             <option value="">Todos</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -2627,19 +2644,19 @@ if (!loggedInUser) {
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Resp. Ocorrência</label>
           <select id="dash-f-resp-oc"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;">
             <option value="">Todos</option>
           </select>
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Resp. Ação</label>
           <select id="dash-f-resp-ac"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;"></select>
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;"></select>
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Status</label>
           <select id="dash-f-status"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;">
             <option value="">Todos</option>
             <option value="pendente">🔴 Pendente</option>
             <option value="realizada">🟢 Realizada</option>
@@ -2668,42 +2685,87 @@ if (!loggedInUser) {
     <!-- Alertas -->
     <div id="dash-alertas" style="margin-bottom:1.25rem;"></div>
 
-    <!-- Grid de gráficos -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
-      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
-        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">📊 Ações por Equipe</div>
-        <div id="dash-chart-equipe"></div>
+    <!-- Grid de gráficos 3 colunas -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;">
+      <!-- REINCIDÊNCIA GERAL -->
+      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+          <span style="font-size:1.2rem;">📋</span>
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA GERAL</div>
+            <div style="font-size:0.7rem;color:#9CA3AF;">Contagem por ID (sem duplicidade)</div>
+          </div>
+        </div>
+        <div id="dash-reincidencia" style="font-size:0.85rem;"></div>
       </div>
-      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
-        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">👤 Ranking de Responsáveis</div>
-        <div id="dash-chart-resp"></div>
+
+      <!-- REINCIDÊNCIA POR CATEGORIA -->
+      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+          <span style="font-size:1.2rem;">📁</span>
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA POR CATEGORIA</div>
+            <div style="font-size:0.7rem;color:#9CA3AF;">Contagem por ID (sem duplicidade)</div>
+          </div>
+        </div>
+        <div id="dash-reincidencia-cat" style="font-size:0.85rem;"></div>
+      </div>
+
+      <!-- TOP 5 PROBLEMAS -->
+      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+          <span style="font-size:1.2rem;">⭐</span>
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#374151;">TOP 5 PROBLEMAS</div>
+            <div style="font-size:0.7rem;color:#9CA3AF;">Por ID (sem duplicidade)</div>
+          </div>
+        </div>
+        <div id="dash-top-problemas" style="font-size:0.85rem;"></div>
       </div>
     </div>
 
-    <!-- Top problemas -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
-      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
-        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">🏆 Top 5 Problemas</div>
-        <div id="dash-top-problemas"></div>
+    <!-- Grid Ações por Equipe + Ranking Responsáveis -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+      <!-- AÇÕES POR EQUIPE -->
+      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+          <span style="font-size:1.2rem;">👥</span>
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#374151;">AÇÕES POR EQUIPE</div>
+            <div style="font-size:0.7rem;color:#9CA3AF;">Percentual de ações realizadas</div>
+          </div>
+        </div>
+        <div id="dash-chart-equipe" style="font-size:0.85rem;"></div>
       </div>
-      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
-        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">🔁 Reincidência por Equipe</div>
-        <div id="dash-reincidencia"></div>
+
+      <!-- RANKING RESPONSÁVEIS -->
+      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+          <span style="font-size:1.2rem;">📊</span>
+          <div>
+            <div style="font-size:0.85rem;font-weight:800;color:#374151;">RANKING DE RESPONSÁVEIS</div>
+            <div style="font-size:0.7rem;color:#9CA3AF;">Por quantidade de ações</div>
+          </div>
+        </div>
+        <div id="dash-chart-resp" style="font-size:0.85rem;"></div>
       </div>
     </div>
 
     <!-- Tabela detalhada -->
-    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
-        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;">📋 Tabela Detalhada</div>
+    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+        <div>
+          <div style="font-size:0.85rem;font-weight:800;color:#374151;">📋 TABELA DETALHADA</div>
+        </div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
           <input type="text" id="dash-busca" placeholder="🔍 Buscar..." oninput="renderDashboard()"
-            style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:5px 10px;outline:none;width:180px;">
-          <button onclick="exportDashExcel()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 14px;border-radius:8px;border:1.5px solid #16A34A;background:white;color:#16A34A;cursor:pointer;">⬇️ Excel</button>
+            style="font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px 10px;outline:none;width:150px;">
+          <button onclick="exportDashExcel()" style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:700;padding:6px 12px;border-radius:4px;border:none;background:#16A34A;color:white;cursor:pointer;">📊 Excel</button>
+          <button style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:700;padding:6px 12px;border-radius:4px;border:none;background:#DC2626;color:white;cursor:pointer;">📄 PDF</button>
         </div>
       </div>
-      <div style="overflow-x:auto;">
-        <table id="dash-tabela" style="width:100%;border-collapse:collapse;font-size:0.78rem;"></table>
+      <div style="overflow-x:auto;border-top:1px solid #E5E7EB;padding-top:1rem;">
+        <table id="dash-tabela" style="width:100%;border-collapse:collapse;font-size:0.77rem;"></table>
       </div>
     </div>
 
@@ -8891,13 +8953,18 @@ entryLines.join('\n\n') + '\n' +
     // ── Cards de resumo ──
     const cardsEl = document.getElementById('dash-cards');
     if (cardsEl) cardsEl.innerHTML = [
-      ['','Ações Realizadas',   realizadas,     '#16A34A','#F0FDF4','#6EE7B7'],
-      ['','Ações Pendentes',    pendentes,      '#D97706','#FFFBEB','#FCD34D'],
-      ['','Fora do tempo de resposta', foraPrazo, '#9F1239','#FFF1F2','#FDA4AF'],
-    ].map(([icon,label,val,color,bg,bdr]) => `
-      <div style="background:${bg};border:1.5px solid ${bdr};border-radius:12px;padding:1rem;text-align:center;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:800;color:${color};line-height:1;">${val}</div>
-        <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-top:3px;">${label}</div>
+      ['✓', 'Ações Realizadas', realizadas, '#16A34A', '#F0FDF4', '#6EE7B7'],
+      ['⏱', 'Ações Pendentes', pendentes, '#D97706', '#FFFBEB', '#FCD34D'],
+      ['⚠', 'Fora do tempo de resposta', foraPrazo, '#9F1239', '#FFF1F2', '#FDA4AF'],
+    ].map(([icon, label, val, color, bg, bdr]) => `
+      <div style="background:${bg};border:1.5px solid ${bdr};border-radius:12px;padding:1.2rem;display:flex;align-items:center;gap:1rem;">
+        <div style="width:60px;height:60px;border-radius:50%;background:${color}30;border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:${color};flex-shrink:0;">
+          ${icon}
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;color:${color};line-height:1;">${val}</div>
+          <div style="font-size:0.7rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-top:4px;">${label}</div>
+        </div>
       </div>`).join('');
 
     // ── Alertas ──
@@ -9035,6 +9102,42 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt} IDs</span>
         </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
+    }
+
+    // ── Reincidência por Categoria ──
+    const catReincMap = {};
+    filtered.forEach(i => {
+      const catKey = `${i.catNome}_${i.r.id}`;
+      if (!catReincMap[i.catNome]) catReincMap[i.catNome] = new Set();
+      catReincMap[i.catNome].add(catKey);
+    });
+    const catReincEl = document.getElementById('dash-reincidencia-cat');
+    if (catReincEl) {
+      const catRows = Object.entries(catReincMap)
+        .map(([cat, set]) => ({ cat, cnt: set.size }))
+        .sort((a,b) => b.cnt - a.cnt)
+        .slice(0, 8);
+      const maxCat = catRows[0]?.cnt || 1;
+      catReincEl.innerHTML = catRows.map((r, idx) => {
+        const cat = categorias[Object.keys(categorias).find(k => categorias[k].nome === r.cat)]?.icon || '📌';
+        const color = catColors[Object.keys(catColors).find(k => categorias[k]?.nome === r.cat)] || '#888';
+        return `
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
+            <span style="font-size:0.7rem;font-weight:800;color:#9CA3AF;width:18px;text-align:center;">${idx+1}</span>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:2px;align-items:center;">
+                <span style="font-size:0.78rem;font-weight:600;color:#374151;display:flex;align-items:center;gap:0.3rem;">
+                  <span style="font-size:0.9rem;">${cat}</span> ${r.cat}
+                </span>
+                <span style="font-size:0.72rem;color:#6B7280;font-weight:600;">${r.cnt}</span>
+              </div>
+              <div style="height:6px;background:#F3F4F6;border-radius:99px;">
+                <div style="height:100%;width:${Math.round(r.cnt/maxCat*100)}%;background:${color};border-radius:99px;"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     }
 
     // ── Tabela detalhada ──
