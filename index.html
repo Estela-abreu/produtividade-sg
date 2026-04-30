@@ -5019,6 +5019,9 @@ if (!loggedInUser) {
       const acaoNecessaria = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value || '';
       const acaoResponsavel = acaoNecessaria === 'sim' ? (document.getElementById('acao-resp-' + id)?.value || '') : '';
       const acaoDescricao = acaoNecessaria === 'sim' ? (document.getElementById('acao-desc-' + id)?.value || '') : '';
+      const acaoData = acaoNecessaria === 'sim' ? (document.getElementById('acao-data-' + id)?.value || '') : '';
+      const acaoTipo = acaoNecessaria === 'sim' ? (document.getElementById('acao-tipo-' + id)?.value || '') : '';
+      const acaoStatus = acaoNecessaria === 'sim' ? (document.querySelector(`input[name="acao-status-${id}"]:checked`)?.value || '') : '';
       const acaoRespAcao = acaoNecessaria === 'sim' ? (() => {
         try { return JSON.parse(document.getElementById('acao-resp-acao-' + id)?.value || '[]'); } catch { return []; }
       })() : [];
@@ -5044,7 +5047,7 @@ if (!loggedInUser) {
         return d < 0 ? d + 1440 : d;
       })() : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoDescricao, acaoRespAcao });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoDescricao, acaoData, acaoTipo, acaoStatus, acaoRespAcao });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -7924,9 +7927,35 @@ entryLines.join('\n\n') + '\n' +
               <label class="edit-field-label">👤 Responsável da Ação</label>
               <input class="edit-field-input" id="edit_acao_resp_${idx}" value="${e.acaoResponsavel||''}" placeholder="Nome do responsável">
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+              <div>
+                <label class="edit-field-label">📅 Data da Ação</label>
+                <input type="date" class="edit-field-input" id="edit_acao_data_${idx}" value="${e.acaoData||''}">
+              </div>
+              <div>
+                <label class="edit-field-label">🏷️ Tipo de Ação</label>
+                <select class="edit-field-input" id="edit_acao_tipo_${idx}" style="cursor:pointer;">
+                  <option value="">Selecione tipo</option>
+                  ${getTiposAcao().map(t => `<option value="${t}" ${e.acaoTipo === t ? 'selected' : ''}>${t}</option>`).join('')}
+                </select>
+              </div>
+            </div>
             <div>
               <label class="edit-field-label">📝 Descrição da Ação</label>
               <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?">${e.acaoDescricao||''}</textarea>
+            </div>
+            <div style="border-top:1px solid #E5E7EB;padding-top:0.75rem;margin-top:0.75rem;">
+              <label class="edit-field-label" style="color:#059669;">✅ Ação Realizada?</label>
+              <div style="display:flex;gap:0.5rem;">
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                  <input type="radio" name="edit_acao_status_${idx}" value="realizada" ${e.acaoStatus === 'realizada' ? 'checked' : ''} style="cursor:pointer;">
+                  Sim, foi realizada
+                </label>
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                  <input type="radio" name="edit_acao_status_${idx}" value="nao_realizada" ${e.acaoStatus === 'nao_realizada' ? 'checked' : ''} style="cursor:pointer;">
+                  Não foi realizada
+                </label>
+              </div>
             </div>
             ` : ''}
           </div>
@@ -8073,11 +8102,17 @@ entryLines.join('\n\n') + '\n' +
       if (acaoNecessariaRadio === 'sim') {
         e.acaoResponsavel = (document.getElementById('edit_acao_resp_' + idx)?.value || '').trim();
         e.acaoDescricao = (document.getElementById('edit_acao_desc_' + idx)?.value || '').trim();
+        e.acaoData = (document.getElementById('edit_acao_data_' + idx)?.value || '').trim();
+        e.acaoTipo = (document.getElementById('edit_acao_tipo_' + idx)?.value || '').trim();
+        e.acaoStatus = document.querySelector(`input[name="edit_acao_status_${idx}"]:checked`)?.value || '';
         e.acaoRespAcao = e.acaoResponsavel ? [e.acaoResponsavel] : [];
       } else {
         e.acaoNecessaria = '';
         e.acaoResponsavel = '';
         e.acaoDescricao = '';
+        e.acaoData = '';
+        e.acaoTipo = '';
+        e.acaoStatus = '';
         e.acaoRespAcao = [];
       }
 
