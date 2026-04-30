@@ -5018,6 +5018,7 @@ if (!loggedInUser) {
       const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
       const acaoNecessaria = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value || '';
       const acaoResponsavel = acaoNecessaria === 'sim' ? (document.getElementById('acao-resp-' + id)?.value || '') : '';
+      const acaoDescricao = acaoNecessaria === 'sim' ? (document.getElementById('acao-desc-' + id)?.value || '') : '';
       const acaoRespAcao = acaoNecessaria === 'sim' ? (() => {
         try { return JSON.parse(document.getElementById('acao-resp-acao-' + id)?.value || '[]'); } catch { return []; }
       })() : [];
@@ -5043,7 +5044,7 @@ if (!loggedInUser) {
         return d < 0 ? d + 1440 : d;
       })() : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoRespAcao });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoDescricao, acaoRespAcao });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
@@ -7925,7 +7926,7 @@ entryLines.join('\n\n') + '\n' +
             </div>
             <div>
               <label class="edit-field-label">📝 Descrição da Ação</label>
-              <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?"></textarea>
+              <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?">${e.acaoDescricao||''}</textarea>
             </div>
             ` : ''}
           </div>
@@ -8071,10 +8072,12 @@ entryLines.join('\n\n') + '\n' +
       e.acaoNecessaria = acaoNecessariaRadio;
       if (acaoNecessariaRadio === 'sim') {
         e.acaoResponsavel = (document.getElementById('edit_acao_resp_' + idx)?.value || '').trim();
+        e.acaoDescricao = (document.getElementById('edit_acao_desc_' + idx)?.value || '').trim();
         e.acaoRespAcao = e.acaoResponsavel ? [e.acaoResponsavel] : [];
       } else {
         e.acaoNecessaria = '';
         e.acaoResponsavel = '';
+        e.acaoDescricao = '';
         e.acaoRespAcao = [];
       }
 
