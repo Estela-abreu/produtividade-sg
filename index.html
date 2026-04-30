@@ -7903,19 +7903,43 @@ entryLines.join('\n\n') + '\n' +
             </div>
           `}
           <div style="grid-column:1/-1;">
-            <label class="edit-field-label">📋 Observação</label>
-            <textarea class="edit-field-input" id="edit_obs_${idx}" rows="2" style="resize:vertical;">${e.obs||''}</textarea>
-          </div>
-          <div style="grid-column:1/-1;">
             <label class="edit-field-label">⚠️ Justificativa</label>
             <textarea class="edit-field-input" id="edit_just_${idx}" rows="2" style="resize:vertical;${e.justificativa ? 'background:#FEF2F2;border-color:#FCA5A5;' : ''}">${e.justificativa||''}</textarea>
+          </div>
+          <div style="grid-column:1/-1;border-top:1px solid #E5E7EB;padding-top:0.75rem;margin-top:0.75rem;">
+            <label class="edit-field-label" style="color:#DC2626;font-weight:700;">⚡ Ação Necessária?</label>
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+              <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                <input type="radio" name="edit_acao_${idx}" value="sim" ${e.acaoNecessaria === 'sim' ? 'checked' : ''} style="cursor:pointer;">
+                Sim
+              </label>
+              <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                <input type="radio" name="edit_acao_${idx}" value="nao" ${e.acaoNecessaria !== 'sim' ? 'checked' : ''} style="cursor:pointer;">
+                Não
+              </label>
+            </div>
+            ${e.acaoNecessaria === 'sim' ? `
+            <div>
+              <label class="edit-field-label">👤 Responsável da Ação</label>
+              <input class="edit-field-input" id="edit_acao_resp_${idx}" value="${e.acaoResponsavel||''}" placeholder="Nome do responsável">
+            </div>
+            <div>
+              <label class="edit-field-label">📝 Descrição da Ação</label>
+              <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?"></textarea>
+            </div>
+            ` : ''}
           </div>
         </div>`;
       entriesEl.appendChild(card);
     });
 
     // ── CAMPO DE COMENTÁRIOS GERAIS ──
+    // Remove old general fields div if exists
+    const oldGeneralDiv = entriesEl.parentElement.querySelector('[data-general-fields]');
+    if (oldGeneralDiv) oldGeneralDiv.remove();
+    
     const generalFieldsDiv = document.createElement('div');
+    generalFieldsDiv.setAttribute('data-general-fields', 'true');
     generalFieldsDiv.style.cssText = 'grid-column:1/-1;padding:1rem;background:#F0FDF4;border-radius:8px;border:1px solid #86EFAC;margin-top:1rem;';
     generalFieldsDiv.innerHTML = `
       <div>
@@ -8040,8 +8064,19 @@ entryLines.join('\n\n') + '\n' +
           if (hfim) e.hfim = hfim;
         }
       }
-      e.obs = (document.getElementById('edit_obs_' + idx)?.value || '').trim();
       e.justificativa = (document.getElementById('edit_just_' + idx)?.value || '').trim() || '';
+
+      // ── SALVAR AÇÕES ──
+      const acaoNecessariaRadio = document.querySelector(`input[name="edit_acao_${idx}"]:checked`)?.value || 'nao';
+      e.acaoNecessaria = acaoNecessariaRadio;
+      if (acaoNecessariaRadio === 'sim') {
+        e.acaoResponsavel = (document.getElementById('edit_acao_resp_' + idx)?.value || '').trim();
+        e.acaoRespAcao = e.acaoResponsavel ? [e.acaoResponsavel] : [];
+      } else {
+        e.acaoNecessaria = '';
+        e.acaoResponsavel = '';
+        e.acaoRespAcao = [];
+      }
 
       // Recompute classification status
       if (e.catKey === 'deslocamento') {
