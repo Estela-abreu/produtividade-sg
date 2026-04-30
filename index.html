@@ -5539,14 +5539,7 @@ if (!loggedInUser) {
           <div class="r-entry-body">
             <div class="r-entry-top">
               <div class="r-entry-cat"><span>${cat.icon}</span><span>${cat.nome}</span><span class="r-entry-num" style="background:${color}">Nº${catCount[e.catKey]}</span>${deslocBadge}</div>
-              <div style="display:flex;align-items:center;gap:0.5rem;">
-                <div class="r-entry-time" style="color:${e.mins>0?color:'var(--gray-400)'}">⏱ ${e.mins>0?timeStr:'Sem tempo'}</div>
-                <div style="display:flex;gap:0.35rem;">
-                  ${idx > 0 ? `<button type="button" onclick="moveEntryUp(${idx})" style="padding:4px 8px;background:#1E4DA1;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#1E3A5F'" onmouseout="this.style.background='#1E4DA1'">⬆ Subir</button>` : ''}
-                  ${idx < (r.entries.length - 1) ? `<button type="button" onclick="moveEntryDown(${idx})" style="padding:4px 8px;background:#1E4DA1;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#1E3A5F'" onmouseout="this.style.background='#1E4DA1'">⬇ Descer</button>` : ''}
-                  <button type="button" onclick="deleteEntryConfirm(${idx})" style="padding:4px 8px;background:#DC2626;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#991B1B'" onmouseout="this.style.background='#DC2626'">🗑 Excluir</button>
-                </div>
-              </div>
+              <div class="r-entry-time" style="color:${e.mins>0?color:'var(--gray-400)'}">⏱ ${e.mins>0?timeStr:'Sem tempo'}</div>
             </div>
             <div class="r-entry-fields" style="grid-template-columns:1fr;">
               ${(e.catKey === 'incidencia' || e.catKey === 'deslocamento' || e.catKey === 'plataforma' || e.catKey === 'ocioso') && (e.hinicio || e.hfim) ? `
@@ -7880,9 +7873,31 @@ entryLines.join('\n\n') + '\n' +
             <label class="edit-field-label">📋 Observação</label>
             <textarea class="edit-field-input" id="edit_obs_${idx}" rows="2" style="resize:vertical;">${e.obs||''}</textarea>
           </div>
+          <div style="grid-column:1/-1;">
+            <label class="edit-field-label">⚠️ Justificativa</label>
+            <textarea class="edit-field-input" id="edit_just_${idx}" rows="2" style="resize:vertical;${e.justificativa ? 'background:#FEF2F2;border-color:#FCA5A5;' : ''}">${e.justificativa||''}</textarea>
+          </div>
         </div>`;
       entriesEl.appendChild(card);
     });
+
+    // ── CAMPOS DE INFORMAÇÕES GERAIS DO REGISTRO ──
+    const generalFieldsDiv = document.createElement('div');
+    generalFieldsDiv.style.cssText = 'grid-column:1/-1;padding:1rem;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;margin-top:1rem;';
+    generalFieldsDiv.innerHTML = `
+      <div style="font-weight:700;color:#374151;margin-bottom:0.75rem;font-size:0.9rem;">📋 INFORMAÇÕES GERAIS</div>
+      <div style="display:grid;grid-template-columns:1fr;gap:0.75rem;">
+        <div>
+          <label class="edit-field-label">💬 Comentários Gerais</label>
+          <textarea class="edit-field-input" id="editComentariosReg" rows="2" style="resize:vertical;">${r.comentariosReg||''}</textarea>
+        </div>
+        <div>
+          <label class="edit-field-label">📝 Observação Geral</label>
+          <textarea class="edit-field-input" id="editObsGeral" rows="2" style="resize:vertical;">${r.obs||''}</textarea>
+        </div>
+      </div>
+    `;
+    entriesEl.parentElement.appendChild(generalFieldsDiv);
 
     const modal = document.getElementById('editRecordModal');
     modal.style.display = 'flex';
@@ -7919,6 +7934,8 @@ entryLines.join('\n\n') + '\n' +
         }
         // Recompute obsCausa
         e.obsCausa = (document.getElementById('edit_obscausa_' + idx)?.value || '').trim() || e.obsCausa;
+        // Salvar justificativa
+        e.justificativa = (document.getElementById('edit_just_' + idx)?.value || '').trim() || '';
       } else {
         // For time-based entries: prefer hinicio/hfim if available, else use mins input
         const hini = document.getElementById('edit_hinicio_' + idx)?.value || '';
@@ -7937,6 +7954,7 @@ entryLines.join('\n\n') + '\n' +
         }
       }
       e.obs = (document.getElementById('edit_obs_' + idx)?.value || '').trim();
+      e.justificativa = (document.getElementById('edit_just_' + idx)?.value || '').trim() || '';
 
       // Recompute classification status
       if (e.catKey === 'deslocamento') {
@@ -8009,6 +8027,10 @@ entryLines.join('\n\n') + '\n' +
       r.status = 'revisado';
       showCopyToast('✅ Registro atualizado! Sem desvios detectados.');
     }
+
+    // ── SALVAR COMENTÁRIOS E OBSERVAÇÕES GERAIS ──
+    r.comentariosReg = (document.getElementById('editComentariosReg')?.value || '').trim();
+    r.obs = (document.getElementById('editObsGeral')?.value || '').trim();
 
     r.editedAt = new Date().toISOString();
     records[rIdx] = r;
