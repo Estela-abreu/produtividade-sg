@@ -5923,9 +5923,9 @@ if (!loggedInUser) {
     // Fit bounds
     setTimeout(() => {
       if (allLatLngs.length === 1) {
-        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 13);
+        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 12);
       } else {
-        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [100, 100], maxZoom: 14 });
+        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [150, 150], maxZoom: 13 });
       }
       map.invalidateSize();
     }, 100);
@@ -8804,7 +8804,7 @@ entryLines.join('\n\n') + '\n' +
 
           <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;overflow:visible;'>
             <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
-            <div id='reu_map_${r.id}' style='height:280px;width:500px;margin:0 auto;border-radius:8px;border:1.5px solid #BFDBFE;'></div>
+            <div id='reu_map_${r.id}' style='height:380px;width:90%;max-width:1000px;margin:0 auto;border-radius:8px;border:1.5px solid #BFDBFE;'></div>
           </div>
 
           <!-- Ocorrências -->
