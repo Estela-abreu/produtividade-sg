@@ -5923,9 +5923,9 @@ if (!loggedInUser) {
     // Fit bounds
     setTimeout(() => {
       if (allLatLngs.length === 1) {
-        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 15);
+        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 13);
       } else {
-        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [30, 30] });
+        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [100, 100], maxZoom: 14 });
       }
       map.invalidateSize();
     }, 100);
