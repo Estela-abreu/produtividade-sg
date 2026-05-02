@@ -2591,11 +2591,6 @@ if (!loggedInUser) {
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16v2H4zm0 4h16v10H4zm0 12h16v2H4z"/><line x1="9" y1="8" x2="9" y2="14"/><line x1="15" y1="8" x2="15" y2="14"/></svg>
       Visão Detalhada
     </button>
-    <button id="dashSubBtnCards" onclick="switchDashSub('cards')"
-      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
-      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/></svg>
-      📊 Tela Resumida (Cards)
-    </button>
   </div>
 
   <!-- Conteúdo sub-aba Dashboard -->
@@ -2788,7 +2783,7 @@ if (!loggedInUser) {
 
   <!-- Conteúdo sub-aba Reunião (Visão Detalhada) -->
   <div id="dashSubReuniao" style="display:none;">
-    <div style="max-width:1100px;margin:0 auto;padding:1.5rem 2rem 3rem;">
+    <div style="max-width:1400px;margin:0 auto;padding:1.5rem 2rem 3rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
         <div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;text-transform:uppercase;letter-spacing:0.05em;">👁️ Visão Detalhada</div>
@@ -2835,85 +2830,10 @@ if (!loggedInUser) {
         <button onclick="renderReuniao()" style="padding:0.6rem 1.2rem;background:#065F46;color:white;border:none;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#065F46'">🔍 Buscar</button>
       </div>
 
-      <div id="reuniaoList"></div>
+      <!-- CARDS RESUMIDOS -->
+      <div id="reuniaoList" style="display:flex;flex-direction:column;gap:1.5rem;"></div>
     </div>
   </div><!-- /dashSubReuniao -->
-
-  <!-- Sub-aba: Tela Resumida (Cards) -->
-  <div id="dashSubCards" style="display:none;">
-    <div style="max-width:1400px;margin:0 auto;padding:1.5rem 2rem 3rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-        <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:800;color:#1E3A5F;letter-spacing:0.05em;">📊 TELA RESUMIDA</div>
-          <div style="font-size:0.85rem;color:#9CA3AF;margin-top:0.3rem;">Visualização limpa e objetiva · Clique em "Visualizar" para expandir</div>
-        </div>
-      </div>
-
-      <!-- Filtros -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;margin-bottom:1.5rem;display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
-        <div>
-          <label style="font-size:0.7rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;display:block;margin-bottom:0.4rem;">Data Início</label>
-          <input type="date" id="cardsFilterDataIni" onchange="renderDashCards()" style="padding:0.6rem;border:1px solid #D1D5DB;border-radius:6px;font-family:'Barlow',sans-serif;">
-        </div>
-        <div>
-          <label style="font-size:0.7rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;display:block;margin-bottom:0.4rem;">Data Fim</label>
-          <input type="date" id="cardsFilterDataFim" onchange="renderDashCards()" style="padding:0.6rem;border:1px solid #D1D5DB;border-radius:6px;font-family:'Barlow',sans-serif;">
-        </div>
-        <button onclick="renderDashCards()" style="padding:0.6rem 1.5rem;background:#065F46;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">🔍 Buscar</button>
-        <button onclick="document.getElementById('cardsFilterDataIni').value='';document.getElementById('cardsFilterDataFim').value='';renderDashCards();" style="padding:0.6rem 1.5rem;background:#9CA3AF;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">⟲ Limpar</button>
-      </div>
-
-      <!-- Cards Grid -->
-      <div id="dashCardsContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1.5rem;"></div>
-    </div>
-  </div><!-- /dashSubCards -->
-
-  <!-- MODAL EXPANDIDO -->
-  <div id="cardExpandedModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;overflow-y:auto;padding:2rem 1rem;">
-    <div style="max-width:1200px;margin:0 auto;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      
-      <!-- Header do Modal -->
-      <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:1.5rem;display:flex;justify-content:space-between;align-items:flex-start;border-radius:12px 12px 0 0;">
-        <div>
-          <div style="font-size:1.2rem;font-weight:800;margin-bottom:0.5rem;" id="modalEquipeNome">—</div>
-          <div style="font-size:0.85rem;color:rgba(255,255,255,0.9);" id="modalEquipeDetalhes">—</div>
-        </div>
-        <button onclick="closeCardModal()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:1.5rem;cursor:pointer;padding:0.5rem 1rem;border-radius:6px;">✕</button>
-      </div>
-
-      <!-- Conteúdo -->
-      <div style="padding:2rem;">
-        <!-- Linha do Tempo -->
-        <div style="margin-bottom:2rem;">
-          <div style="font-size:0.9rem;font-weight:800;color:#1E3A5F;margin-bottom:1rem;">🕐 LINHA DO TEMPO DA JORNADA</div>
-          <div id="modalTimeline" style="display:flex;gap:1rem;overflow-x:auto;padding:1rem;background:#FAFBFF;border-radius:8px;border:1px solid #E0E7FF;"></div>
-        </div>
-
-        <!-- Mapa -->
-        <div style="margin-bottom:2rem;display:none;" id="modalMapSection">
-          <div style="font-size:0.9rem;font-weight:800;color:#1E4DA1;margin-bottom:1rem;">🗺️ MAPA DE DESLOCAMENTO</div>
-          <div id="modalMap" style="height:300px;border-radius:8px;border:1px solid #BFDBFE;overflow:hidden;"></div>
-        </div>
-
-        <!-- Ocorrências -->
-        <div style="margin-bottom:2rem;">
-          <div style="font-size:0.9rem;font-weight:800;color:#1E3A5F;margin-bottom:1rem;background:#1E3A5F;color:white;padding:0.75rem;border-radius:6px;">Ocorrências do Dia</div>
-          <div id="modalOcorrencias" style="background:#F9FAFB;border-radius:8px;overflow:hidden;"></div>
-        </div>
-
-        <!-- Log Off -->
-        <div style="background:#FFF1F2;border:1px solid #FDA4AF;border-radius:8px;padding:1rem;" id="modalLogOff" style="display:none;">
-          <div style="font-weight:800;color:#9F1239;margin-bottom:0.5rem;">🏁 Log off – Retorno à Base</div>
-          <div style="color:#991B1B;font-size:0.9rem;" id="modalLogOffText">—</div>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div style="padding:1.5rem;border-top:1px solid #E5E7EB;text-align:right;">
-        <button onclick="closeCardModal()" style="padding:0.75rem 1.5rem;background:#6B7280;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">Fechar</button>
-      </div>
-    </div>
-  </div>
 
 </div><!-- /tabDashboard -->
 
@@ -6171,17 +6091,14 @@ if (!loggedInUser) {
     const subDash = document.getElementById('dashSubDashboard');
     const subDB   = document.getElementById('dashSubDB');
     const subReu  = document.getElementById('dashSubReuniao');
-    const subCards = document.getElementById('dashSubCards');
     const btnD    = document.getElementById('dashSubBtnDashboard');
     const btnDB   = document.getElementById('dashSubBtnDB');
     const btnReu  = document.getElementById('dashSubBtnReuniao');
-    const btnCards = document.getElementById('dashSubBtnCards');
     
     // Hide all sub-tabs
     if (subDash) subDash.style.display = 'none';
     if (subDB)   subDB.style.display   = 'none';
     if (subReu)  subReu.style.display  = 'none';
-    if (subCards) subCards.style.display = 'none';
     
     // Reset button styles
     if (btnD) {
@@ -6195,10 +6112,6 @@ if (!loggedInUser) {
     if (btnReu) {
       btnReu.style.borderBottomColor = 'transparent';
       btnReu.style.color = '#9CA3AF';
-    }
-    if (btnCards) {
-      btnCards.style.borderBottomColor = 'transparent';
-      btnCards.style.color = '#9CA3AF';
     }
     
     // Show selected sub-tab and highlight button
@@ -6234,13 +6147,6 @@ if (!loggedInUser) {
         btnReu.style.color = '#065F46';
       }
       renderReuniao();
-    } else if (sub === 'cards') {
-      if (subCards) subCards.style.display = 'block';
-      if (btnCards) {
-        btnCards.style.borderBottomColor = '#065F46';
-        btnCards.style.color = '#065F46';
-      }
-      renderDashCards();
     }
     
     window.scrollTo({ top:0, behavior:'smooth' });
@@ -8828,79 +8734,50 @@ entryLines.join('\n\n') + '\n' +
           <td colspan="2" style="padding:0.55rem 0.75rem;color:#991B1B;font-weight:700;">⏱ Tempo de retorno: <strong>${logoffEntry.logoffMin || 0} min</strong></td>
         </tr>` : '';
 
+      const totalOcorrencias = r.entries.length;
+      const foraDoTempo = r.entries.filter(e => entryNeedsJustificativa(e)).length;
+      const dentroDotempo = totalOcorrencias - foraDoTempo;
+
       const card = document.createElement('div');
-      card.style.cssText = 'background:white;border-radius:10px;margin-bottom:1.75rem;box-shadow:0 2px 12px rgba(79,70,229,0.1);border:1px solid #C7D2FE;overflow:hidden;';
+      card.style.cssText = 'background:white;border-radius:10px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);';
       card.innerHTML = `
-        <!-- Cabeçalho - CLICÁVEL PARA EXPANDIR/COLAPSAR -->
-        <div id="header_${r.id}" onclick="toggleExpandCard('${r.id}')" style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;cursor:pointer;user-select:none;transition:background 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#2D4A73,#2D5FB5)'" onmouseout="this.style.background='linear-gradient(135deg,#1E3A5F,#1E4DA1)'">
-          <div style="display:flex;align-items:center;gap:1rem;flex:1;">
-            <!-- Ícone de expansão -->
-            <span id="icon_${r.id}" style="font-size:1.2rem;font-weight:bold;color:white;transition:transform 0.2s;">▶</span>
-            <div style="display:flex;flex-direction:column;gap:0.3rem;">
-              <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
-                <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:white;">👷 Equipe: <strong>${r.equipe}</strong></span>
-                <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong style="color:white;">${r.turno}</strong></span>
-                <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong style="color:white;">${diaSem}, ${dataBR}</strong></span>
-              </div>
-              ${r.jornadaEntrada ? `<div style="font-size:0.78rem;color:#93C5FD;">🕐 Jornada: <strong style="color:white;">${r.jornadaEntrada}</strong> às <strong style="color:white;">${r.jornadaSaida||'—'}</strong></div>` : ''}
+        <!-- Card Header -->
+        <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:1rem;display:flex;align-items:center;gap:1rem;">
+          <div style="width:45px;height:45px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">👷</div>
+          <div style="flex:1;">
+            <div style="font-weight:800;font-size:0.95rem;display:flex;align-items:center;gap:0.75rem;">
+              <span style="font-size:1.2rem;">▶</span>
+              <span>Equipe: <strong>${r.equipe}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong>${r.turno}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong>${diaSem}, ${dataBR}</strong></span>
             </div>
+            ${r.jornadaEntrada ? `<div style="font-size:0.75rem;color:#93C5FD;margin-top:0.3rem;">🕐 Jornada: <strong>${r.jornadaEntrada}</strong> às <strong>${r.jornadaSaida||'—'}</strong></div>` : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:0.75rem;">
-            <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
+          <div style="text-align:right;white-space:nowrap;">
+            <div style="font-weight:800;font-size:1rem;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</div>
           </div>
         </div>
 
-        <!-- CONTEÚDO EXPANDÍVEL (COMEÇANDO FECHADO) -->
-        <div id="content_${r.id}" style="display:none;">
-          <!-- Comentários Geral -->
-          ${r.comentariosReg ? `<div style="padding:0.85rem 1.25rem;background:#F0FDF4;border-bottom:1px solid #D1F0DF;border-left:4px solid #065F46;">
-            <div style="font-size:0.75rem;font-weight:800;color:#065F46;text-transform:uppercase;margin-bottom:0.5rem;">💬 Comentários Geral</div>
-            <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.comentariosReg}</div>
-          </div>` : ''}
-
-          <!-- Observações -->
-          ${r.obs ? `<div style="padding:0.85rem 1.25rem;background:#FEF3C7;border-bottom:1px solid #FCD34D;border-left:4px solid #92400E;">
-            <div style="font-size:0.75rem;font-weight:800;color:#92400E;text-transform:uppercase;margin-bottom:0.5rem;">📝 Observações</div>
-            <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.obs}</div>
-          </div>` : ''}
-
-          <!-- Timeline -->
-          <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
-
-          <!-- Mapa de Deslocamento -->
-          <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;'>
-            <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
-            <div id='reu_map_${r.id}' style='height:280px;border-radius:8px;overflow:hidden;border:1.5px solid #BFDBFE;'></div>
+        <!-- Métricas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid #E5E7EB;background:white;">
+          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1E3A5F;">${totalOcorrencias}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Ocorrências</div>
           </div>
-
-          <!-- Ocorrências -->
-          <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
-            <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;display:flex;align-items:center;justify-content:space-between;">
-              <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
-            </div>
-            <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
-              <thead>
-                <tr style="background:#F8FAFF;">
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
-                    <select id="reu-status-filter-${r.id}"
-                      onchange="filterReuniaoStatus('${r.id}')"
-                      style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:800;border:1.5px solid #E0E7FF;border-radius:6px;padding:2px 6px;background:white;color:#374151;cursor:pointer;outline:none;">
-                      <option value="todos">Status ▾</option>
-                      <option value="todos">Todos</option>
-                      <option value="fora">⚠️ Fora do Tempo</option>
-                      <option value="dentro">✅ Dentro do Tempo</option>
-                    </select>
-                  </th>
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
-                </tr>
-              </thead>
-              <tbody id="reu-tbody-${r.id}">${ocRows('todos')}${logoffRow}</tbody>
-            </table>
+          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#DC2626;">${foraDoTempo}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Fora do tempo</div>
           </div>
-        </div>`;
+          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#10B981;">${dentroDotempo}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Dentro do tempo</div>
+          </div>
+          <div style="padding:1rem;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1E4DA1;">${pad(totalH)}h${pad(totalM)}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Tempo total</div>
+          </div>
+        </div>
+      `;
 
       listEl.appendChild(card);
 
@@ -9808,150 +9685,6 @@ entryLines.join('\n\n') + '\n' +
 
   function getAcaoKey(recordId, e) {
     return `${recordId}_${e.hinicio || ''}_${e.catKey}`;
-  }
-
-  // ── TELA RESUMIDA (CARDS) ──
-
-  function renderDashCards() {
-    const records = loadDB();
-    const container = document.getElementById('dashCardsContainer');
-    if (!container) return;
-
-    // Filtros
-    const dataIni = document.getElementById('cardsFilterDataIni')?.value || '';
-    const dataFim = document.getElementById('cardsFilterDataFim')?.value || '';
-
-    let filtered = records;
-    if (dataIni) filtered = filtered.filter(r => r.data >= dataIni);
-    if (dataFim) filtered = filtered.filter(r => r.data <= dataFim);
-
-    filtered.sort((a, b) => b.data.localeCompare(a.data));
-
-    container.innerHTML = '';
-    
-    if (!filtered.length) {
-      container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:#9CA3AF;"><div style="font-size:2rem;margin-bottom:1rem;">📭</div><div>Nenhum registro encontrado</div></div>';
-      return;
-    }
-
-    filtered.forEach(r => {
-      const [ry,rm,rd] = r.data.split('-');
-      const dataBR = rd+'/'+rm+'/'+ry;
-      
-      // Contar ocorrências
-      const totalOcorrencias = r.entries.length;
-      const foraDoTempo = r.entries.filter(e => entryNeedsJustificativa(e)).length;
-      const dentroDotempo = totalOcorrencias - foraDoTempo;
-      const totalMin = r.totalMin || 0;
-      const h = Math.floor(totalMin/60);
-      const m = totalMin % 60;
-      const tempoTotal = `${String(h).padStart(2,'0')}h${String(m).padStart(2,'0')}min`;
-
-      const card = document.createElement('div');
-      card.style.cssText = 'background:white;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);';
-      card.innerHTML = `
-        <!-- Card Header -->
-        <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:1rem;display:flex;align-items:center;gap:1rem;">
-          <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">👷</div>
-          <div style="flex:1;">
-            <div style="font-weight:800;font-size:0.95rem;">${r.equipe}</div>
-            <div style="font-size:0.75rem;color:rgba(255,255,255,0.8);">Turno ${r.turno} · ${dataBR}</div>
-            ${r.jornadaEntrada ? `<div style="font-size:0.7rem;color:#93C5FD;">Jornada: ${r.jornadaEntrada} às ${r.jornadaSaida||'—'}</div>` : ''}
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:800;font-size:1.1rem;">${tempoTotal}</div>
-            <div style="font-size:0.65rem;color:rgba(255,255,255,0.8);">total</div>
-          </div>
-        </div>
-
-        <!-- Métricas Mini Cards -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid #E5E7EB;">
-          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:#1E3A5F;">${totalOcorrencias}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.3rem;">Ocorrências</div>
-          </div>
-          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:#DC2626;">${foraDoTempo}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.3rem;">Fora do tempo</div>
-          </div>
-          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:#10B981;">${dentroDotempo}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.3rem;">Dentro do tempo</div>
-          </div>
-          <div style="padding:1rem;text-align:center;">
-            <div style="font-size:1.4rem;font-weight:800;color:#1E4DA1;">${tempoTotal}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.3rem;">Tempo total</div>
-          </div>
-        </div>
-
-        <!-- Botão Visualizar -->
-        <div style="padding:1rem;text-align:center;background:#F9FAFB;">
-          <button onclick="expandCardModal('${r.id}')" style="padding:0.75rem 1.5rem;background:#1E4DA1;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;font-size:0.9rem;transition:all 0.2s;" onmouseover="this.style.background='#2D5FB5'" onmouseout="this.style.background='#1E4DA1'">👁️ Visualizar</button>
-        </div>
-      `;
-      
-      container.appendChild(card);
-    });
-  }
-
-  function expandCardModal(recordId) {
-    const record = loadDB().find(r => r.id === recordId);
-    if (!record) return;
-
-    const [ry,rm,rd] = record.data.split('-');
-    const dataBR = rd+'/'+rm+'/'+ry;
-
-    // Preencher header do modal
-    document.getElementById('modalEquipeNome').textContent = `👷 Equipe: ${record.equipe} | Turno: ${record.turno} | Data: ${dataBR}`;
-    document.getElementById('modalEquipeDetalhes').textContent = `Jornada: ${record.jornadaEntrada || '—'} às ${record.jornadaSaida || '—'} · ${record.totalMin ? (Math.floor(record.totalMin/60)+'h'+(record.totalMin%60).toString().padStart(2,'0')+'min') : '—'} total`;
-
-    // Timeline
-    const timelineHtml = record.entries.map((e, i) => `
-      <div style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;min-width:80px;">
-        <div style="width:12px;height:12px;border-radius:50%;background:#1E3A5F;border:3px solid white;box-shadow:0 0 0 2px #1E3A5F;"></div>
-        <span style="font-size:0.7rem;font-weight:600;color:#374151;text-align:center;">${e.hinicio || '—'}</span>
-      </div>
-    `).join('');
-    document.getElementById('modalTimeline').innerHTML = timelineHtml || '—';
-
-    // Ocorrências
-    const ocorrenciasHtml = `
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="background:#1E3A5F;color:white;">
-            <th style="padding:0.75rem;text-align:left;font-size:0.8rem;font-weight:800;">Categoria</th>
-            <th style="padding:0.75rem;text-align:left;font-size:0.8rem;font-weight:800;">Causa</th>
-            <th style="padding:0.75rem;text-align:center;font-size:0.8rem;font-weight:800;">Tempo</th>
-            <th style="padding:0.75rem;text-align:center;font-size:0.8rem;font-weight:800;">Status</th>
-            <th style="padding:0.75rem;text-align:left;font-size:0.8rem;font-weight:800;">Justificativa</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${record.entries.map(e => {
-            const cat = categorias[e.catKey] || {};
-            const desvio = entryNeedsJustificativa(e);
-            const statusBadge = desvio ? '<span style="background:#FEE2E2;color:#991B1B;padding:0.25rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:700;">⚠️ Fora do Tempo</span>' : '<span style="background:#D1FAE5;color:#065F46;padding:0.25rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:700;">✅ Dentro</span>';
-            return `
-              <tr style="border-bottom:1px solid #E5E7EB;">
-                <td style="padding:0.75rem;font-size:0.85rem;font-weight:600;">${cat.icon||''} ${cat.nome||e.catKey}</td>
-                <td style="padding:0.75rem;font-size:0.85rem;">${e.causas?.join(', ') || e.obs || '—'}</td>
-                <td style="padding:0.75rem;text-align:center;font-size:0.85rem;font-weight:600;">${String(Math.floor(e.mins/60)).padStart(2,'0')}:${String(e.mins%60).padStart(2,'0')}</td>
-                <td style="padding:0.75rem;text-align:center;">${statusBadge}</td>
-                <td style="padding:0.75rem;font-size:0.85rem;">${e.justificativa || '—'}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    `;
-    document.getElementById('modalOcorrencias').innerHTML = ocorrenciasHtml;
-
-    // Mostrar modal
-    document.getElementById('cardExpandedModal').style.display = 'block';
-  }
-
-  function closeCardModal() {
-    document.getElementById('cardExpandedModal').style.display = 'none';
   }
 
   function renderAcaoTab() {
