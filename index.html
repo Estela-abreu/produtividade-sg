@@ -8623,6 +8623,13 @@ entryLines.join('\n\n') + '\n' +
       contentEl.style.display = 'block';
       iconEl.textContent = '▼';
       iconEl.style.transform = 'rotate(0deg)';
+      
+      // Redimensionar mapa após expandir
+      setTimeout(() => {
+        if (_leafletMaps && _leafletMaps[`reu_map_${recordId}`]) {
+          _leafletMaps[`reu_map_${recordId}`].invalidateSize();
+        }
+      }, 100);
     } else {
       // Colapsar
       contentEl.style.display = 'none';
@@ -8739,7 +8746,7 @@ entryLines.join('\n\n') + '\n' +
       const dentroDotempo = totalOcorrencias - foraDoTempo;
 
       const card = document.createElement('div');
-      card.style.cssText = 'background:white;border-radius:10px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:1rem;';
+      card.style.cssText = 'background:white;border-radius:10px;border:1px solid #E5E7EB;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:1rem;';
       card.innerHTML = `
         <!-- Card Header - CLICÁVEL -->
         <div onclick="toggleExpandCard('${r.id}')" style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:1rem;display:flex;align-items:center;gap:1rem;cursor:pointer;user-select:none;transition:background 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#2D4A73,#2D5FB5)'" onmouseout="this.style.background='linear-gradient(135deg,#1E3A5F,#1E4DA1)'">
@@ -8795,10 +8802,9 @@ entryLines.join('\n\n') + '\n' +
           <!-- Timeline -->
           <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
 
-          <!-- Mapa de Deslocamento -->
-          <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;'>
+          <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;overflow:visible;'>
             <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
-            <div id='reu_map_${r.id}' style='height:280px;border-radius:8px;overflow:hidden;border:1.5px solid #BFDBFE;'></div>
+            <div id='reu_map_${r.id}' style='height:450px;border-radius:8px;border:1.5px solid #BFDBFE;'></div>
           </div>
 
           <!-- Ocorrências -->
