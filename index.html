@@ -8887,21 +8887,6 @@ entryLines.join('\n\n') + '\n' +
     const now     = Date.now();
     const PRAZO_DIAS = 2; // Prazo máximo de resposta em dias
 
-    // ── RESETAR TODOS OS FILTROS NA PRIMEIRA RENDERIZAÇÃO ──
-    const dashFilters = ['dash-f-equipe', 'dash-f-turno', 'dash-f-resp-oc', 'dash-f-resp-ac', 'dash-f-status', 'dash-f-data-ini', 'dash-f-data-fim', 'dash-busca'];
-    dashFilters.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        if (el.type === 'date') {
-          el.value = '';
-        } else if (el.tagName === 'SELECT') {
-          el.value = ''; // Reset select to first option (Todos)
-        } else {
-          el.value = ''; // Reset text input
-        }
-      }
-    });
-
     // Populate resp ação filter
     const respSel = document.getElementById('dash-f-resp-ac');
     if (respSel) {
