@@ -8919,7 +8919,7 @@ entryLines.join('\n\n') + '\n' +
       const tlEl = buildTimelineEl(r);
       if (tlEl) tlDiv.appendChild(tlEl);
 
-      const tableBody = card.querySelector(`#reu-table-${r.id}`);
+      const tableBody = card.querySelector(`#reu-tbody-${r.id}`);
       r.entries.forEach((e, idx) => {
         const cat = categorias[e.catKey] || {};
         const mins = e.mins || 0;
