@@ -5943,105 +5943,172 @@ if (!loggedInUser) {
     const endMin   = saida ? toMins(saida) : startMin + (r.totalMin || 480);
     const totalSpan = Math.max(endMin - startMin, 1);
 
-    const segments = [];
-    let cursor = startMin;
+    // Calcular tempos por categoria
+    const catTimes = {};
+    let totalRegistrado = 0;
     r.entries.forEach(e => {
-      const color = catColors[e.catKey] || '#888';
-      const cat   = categorias[e.catKey];
-      const mins  = e.mins || 0;
-      let segStart, segEnd;
-      if ((e.catKey === 'incidencia' || e.catKey === 'deslocamento' || e.catKey === 'plataforma' || e.catKey === 'reparo' || e.catKey === 'ocioso' || e.catKey === 'intervalo') && e.hinicio && e.hfim) {
-        segStart = toMins(e.hinicio);
-        segEnd   = toMins(e.hfim);
-        if (segEnd <= segStart) segEnd += 24*60;
-      } else {
-        segStart = cursor;
-        segEnd   = cursor + mins;
-      }
-      cursor = segEnd;
-      segments.push({ e, cat, color, segStart, segEnd, mins });
+      if (!catTimes[e.catKey]) catTimes[e.catKey] = 0;
+      catTimes[e.catKey] += e.mins || 0;
+      totalRegistrado += e.mins || 0;
     });
 
     const wrap = document.createElement('div');
+    wrap.style.cssText = 'padding:0;';
 
-    const track = document.createElement('div');
-    track.className = 'timeline-track';
+    // ── TÍTULO ──
+    const title = document.createElement('div');
+    title.style.cssText = 'background:#1E3A5F;color:white;padding:0.5rem 1rem;border-radius:6px;font-weight:800;font-size:0.75rem;margin-bottom:1rem;display:inline-block;';
+    title.textContent = '🕐 LINHA DO TEMPO - ÍCONES COM DURAÇÃO';
+    wrap.appendChild(title);
 
-    const firstHour = Math.ceil(startMin / 60);
-    const lastHour  = Math.floor(endMin / 60);
-    for (let hh = firstHour; hh <= lastHour; hh++) {
-      const pct = ((hh * 60 - startMin) / totalSpan * 100).toFixed(2);
-      if (pct <= 0 || pct >= 100) continue;
-      const tick = document.createElement('div');
-      tick.style.cssText = `position:absolute;left:${pct}%;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.1);z-index:0;pointer-events:none;`;
-      track.appendChild(tick);
-    }
+    // ── JORNADA INFO ──
+    const jornadaInfo = document.createElement('div');
+    jornadaInfo.style.cssText = 'margin-bottom:1rem;font-size:0.85rem;color:#065F46;font-weight:700;';
+    const h = Math.floor(totalSpan/60), m = totalSpan%60;
+    jornadaInfo.textContent = `Jornada: ${entrada} às ${saida||'—'} (${pad(h)}h${pad(m)}min)`;
+    wrap.appendChild(jornadaInfo);
 
-    segments.forEach(s => {
-      if (s.segEnd <= startMin || s.segStart >= endMin) return;
-      const left  = Math.max(0, (s.segStart - startMin) / totalSpan * 100);
-      const width = Math.min(100 - left, (s.segEnd - s.segStart) / totalSpan * 100);
-      if (width < 0.3) return;
-      const bar = document.createElement('div');
-      bar.className = 'timeline-bar';
-      bar.style.cssText = `left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${s.color};`;
-      const h = Math.floor(s.mins/60), m = s.mins%60;
-      const timeStr = pad(h)+'h'+pad(m);
-      const startLabel = Math.floor(s.segStart/60)+':'+(s.segStart%60).toString().padStart(2,'0');
-      const endLabel   = Math.floor(s.segEnd/60)+':'+(s.segEnd%60).toString().padStart(2,'0');
-      bar.innerHTML = `
-        <div class="timeline-bar-label">${width > 8 ? s.cat.icon+' '+s.cat.nome : s.cat.icon}</div>
-        <div class="timeline-tooltip">${s.cat.icon} ${s.cat.nome}<br>${startLabel} → ${endLabel} · ${timeStr}</div>`;
-      track.appendChild(bar);
+    // ── ÍCONES COM DURAÇÃO ──
+    const iconsContainer = document.createElement('div');
+    iconsContainer.style.cssText = 'display:flex;gap:2rem;align-items:flex-end;margin-bottom:2rem;justify-content:flex-start;flex-wrap:wrap;';
+
+    // Início
+    const startIcon = document.createElement('div');
+    startIcon.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;';
+    startIcon.innerHTML = `
+      <div style="width:40px;height:40px;border:2px solid #065F46;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#065F46;font-weight:800;">▶</div>
+      <div style="font-size:0.7rem;color:#065F46;font-weight:700;">${entrada}</div>
+      <div style="font-size:0.75rem;color:#6B7280;">Início</div>
+    `;
+    iconsContainer.appendChild(startIcon);
+
+    // Eventos
+    r.entries.forEach((e, idx) => {
+      const cat = categorias[e.catKey] || {};
+      const color = catColors[e.catKey] || '#888';
+      const mins = e.mins || 0;
+      const eventH = Math.floor(mins/60), eventM = mins%60;
+
+      const eventIcon = document.createElement('div');
+      eventIcon.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;';
+      eventIcon.innerHTML = `
+        <div style="font-size:0.75rem;font-weight:800;color:${color};">${pad(eventH)}h${pad(eventM)}</div>
+        <div style="width:40px;height:40px;border:2px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:${color};">${cat.icon||'•'}</div>
+        <div style="font-size:0.65rem;color:#6B7280;text-align:center;max-width:60px;">${cat.nome||e.catKey}</div>
+      `;
+      iconsContainer.appendChild(eventIcon);
     });
 
-    if (!segments.length) {
-      track.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;color:var(--gray-400);">Sem ocorrências posicionadas</div>';
-    }
+    // Fim
+    const endIcon = document.createElement('div');
+    endIcon.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;';
+    endIcon.innerHTML = `
+      <div style="width:40px;height:40px;border:2px solid #065F46;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#065F46;font-weight:800;">■</div>
+      <div style="font-size:0.7rem;color:#065F46;font-weight:700;">${saida||'—'}</div>
+      <div style="font-size:0.75rem;color:#6B7280;">Fim</div>
+    `;
+    iconsContainer.appendChild(endIcon);
 
-    const labelsWrap = document.createElement('div');
-    labelsWrap.style.cssText = 'position:relative;margin-top:0.4rem;height:18px;overflow:visible;';
+    wrap.appendChild(iconsContainer);
 
-    const allMarks = [];
-    allMarks.push({ min: startMin, label: entrada, isEdge: true });
-    const step = 30;
-    const firstMark = Math.ceil(startMin / step) * step;
-    for (let min = firstMark; min <= endMin; min += step) {
-      if (min === startMin || min === endMin) continue;
-      const h = Math.floor(min / 60), m = min % 60;
-      allMarks.push({ min, label: h.toString().padStart(2,'0')+':'+m.toString().padStart(2,'0'), isEdge: false, isHour: m===0 });
-    }
-    if (saida && toMins(saida) !== startMin) allMarks.push({ min: endMin, label: saida, isEdge: true });
+    // ── TIMELINE VISUAL ──
+    const timelineContainer = document.createElement('div');
+    timelineContainer.style.cssText = 'position:relative;height:80px;margin:2rem 0;';
 
-    allMarks.forEach(mark => {
-      const pct = ((mark.min - startMin) / totalSpan * 100);
-      const el = document.createElement('div');
-      const isStart = mark.min === startMin;
-      const isEnd   = mark.min === endMin && saida;
-      el.style.cssText = `position:absolute;` +
-        (isStart ? 'left:0;transform:none;' : isEnd ? 'right:0;transform:none;' : `left:${pct.toFixed(2)}%;transform:translateX(-50%);`) +
-        `font-size:0.62rem;font-weight:${mark.isEdge||mark.isHour?'800':'500'};` +
-        `color:${mark.isEdge?'var(--green-dark)':mark.isHour?'var(--gray-700)':'var(--gray-400)'};` +
-        `white-space:nowrap;top:0;line-height:18px;`;
-      el.textContent = mark.label;
-      labelsWrap.appendChild(el);
+    // Linha principal
+    const line = document.createElement('div');
+    line.style.cssText = 'position:absolute;top:20px;left:0;right:0;height:2px;background:#D1D5DB;z-index:0;';
+    timelineContainer.appendChild(line);
+
+    // Pontos
+    const pointsContainer = document.createElement('div');
+    pointsContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:space-between;z-index:1;';
+
+    // Ponto de início
+    const startPoint = document.createElement('div');
+    startPoint.style.cssText = 'width:24px;height:24px;background:#065F46;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px #065F46;flex-shrink:0;';
+    pointsContainer.appendChild(startPoint);
+
+    // Pontos intermediários
+    r.entries.forEach(e => {
+      const point = document.createElement('div');
+      const color = catColors[e.catKey] || '#888';
+      point.style.cssText = `width:16px;height:16px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 0 0 1px ${color};flex-shrink:0;`;
+      pointsContainer.appendChild(point);
     });
 
+    // Ponto de fim
+    const endPoint = document.createElement('div');
+    endPoint.style.cssText = 'width:24px;height:24px;background:#065F46;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px #065F46;flex-shrink:0;';
+    pointsContainer.appendChild(endPoint);
+
+    timelineContainer.appendChild(pointsContainer);
+    wrap.appendChild(timelineContainer);
+
+    // ── HORÁRIOS ABAIXO ──
+    const horariosContainer = document.createElement('div');
+    horariosContainer.style.cssText = 'display:flex;justify-content:space-between;font-size:0.7rem;color:#6B7280;font-weight:600;margin-bottom:1.5rem;';
+
+    // Início
+    const startHora = document.createElement('div');
+    startHora.textContent = entrada;
+    horariosContainer.appendChild(startHora);
+
+    // Intermediários
+    r.entries.forEach(e => {
+      const hora = document.createElement('div');
+      hora.textContent = e.hinicio || '—';
+      hora.style.cssText = 'text-align:center;';
+      horariosContainer.appendChild(hora);
+    });
+
+    // Fim
+    const endHora = document.createElement('div');
+    endHora.textContent = saida || '—';
+    endHora.style.cssText = 'text-align:right;';
+    horariosContainer.appendChild(endHora);
+
+    wrap.appendChild(horariosContainer);
+
+    // ── LEGENDA ──
     const legend = document.createElement('div');
-    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;';
+    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;padding:1rem;background:#F9FAFB;border-radius:8px;';
+
     const seen = new Set();
-    segments.forEach(s => {
-      if (seen.has(s.e.catKey)) return;
-      seen.add(s.e.catKey);
-      const chip = document.createElement('span');
-      chip.style.cssText = `font-size:0.68rem;font-weight:700;background:${s.color}22;border:1px solid ${s.color};color:${s.color};padding:2px 8px;border-radius:99px;`;
-      chip.textContent = s.cat.icon+' '+s.cat.nome;
+    r.entries.forEach(e => {
+      if (seen.has(e.catKey)) return;
+      seen.add(e.catKey);
+      const cat = categorias[e.catKey] || {};
+      const color = catColors[e.catKey] || '#888';
+      const chip = document.createElement('div');
+      chip.style.cssText = `font-size:0.75rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;color:${color};`;
+      chip.innerHTML = `<span style="font-size:1rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}`;
       legend.appendChild(chip);
     });
+    wrap.appendChild(legend);
 
-    wrap.appendChild(track);
-    wrap.appendChild(labelsWrap);
-    if (seen.size > 1) wrap.appendChild(legend);
+    // ── RESUMO DE TEMPOS ──
+    const summary = document.createElement('div');
+    summary.style.cssText = 'display:flex;gap:2rem;flex-wrap:wrap;font-size:0.85rem;color:#374151;padding:1rem;background:#F3F4F6;border-radius:8px;border-left:4px solid #1E3A5F;';
+
+    const totalJornada = document.createElement('div');
+    const jornadaH = Math.floor(totalSpan/60), jornadaM = totalSpan%60;
+    totalJornada.innerHTML = `<strong>⏱️ Total da jornada:</strong> ${pad(jornadaH)}h${pad(jornadaM)}min`;
+    summary.appendChild(totalJornada);
+
+    const tempoReg = document.createElement('div');
+    const regH = Math.floor(totalRegistrado/60), regM = totalRegistrado%60;
+    tempoReg.innerHTML = `<strong>Tempo registrado:</strong> ${pad(regH)}h${pad(regM)}min`;
+    summary.appendChild(tempoReg);
+
+    const tempoSemEv = totalSpan - totalRegistrado;
+    const semH = Math.floor(tempoSemEv/60), semM = tempoSemEv%60;
+    const tempoSem = document.createElement('div');
+    tempoSem.innerHTML = `<strong>Tempo sem eventos:</strong> ${pad(semH)}h${pad(semM)}min`;
+    summary.appendChild(tempoSem);
+
+    wrap.appendChild(summary);
+
     return wrap;
   }
 
