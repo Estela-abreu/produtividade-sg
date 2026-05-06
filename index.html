@@ -8908,7 +8908,7 @@ entryLines.join('\n\n') + '\n' +
                   </th>
                 </tr>
               </thead>
-              <tbody id="reu-table-${r.id}"></tbody>
+              <tbody id="reu-tbody-${r.id}"></tbody>
             </table>
           </div>
         </div>
@@ -8928,7 +8928,7 @@ entryLines.join('\n\n') + '\n' +
         
         const tr = document.createElement('tr');
         tr.className = `reu-row-${r.id} ${needsJust ? 'reu-fora' : 'reu-dentro'}`;
-        tr.style.cssText = `background:${idx%2===0 ? 'white' : '#F9FAFB'};${needsJust ? 'display:none;' : ''}`;
+        tr.style.cssText = `background:${idx%2===0 ? 'white' : '#F9FAFB'};`;
         tr.innerHTML = `
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">
             <span style="display:inline-flex;align-items:center;gap:0.4rem;"><span style="font-size:0.9rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}</span>
