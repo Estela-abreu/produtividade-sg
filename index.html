@@ -5950,19 +5950,26 @@ if (!loggedInUser) {
 
     // Calcular tempos
     let totalRegistrado = 0;
-    r.entries.forEach(e => { totalRegistrado += e.mins || 0; });
+    let tempoForaDoTempo = 0;
+    r.entries.forEach(e => { 
+      totalRegistrado += e.mins || 0;
+      if (entryNeedsJustificativa(e)) tempoForaDoTempo += e.mins || 0;
+    });
     const tempoSemEv = totalSpan - totalRegistrado;
+    const tempoNormalizado = totalRegistrado - tempoForaDoTempo;
+    const pctDentro = totalRegistrado > 0 ? Math.round((tempoNormalizado/totalRegistrado)*100) : 0;
+    const pctFora = totalRegistrado > 0 ? Math.round((tempoForaDoTempo/totalRegistrado)*100) : 0;
 
     const wrap = document.createElement('div');
     wrap.style.cssText = 'padding:0;background:white;';
 
     // ── HEADER ──
     const header = document.createElement('div');
-    header.style.cssText = 'display:flex;gap:2rem;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;';
+    header.style.cssText = 'display:flex;gap:1.5rem;align-items:center;margin-bottom:2rem;flex-wrap:wrap;';
 
     const titleLabel = document.createElement('div');
-    titleLabel.style.cssText = 'font-size:0.75rem;color:#6B7280;font-weight:700;display:flex;align-items:center;gap:0.5rem;';
-    titleLabel.innerHTML = `<span style="color:#9CA3AF;">⏱️</span> LINHA DO TEMPO DA JORNADA`;
+    titleLabel.style.cssText = 'font-size:0.75rem;color:#1E3A5F;font-weight:800;display:flex;align-items:center;gap:0.5rem;';
+    titleLabel.innerHTML = `<span style="color:#6B7280;">⏱️</span> LINHA DO TEMPO DA JORNADA`;
     header.appendChild(titleLabel);
 
     const title = document.createElement('div');
@@ -5971,167 +5978,157 @@ if (!loggedInUser) {
     header.appendChild(title);
 
     const jornadaInfo = document.createElement('div');
-    jornadaInfo.style.cssText = 'font-size:0.85rem;color:#065F46;font-weight:700;';
+    jornadaInfo.style.cssText = 'font-size:0.85rem;color:#065F46;font-weight:700;background:#D1FAE5;padding:0.4rem 0.8rem;border-radius:6px;';
     const h = Math.floor(totalSpan/60), m = totalSpan%60;
     jornadaInfo.textContent = `Jornada: ${entrada} às ${saida||'—'} (${pad(h)}h${pad(m)}min)`;
     header.appendChild(jornadaInfo);
     wrap.appendChild(header);
 
-    // ── CONTAINER PRINCIPAL COM POSICIONAMENTO ──
-    const mainContainer = document.createElement('div');
-    mainContainer.style.cssText = 'position:relative;margin-bottom:2rem;';
-
     // ── ÍCONES POSICIONADOS ──
     const iconsContainer = document.createElement('div');
-    iconsContainer.style.cssText = 'position:relative;height:140px;margin-bottom:1rem;';
+    iconsContainer.style.cssText = 'position:relative;height:120px;margin-bottom:2rem;padding:0 40px;';
 
-    // Início (▶)
-    const startPct = 0;
+    // Início
     const startIcon = document.createElement('div');
-    startIcon.style.cssText = `position:absolute;left:${startPct}%;transform:translateX(-50%);text-align:center;`;
+    startIcon.style.cssText = `position:absolute;left:0;top:0;text-align:center;transform:translateX(-50%);`;
     startIcon.innerHTML = `
-      <div style="font-size:1.2rem;margin-bottom:0.2rem;">▶</div>
+      <div style="font-size:1.3rem;margin-bottom:0.2rem;">▶</div>
       <div style="font-size:0.65rem;color:#065F46;font-weight:700;">${entrada}</div>
-      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.1rem;">Tempo de Plataforma</div>
+      <div style="font-size:0.6rem;color:#6B7280;">Início da Jornada</div>
     `;
     iconsContainer.appendChild(startIcon);
 
-    // Eventos posicionados
-    r.entries.forEach((e, idx) => {
+    // Eventos
+    r.entries.forEach(e => {
       const cat = categorias[e.catKey] || {};
       const color = catColors[e.catKey] || '#888';
-      
-      // Calcular posição baseado no horário
       const eventStart = toMins(e.hinicio || entrada);
-      const eventEnd = toMins(e.hfim || entrada);
       const posMin = eventStart - startMin;
       const posPct = (posMin / totalSpan) * 100;
       
       const mins = e.mins || 0;
       const eventH = Math.floor(mins/60), eventM = mins%60;
+      const needsJust = entryNeedsJustificativa(e);
 
       const eventIcon = document.createElement('div');
-      eventIcon.style.cssText = `position:absolute;left:${posPct}%;transform:translateX(-50%);text-align:center;`;
+      eventIcon.style.cssText = `position:absolute;left:${posPct}%;top:0;text-align:center;transform:translateX(-50%);`;
       eventIcon.innerHTML = `
-        <div style="width:50px;height:50px;border:2px solid ${color};border-radius:50%;margin:0 auto 0.3rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:${color};background:white;">${cat.icon||'•'}</div>
-        <div style="font-size:0.7rem;font-weight:700;color:${color};background:${color}11;padding:0.2rem 0.5rem;border-radius:3px;border:1px solid ${color};width:fit-content;margin:0 auto 0.2rem;white-space:nowrap;">${pad(eventH)}h${pad(eventM)}</div>
+        <div style="width:48px;height:48px;border:2.5px solid ${color};border-radius:50%;margin:0 auto 0.3rem;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:${color};background:white;font-weight:800;">${cat.icon||'•'}</div>
+        <div style="font-size:0.7rem;font-weight:700;color:${color};background:${color}15;padding:0.2rem 0.5rem;border-radius:3px;border:1px solid ${color};width:fit-content;margin:0 auto 0.2rem;white-space:nowrap;font-weight:800;">${pad(eventH)}h${pad(eventM)}</div>
         <div style="font-size:0.65rem;color:#374151;font-weight:600;white-space:nowrap;">${e.hinicio||'—'} - ${e.hfim||'—'}</div>
         <div style="font-size:0.6rem;color:#6B7280;">${cat.nome||e.catKey}</div>
+        ${needsJust ? '<div style="font-size:0.55rem;color:#DC2626;font-weight:700;margin-top:0.2rem;">⚠️ Fora do tempo</div>' : '<div style="font-size:0.55rem;color:#10B981;font-weight:700;margin-top:0.2rem;">✓ Dentro</div>'}
       `;
       iconsContainer.appendChild(eventIcon);
     });
 
-    // Fim (■)
-    const endPct = 100;
+    // Fim
     const endIcon = document.createElement('div');
-    endIcon.style.cssText = `position:absolute;left:${endPct}%;transform:translateX(-50%);text-align:center;`;
+    endIcon.style.cssText = `position:absolute;right:0;top:0;text-align:center;transform:translateX(50%);`;
     endIcon.innerHTML = `
-      <div style="font-size:1.2rem;margin-bottom:0.2rem;">■</div>
+      <div style="font-size:1.3rem;margin-bottom:0.2rem;">■</div>
       <div style="font-size:0.65rem;color:#065F46;font-weight:700;">${saida||'—'}</div>
-      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.1rem;">Retorno</div>
+      <div style="font-size:0.6rem;color:#6B7280;">Fim da Jornada</div>
     `;
     iconsContainer.appendChild(endIcon);
+    wrap.appendChild(iconsContainer);
 
-    mainContainer.appendChild(iconsContainer);
+    // ── EVENTOS DA JORNADA (BARRAS) ──
+    const eventsSection = document.createElement('div');
+    eventsSection.style.cssText = 'margin-bottom:2rem;background:#F9FAFB;border-radius:8px;padding:1rem;';
 
-    // ── LINHA COM PONTOS ──
-    const lineContainer = document.createElement('div');
-    lineContainer.style.cssText = 'position:relative;height:60px;margin-bottom:1rem;';
+    const eventsTitle = document.createElement('div');
+    eventsTitle.style.cssText = 'font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;';
+    eventsTitle.innerHTML = `<span style="font-size:1.1rem;">📋</span> Eventos da Jornada`;
+    eventsSection.appendChild(eventsTitle);
 
-    // Linha tracejada
-    const dashedLine = document.createElement('div');
-    dashedLine.style.cssText = 'position:absolute;top:8px;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg, #6B7280, #6B7280 8px, white 8px, white 14px);z-index:0;';
-    lineContainer.appendChild(dashedLine);
+    const barsContainer = document.createElement('div');
+    barsContainer.style.cssText = 'position:relative;height:50px;background:white;border-radius:6px;overflow:hidden;border:1px solid #E5E7EB;';
 
-    // Linha vermelha (rota/deslocamento)
-    const redPath = document.createElement('svg');
-    redPath.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;';
-    redPath.setAttribute('viewBox', '0 0 1000 60');
-    redPath.setAttribute('preserveAspectRatio', 'none');
-    
-    let pathData = 'M 0 20 ';
     r.entries.forEach(e => {
-      if (e.catKey === 'deslocamento' || e.catKey === 'deslocamentos') {
-        const eventStart = toMins(e.hinicio || entrada);
-        const posMin = eventStart - startMin;
-        const posPct = (posMin / totalSpan) * 1000;
-        pathData += `Q ${posPct} 30 ${posPct} 40 `;
-      }
-    });
-    pathData += ' L 1000 20';
-    
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', pathData);
-    path.setAttribute('stroke', '#DC2626');
-    path.setAttribute('stroke-width', '3');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke-linecap', 'round');
-    path.setAttribute('stroke-linejoin', 'round');
-    redPath.appendChild(path);
-    lineContainer.appendChild(redPath);
-
-    // Pontos na linha
-    const pointsContainer = document.createElement('div');
-    pointsContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;z-index:2;';
-
-    // Ponto início
-    const startPt = document.createElement('div');
-    startPt.style.cssText = `position:absolute;left:0;top:5px;width:14px;height:14px;background:#065F46;border-radius:50%;transform:translateX(-50%);border:2px solid white;box-shadow:0 0 0 1px #065F46;`;
-    pointsContainer.appendChild(startPt);
-
-    // Pontos dos eventos
-    r.entries.forEach(e => {
-      const eventStart = toMins(e.hinicio || entrada);
-      const posMin = eventStart - startMin;
-      const posPct = (posMin / totalSpan) * 100;
+      const cat = categorias[e.catKey] || {};
       const color = catColors[e.catKey] || '#888';
+      const eventStart = toMins(e.hinicio || entrada);
+      const eventEnd = toMins(e.hfim || entrada);
+      const eventDuration = eventEnd - eventStart;
+      
+      const startPos = ((eventStart - startMin) / totalSpan) * 100;
+      const width = (eventDuration / totalSpan) * 100;
+      const needsJust = entryNeedsJustificativa(e);
 
-      const pt = document.createElement('div');
-      pt.style.cssText = `position:absolute;left:${posPct}%;top:8px;width:10px;height:10px;background:${color};border-radius:50%;transform:translateX(-50%);border:2px solid white;box-shadow:0 0 0 1px ${color};`;
-      pointsContainer.appendChild(pt);
+      const bar = document.createElement('div');
+      bar.style.cssText = `
+        position:absolute;
+        left:${startPos}%;
+        top:0;
+        width:${width}%;
+        height:100%;
+        background:${color};
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:0.8rem;
+        color:white;
+        font-weight:800;
+        border:2px solid ${needsJust ? '#DC2626' : '#10B981'};
+        box-sizing:border-box;
+        animation:${needsJust ? 'piscar 0.8s infinite' : 'nenhum'};
+        cursor:help;
+      `;
+      bar.innerHTML = `${cat.icon||'•'}`;
+      bar.title = `${cat.nome||e.catKey}\\n${e.hinicio||'—'} - ${e.hfim||'—'}\\n${needsJust ? '⚠️ Fora do tempo' : '✓ Dentro do tempo'}`;
+      barsContainer.appendChild(bar);
     });
 
-    // Ponto fim
-    const endPt = document.createElement('div');
-    endPt.style.cssText = `position:absolute;right:0;top:5px;width:14px;height:14px;background:#065F46;border-radius:50%;transform:translateX(50%);border:2px solid white;box-shadow:0 0 0 1px #065F46;`;
-    pointsContainer.appendChild(endPt);
+    eventsSection.appendChild(barsContainer);
+    wrap.appendChild(eventsSection);
 
-    lineContainer.appendChild(pointsContainer);
-    mainContainer.appendChild(lineContainer);
+    // ── RÉGUA DE HORÁRIO ──
+    const rulerSection = document.createElement('div');
+    rulerSection.style.cssText = 'margin-bottom:2rem;';
 
-    // ── ESCALA DE TEMPO ──
-    const scaleContainer = document.createElement('div');
-    scaleContainer.style.cssText = 'position:relative;height:40px;margin-bottom:1.5rem;border-bottom:1px solid #E5E7EB;';
+    const rulerTitle = document.createElement('div');
+    rulerTitle.style.cssText = 'font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem;';
+    rulerTitle.innerHTML = `<span style="font-size:1.1rem;">📏</span> Horário`;
+    rulerSection.appendChild(rulerTitle);
 
-    const scaleLine = document.createElement('div');
-    scaleLine.style.cssText = 'position:absolute;top:0;left:0;right:0;height:1px;background:#D1D5DB;';
-    scaleContainer.appendChild(scaleLine);
+    const ruler = document.createElement('div');
+    ruler.style.cssText = 'position:relative;height:40px;background:white;border-radius:6px;border:1px solid #E5E7EB;padding:0 40px;';
 
-    // Marcas de tempo cada 30min
-    const scaleMarks = document.createElement('div');
-    scaleMarks.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;';
+    const rulerLine = document.createElement('div');
+    rulerLine.style.cssText = 'position:absolute;top:8px;left:0;right:0;height:1px;background:#D1D5DB;';
+    ruler.appendChild(rulerLine);
+
+    const marks = document.createElement('div');
+    marks.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;';
 
     for (let min = startMin; min <= endMin; min += 30) {
       const posMin = min - startMin;
       const posPct = (posMin / totalSpan) * 100;
       const mark = document.createElement('div');
-      mark.style.cssText = `position:absolute;left:${posPct}%;top:0;transform:translateX(-50%);`;
+      mark.style.cssText = `position:absolute;left:${posPct}%;top:0;transform:translateX(-50%);text-align:center;`;
       
       const markTime = minsToTime(min);
+      const isBold = (min % 60 === 0);
+      
       mark.innerHTML = `
-        <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:1px;height:6px;background:#D1D5DB;"></div>
-        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:0.7rem;color:#6B7280;font-weight:600;white-space:nowrap;">${markTime}</div>
+        <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:1px;height:${isBold ? '8px' : '4px'};background:#D1D5DB;"></div>
+        <div style="font-size:0.7rem;color:${isBold ? '#374151' : '#9CA3AF'};margin-top:12px;font-weight:${isBold ? '700' : '500'};white-space:nowrap;">${markTime}</div>
       `;
-      scaleMarks.appendChild(mark);
+      marks.appendChild(mark);
     }
-    scaleContainer.appendChild(scaleMarks);
-    mainContainer.appendChild(scaleContainer);
-
-    wrap.appendChild(mainContainer);
+    ruler.appendChild(marks);
+    rulerSection.appendChild(ruler);
+    wrap.appendChild(rulerSection);
 
     // ── LEGENDA ──
     const legend = document.createElement('div');
-    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;';
+    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;padding:1rem;background:#F9FAFB;border-radius:8px;';
+
+    const legendTitle = document.createElement('div');
+    legendTitle.style.cssText = 'width:100%;font-size:0.8rem;font-weight:800;color:#1E3A5F;margin-bottom:0.5rem;';
+    legendTitle.textContent = 'Legenda';
+    legend.appendChild(legendTitle);
 
     const seen = new Set();
     r.entries.forEach(e => {
@@ -6141,31 +6138,55 @@ if (!loggedInUser) {
       const color = catColors[e.catKey] || '#888';
       
       const chip = document.createElement('div');
-      chip.style.cssText = `display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.8rem;background:#F9FAFB;border-radius:6px;font-size:0.75rem;font-weight:600;color:${color};border:1px solid ${color}33;`;
+      chip.style.cssText = `display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.8rem;background:white;border-radius:6px;font-size:0.75rem;font-weight:600;color:${color};border:1px solid ${color}33;`;
       chip.innerHTML = `<span style="font-size:1rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}`;
       legend.appendChild(chip);
     });
     wrap.appendChild(legend);
 
     // ── RESUMO FINAL ──
-    const summary = document.createElement('div');
-    summary.style.cssText = 'display:flex;gap:2rem;flex-wrap:wrap;font-size:0.85rem;color:#1E40AF;font-weight:600;padding:1rem;background:#EFF6FF;border-radius:8px;border-left:4px solid #1E40AF;';
+    const summarySection = document.createElement('div');
+    summarySection.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;';
 
-    const summaryItems = [
-      `⏱️ Total da jornada: ${pad(h)}h${pad(m)}min`,
-      `Tempo registrado: ${pad(Math.floor(totalRegistrado/60))}h${pad(totalRegistrado%60)}min`,
-      `Tempo sem eventos: ${pad(Math.floor(tempoSemEv/60))}h${pad(tempoSemEv%60)}min`
+    const items = [
+      { icon: '⏱️', title: 'Total da Jornada', value: `${pad(h)}h${pad(m)}min`, bg: '#F0F4FF', border: '#1E40AF' },
+      { icon: '📅', title: 'Tempo registrado', value: `${pad(Math.floor(totalRegistrado/60))}h${pad(totalRegistrado%60)}min`, bg: '#F0FFF4', border: '#065F46' },
+      { icon: '✅', title: 'Dentro do tempo', value: `${pad(Math.floor(tempoNormalizado/60))}h${pad(tempoNormalizado%60)}min (${pctDentro}%)`, bg: '#F0FFF4', border: '#10B981', icon2: '🟢' },
+      { icon: '⚠️', title: 'Fora do tempo', value: `${pad(Math.floor(tempoForaDoTempo/60))}h${pad(tempoForaDoTempo%60)}min (${pctFora}%)`, bg: '#FEF3C7', border: '#DC2626', icon2: '🔴' },
+      { icon: '⏳', title: 'Tempo sem eventos', value: `${pad(Math.floor(tempoSemEv/60))}h${pad(tempoSemEv%60)}min`, bg: '#F5F5F5', border: '#9CA3AF' }
     ];
 
-    summaryItems.forEach(item => {
-      const el = document.createElement('div');
-      el.textContent = item;
-      summary.appendChild(el);
+    items.forEach(item => {
+      const box = document.createElement('div');
+      box.style.cssText = `padding:1rem;background:${item.bg};border-left:4px solid ${item.border};border-radius:6px;`;
+      box.innerHTML = `
+        <div style="font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:0.3rem;display:flex;align-items:center;gap:0.3rem;">
+          ${item.icon2 ? '<span style="font-size:1rem;">'+item.icon2+'</span>' : ''}
+          <span>${item.icon}</span> ${item.title}
+        </div>
+        <div style="font-size:1.1rem;font-weight:800;color:#1E3A5F;">${item.value}</div>
+      `;
+      summarySection.appendChild(box);
     });
 
-    wrap.appendChild(summary);
+    wrap.appendChild(summarySection);
+
+    // ── ADICIONAR ANIMAÇÃO CSS ──
+    if (!document.getElementById('timeline-styles')) {
+      const style = document.createElement('style');
+      style.id = 'timeline-styles';
+      style.textContent = `
+        @keyframes piscar {
+          0%, 100% { border-color: #DC2626; }
+          50% { border-color: transparent; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     return wrap;
   }
+
 
   function buildTimeline(r) {
     const section = document.getElementById('rTimelineSection');
