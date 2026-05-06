@@ -5986,15 +5986,15 @@ if (!loggedInUser) {
 
     // ── ÍCONES POSICIONADOS ──
     const iconsContainer = document.createElement('div');
-    iconsContainer.style.cssText = 'position:relative;height:120px;margin-bottom:0.5rem;padding:0 40px;';
+    iconsContainer.style.cssText = 'position:relative;height:140px;margin-bottom:1rem;padding:0 40px;';
 
     // Início
     const startIcon = document.createElement('div');
     startIcon.style.cssText = `position:absolute;left:0;top:0;text-align:center;transform:translateX(-50%);`;
     startIcon.innerHTML = `
-      <div style="font-size:1.3rem;margin-bottom:0.2rem;">▶</div>
-      <div style="font-size:0.65rem;color:#065F46;font-weight:700;">${entrada}</div>
-      <div style="font-size:0.6rem;color:#6B7280;">Início da Jornada</div>
+      <div style="font-size:1.4rem;margin-bottom:0.3rem;">▶</div>
+      <div style="font-size:0.7rem;color:#065F46;font-weight:800;">${entrada}</div>
+      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.2rem;">Início</div>
     `;
     iconsContainer.appendChild(startIcon);
 
@@ -6011,13 +6011,13 @@ if (!loggedInUser) {
       const needsJust = entryNeedsJustificativa(e);
 
       const eventIcon = document.createElement('div');
-      eventIcon.style.cssText = `position:absolute;left:${posPct}%;top:0;text-align:center;transform:translateX(-50%);`;
+      eventIcon.style.cssText = `position:absolute;left:${posPct}%;top:0;text-align:center;transform:translateX(-50%);max-width:70px;`;
       eventIcon.innerHTML = `
-        <div style="width:48px;height:48px;border:2.5px solid ${color};border-radius:50%;margin:0 auto 0.3rem;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:${color};background:white;font-weight:800;">${cat.icon||'•'}</div>
-        <div style="font-size:0.7rem;font-weight:700;color:${color};background:${color}15;padding:0.2rem 0.5rem;border-radius:3px;border:1px solid ${color};width:fit-content;margin:0 auto 0.2rem;white-space:nowrap;font-weight:800;">${pad(eventH)}h${pad(eventM)}</div>
-        <div style="font-size:0.65rem;color:#374151;font-weight:600;white-space:nowrap;">${e.hinicio||'—'} - ${e.hfim||'—'}</div>
-        <div style="font-size:0.6rem;color:#6B7280;">${cat.nome||e.catKey}</div>
-        ${needsJust ? '<div style="font-size:0.55rem;color:#DC2626;font-weight:700;margin-top:0.2rem;">⚠️ Fora do tempo</div>' : '<div style="font-size:0.55rem;color:#10B981;font-weight:700;margin-top:0.2rem;">✓ Dentro</div>'}
+        <div style="width:50px;height:50px;border:2.5px solid ${color};border-radius:50%;margin:0 auto 0.4rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:${color};background:white;font-weight:800;">${cat.icon||'•'}</div>
+        <div style="font-size:0.75rem;font-weight:800;color:${color};background:${color}15;padding:0.3rem 0.5rem;border-radius:3px;border:1px solid ${color};margin:0 auto 0.3rem;white-space:nowrap;">${pad(eventH)}h${pad(eventM)}</div>
+        <div style="font-size:0.7rem;color:#374151;font-weight:700;white-space:nowrap;">${e.hinicio||'—'}</div>
+        <div style="font-size:0.65rem;color:#6B7280;margin-top:0.2rem;line-height:1.2;">${cat.nome||e.catKey}</div>
+        <div style="font-size:0.55rem;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;margin-top:0.3rem;">${needsJust ? '⚠️ Fora' : '✓ Dentro'}</div>
       `;
       iconsContainer.appendChild(eventIcon);
     });
@@ -6026,9 +6026,9 @@ if (!loggedInUser) {
     const endIcon = document.createElement('div');
     endIcon.style.cssText = `position:absolute;right:0;top:0;text-align:center;transform:translateX(50%);`;
     endIcon.innerHTML = `
-      <div style="font-size:1.3rem;margin-bottom:0.2rem;">■</div>
-      <div style="font-size:0.65rem;color:#065F46;font-weight:700;">${saida||'—'}</div>
-      <div style="font-size:0.6rem;color:#6B7280;">Fim da Jornada</div>
+      <div style="font-size:1.4rem;margin-bottom:0.3rem;">■</div>
+      <div style="font-size:0.7rem;color:#065F46;font-weight:800;">${saida||'—'}</div>
+      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.2rem;">Fim</div>
     `;
     iconsContainer.appendChild(endIcon);
     wrap.appendChild(iconsContainer);
