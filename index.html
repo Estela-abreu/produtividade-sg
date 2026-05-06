@@ -5941,138 +5941,140 @@ if (!loggedInUser) {
     const toMins = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
     const startMin = toMins(entrada);
     const endMin   = saida ? toMins(saida) : startMin + (r.totalMin || 480);
-    const totalSpan = Math.max(endMin - startMin, 1);
+    const totalSpan = endMin - startMin;
 
-    // Calcular tempos por categoria
-    const catTimes = {};
+    // Calcular tempos
     let totalRegistrado = 0;
-    r.entries.forEach(e => {
-      if (!catTimes[e.catKey]) catTimes[e.catKey] = 0;
-      catTimes[e.catKey] += e.mins || 0;
-      totalRegistrado += e.mins || 0;
-    });
+    r.entries.forEach(e => { totalRegistrado += e.mins || 0; });
+    const tempoSemEv = totalSpan - totalRegistrado;
 
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'padding:0;';
+    wrap.style.cssText = 'padding:0;background:white;';
 
-    // ── TÍTULO ──
+    // ── HEADER ──
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;gap:2rem;align-items:center;margin-bottom:2rem;flex-wrap:wrap;';
+
     const title = document.createElement('div');
-    title.style.cssText = 'background:#1E3A5F;color:white;padding:0.5rem 1rem;border-radius:6px;font-weight:800;font-size:0.75rem;margin-bottom:1rem;display:inline-block;';
+    title.style.cssText = 'background:#1E3A5F;color:white;padding:0.5rem 1rem;border-radius:6px;font-weight:800;font-size:0.75rem;white-space:nowrap;';
     title.textContent = '🕐 LINHA DO TEMPO - ÍCONES COM DURAÇÃO';
-    wrap.appendChild(title);
+    header.appendChild(title);
 
-    // ── JORNADA INFO ──
     const jornadaInfo = document.createElement('div');
-    jornadaInfo.style.cssText = 'margin-bottom:1rem;font-size:0.85rem;color:#065F46;font-weight:700;';
+    jornadaInfo.style.cssText = 'font-size:0.85rem;color:#065F46;font-weight:700;';
     const h = Math.floor(totalSpan/60), m = totalSpan%60;
     jornadaInfo.textContent = `Jornada: ${entrada} às ${saida||'—'} (${pad(h)}h${pad(m)}min)`;
-    wrap.appendChild(jornadaInfo);
+    header.appendChild(jornadaInfo);
+    wrap.appendChild(header);
 
     // ── ÍCONES COM DURAÇÃO ──
-    const iconsContainer = document.createElement('div');
-    iconsContainer.style.cssText = 'display:flex;gap:2rem;align-items:flex-end;margin-bottom:2rem;justify-content:flex-start;flex-wrap:wrap;';
+    const iconsRow = document.createElement('div');
+    iconsRow.style.cssText = 'position:relative;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:flex-end;padding:0 20px;';
 
-    // Início
-    const startIcon = document.createElement('div');
-    startIcon.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;';
-    startIcon.innerHTML = `
-      <div style="width:40px;height:40px;border:2px solid #065F46;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#065F46;font-weight:800;">▶</div>
-      <div style="font-size:0.7rem;color:#065F46;font-weight:700;">${entrada}</div>
-      <div style="font-size:0.75rem;color:#6B7280;">Início</div>
+    // Ícone INÍCIO
+    const startIconDiv = document.createElement('div');
+    startIconDiv.style.cssText = 'text-align:center;flex:0 0 auto;';
+    startIconDiv.innerHTML = `
+      <div style="font-size:1.5rem;margin-bottom:0.3rem;">▶</div>
+      <div style="font-size:0.7rem;font-weight:700;color:#065F46;">${entrada}</div>
+      <div style="font-size:0.65rem;color:#6B7280;">Início</div>
     `;
-    iconsContainer.appendChild(startIcon);
+    iconsRow.appendChild(startIconDiv);
 
-    // Eventos
-    r.entries.forEach((e, idx) => {
+    // Ícones dos eventos
+    r.entries.forEach(e => {
       const cat = categorias[e.catKey] || {};
       const color = catColors[e.catKey] || '#888';
       const mins = e.mins || 0;
       const eventH = Math.floor(mins/60), eventM = mins%60;
 
-      const eventIcon = document.createElement('div');
-      eventIcon.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;';
-      eventIcon.innerHTML = `
-        <div style="font-size:0.75rem;font-weight:800;color:${color};">${pad(eventH)}h${pad(eventM)}</div>
-        <div style="width:40px;height:40px;border:2px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:${color};">${cat.icon||'•'}</div>
-        <div style="font-size:0.65rem;color:#6B7280;text-align:center;max-width:60px;">${cat.nome||e.catKey}</div>
+      const eventDiv = document.createElement('div');
+      eventDiv.style.cssText = 'text-align:center;flex:1;';
+      eventDiv.innerHTML = `
+        <div style="background:white;border:2px solid ${color};border-radius:50%;width:60px;height:60px;margin:0 auto 0.5rem;display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:${color};">${cat.icon||'•'}</div>
+        <div style="font-size:0.75rem;font-weight:700;color:${color};background:${color}11;padding:0.3rem 0.6rem;border-radius:4px;border:1px solid ${color};margin:0 auto 0.3rem;width:fit-content;">${pad(eventH)}h${pad(eventM)}</div>
+        <div style="font-size:0.7rem;color:#374151;font-weight:600;">${e.hinicio||'—'} - ${e.hfim||'—'}</div>
+        <div style="font-size:0.65rem;color:#6B7280;">${cat.nome||e.catKey}</div>
       `;
-      iconsContainer.appendChild(eventIcon);
+      iconsRow.appendChild(eventDiv);
     });
 
-    // Fim
-    const endIcon = document.createElement('div');
-    endIcon.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;';
-    endIcon.innerHTML = `
-      <div style="width:40px;height:40px;border:2px solid #065F46;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#065F46;font-weight:800;">■</div>
-      <div style="font-size:0.7rem;color:#065F46;font-weight:700;">${saida||'—'}</div>
-      <div style="font-size:0.75rem;color:#6B7280;">Fim</div>
+    // Ícone FIM
+    const endIconDiv = document.createElement('div');
+    endIconDiv.style.cssText = 'text-align:center;flex:0 0 auto;';
+    endIconDiv.innerHTML = `
+      <div style="font-size:1.5rem;margin-bottom:0.3rem;">■</div>
+      <div style="font-size:0.7rem;font-weight:700;color:#065F46;">${saida||'—'}</div>
+      <div style="font-size:0.65rem;color:#6B7280;">Fim</div>
     `;
-    iconsContainer.appendChild(endIcon);
+    iconsRow.appendChild(endIconDiv);
+    wrap.appendChild(iconsRow);
 
-    wrap.appendChild(iconsContainer);
+    // ── LINHA CONECTANDO ──
+    const lineContainer = document.createElement('div');
+    lineContainer.style.cssText = 'position:relative;height:60px;margin:0 0 2rem 0;padding:0 20px;';
+    const dashedLine = document.createElement('div');
+    dashedLine.style.cssText = 'position:absolute;top:0;left:0;right:0;height:3px;background:repeating-linear-gradient(90deg, #6B7280, #6B7280 6px, white 6px, white 12px);z-index:0;';
+    lineContainer.appendChild(dashedLine);
 
-    // ── TIMELINE VISUAL ──
-    const timelineContainer = document.createElement('div');
-    timelineContainer.style.cssText = 'position:relative;height:80px;margin:2rem 0;';
-
-    // Linha principal
-    const line = document.createElement('div');
-    line.style.cssText = 'position:absolute;top:20px;left:0;right:0;height:2px;background:#D1D5DB;z-index:0;';
-    timelineContainer.appendChild(line);
-
-    // Pontos
+    // Pontos na linha
     const pointsContainer = document.createElement('div');
-    pointsContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:space-between;z-index:1;';
+    pointsContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;display:flex;justify-content:space-between;align-items:flex-start;';
 
-    // Ponto de início
-    const startPoint = document.createElement('div');
-    startPoint.style.cssText = 'width:24px;height:24px;background:#065F46;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px #065F46;flex-shrink:0;';
-    pointsContainer.appendChild(startPoint);
+    // Ponto início
+    const startPt = document.createElement('div');
+    startPt.style.cssText = 'width:12px;height:12px;background:#065F46;border-radius:50%;margin-top:0px;';
+    pointsContainer.appendChild(startPt);
 
     // Pontos intermediários
     r.entries.forEach(e => {
-      const point = document.createElement('div');
+      const pt = document.createElement('div');
       const color = catColors[e.catKey] || '#888';
-      point.style.cssText = `width:16px;height:16px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 0 0 1px ${color};flex-shrink:0;`;
-      pointsContainer.appendChild(point);
+      pt.style.cssText = `width:10px;height:10px;background:${color};border-radius:50%;margin-top:1px;`;
+      pointsContainer.appendChild(pt);
     });
 
-    // Ponto de fim
-    const endPoint = document.createElement('div');
-    endPoint.style.cssText = 'width:24px;height:24px;background:#065F46;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px #065F46;flex-shrink:0;';
-    pointsContainer.appendChild(endPoint);
+    // Ponto fim
+    const endPt = document.createElement('div');
+    endPt.style.cssText = 'width:12px;height:12px;background:#065F46;border-radius:50%;margin-top:0px;';
+    pointsContainer.appendChild(endPt);
 
-    timelineContainer.appendChild(pointsContainer);
-    wrap.appendChild(timelineContainer);
+    lineContainer.appendChild(pointsContainer);
+    wrap.appendChild(lineContainer);
 
-    // ── HORÁRIOS ABAIXO ──
-    const horariosContainer = document.createElement('div');
-    horariosContainer.style.cssText = 'display:flex;justify-content:space-between;font-size:0.7rem;color:#6B7280;font-weight:600;margin-bottom:1.5rem;';
+    // ── ESCALA DE TEMPO (30min em 30min) ──
+    const scaleContainer = document.createElement('div');
+    scaleContainer.style.cssText = 'position:relative;height:40px;margin-bottom:2rem;padding:0 20px;border-bottom:1px solid #E5E7EB;';
 
-    // Início
-    const startHora = document.createElement('div');
-    startHora.textContent = entrada;
-    horariosContainer.appendChild(startHora);
+    const scaleLine = document.createElement('div');
+    scaleLine.style.cssText = 'position:absolute;top:0;left:0;right:0;height:1px;background:#D1D5DB;';
+    scaleContainer.appendChild(scaleLine);
 
-    // Intermediários
-    r.entries.forEach(e => {
-      const hora = document.createElement('div');
-      hora.textContent = e.hinicio || '—';
-      hora.style.cssText = 'text-align:center;';
-      horariosContainer.appendChild(hora);
-    });
+    const scalePoints = document.createElement('div');
+    scalePoints.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;display:flex;justify-content:space-between;align-items:flex-start;';
 
-    // Fim
-    const endHora = document.createElement('div');
-    endHora.textContent = saida || '—';
-    endHora.style.cssText = 'text-align:right;';
-    horariosContainer.appendChild(endHora);
-
-    wrap.appendChild(horariosContainer);
+    // Gerar marcas a cada 30min
+    const markCount = Math.ceil(totalSpan / 30) + 1;
+    for (let i = 0; i <= markCount; i++) {
+      const mark = document.createElement('div');
+      const min = startMin + (i * 30);
+      const markH = Math.floor(min / 60);
+      const markM = min % 60;
+      const label = markH.toString().padStart(2,'0') + ':' + markM.toString().padStart(2,'0');
+      
+      mark.style.cssText = 'position:relative;flex:1;text-align:center;';
+      mark.innerHTML = `
+        <div style="position:absolute;top:0;width:1px;height:6px;background:#D1D5DB;left:50%;transform:translateX(-50%);"></div>
+        <div style="font-size:0.7rem;color:#6B7280;margin-top:12px;font-weight:600;">${label}</div>
+      `;
+      scalePoints.appendChild(mark);
+    }
+    scaleContainer.appendChild(scalePoints);
+    wrap.appendChild(scaleContainer);
 
     // ── LEGENDA ──
     const legend = document.createElement('div');
-    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;padding:1rem;background:#F9FAFB;border-radius:8px;';
+    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;';
 
     const seen = new Set();
     r.entries.forEach(e => {
@@ -6080,35 +6082,31 @@ if (!loggedInUser) {
       seen.add(e.catKey);
       const cat = categorias[e.catKey] || {};
       const color = catColors[e.catKey] || '#888';
+      
       const chip = document.createElement('div');
-      chip.style.cssText = `font-size:0.75rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;color:${color};`;
+      chip.style.cssText = `display:flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:#F9FAFB;border-radius:6px;font-size:0.8rem;font-weight:600;color:${color};`;
       chip.innerHTML = `<span style="font-size:1rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}`;
       legend.appendChild(chip);
     });
     wrap.appendChild(legend);
 
-    // ── RESUMO DE TEMPOS ──
+    // ── RESUMO FINAL ──
     const summary = document.createElement('div');
-    summary.style.cssText = 'display:flex;gap:2rem;flex-wrap:wrap;font-size:0.85rem;color:#374151;padding:1rem;background:#F3F4F6;border-radius:8px;border-left:4px solid #1E3A5F;';
+    summary.style.cssText = 'display:flex;gap:2rem;flex-wrap:wrap;font-size:0.85rem;color:#1E40AF;font-weight:600;padding:1rem;background:#EFF6FF;border-radius:8px;border-left:4px solid #1E40AF;';
 
-    const totalJornada = document.createElement('div');
-    const jornadaH = Math.floor(totalSpan/60), jornadaM = totalSpan%60;
-    totalJornada.innerHTML = `<strong>⏱️ Total da jornada:</strong> ${pad(jornadaH)}h${pad(jornadaM)}min`;
-    summary.appendChild(totalJornada);
+    const summaryItems = [
+      `⏱️ Total da jornada: ${pad(h)}h${pad(m)}min`,
+      `Tempo registrado: ${pad(Math.floor(totalRegistrado/60))}h${pad(totalRegistrado%60)}min`,
+      `Tempo sem eventos: ${pad(Math.floor(tempoSemEv/60))}h${pad(tempoSemEv%60)}min`
+    ];
 
-    const tempoReg = document.createElement('div');
-    const regH = Math.floor(totalRegistrado/60), regM = totalRegistrado%60;
-    tempoReg.innerHTML = `<strong>Tempo registrado:</strong> ${pad(regH)}h${pad(regM)}min`;
-    summary.appendChild(tempoReg);
-
-    const tempoSemEv = totalSpan - totalRegistrado;
-    const semH = Math.floor(tempoSemEv/60), semM = tempoSemEv%60;
-    const tempoSem = document.createElement('div');
-    tempoSem.innerHTML = `<strong>Tempo sem eventos:</strong> ${pad(semH)}h${pad(semM)}min`;
-    summary.appendChild(tempoSem);
+    summaryItems.forEach(item => {
+      const el = document.createElement('div');
+      el.textContent = item;
+      summary.appendChild(el);
+    });
 
     wrap.appendChild(summary);
-
     return wrap;
   }
 
