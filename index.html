@@ -8793,7 +8793,6 @@ entryLines.join('\n\n') + '\n' +
     if (!listEl) return;
     const all = loadDB();
     
-    // Apply filters
     const dataInicio = document.getElementById('reuniaoFilterDataInicio')?.value || '';
     const dataFim = document.getElementById('reuniaoFilterDataFim')?.value || '';
     const turno = document.getElementById('reuniaoFilterTurno')?.value || '';
@@ -8832,210 +8831,124 @@ entryLines.join('\n\n') + '\n' +
       const dentroDotempo = totalOcorrencias - foraDoTempo;
 
       const card = document.createElement('div');
-      card.style.cssText = 'background:white;border:1px solid #E5E7EB;border-radius:8px;margin-bottom:2rem;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);';
+      card.style.cssText = 'background:white;border-radius:10px;border:1px solid #E5E7EB;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:0.5rem;';
       card.innerHTML = `
-        <!-- CABEÇALHO COMPACTO -->
-        <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:0.85rem 1.25rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;">
-          <div>
-            <div style="font-weight:800;font-size:0.9rem;">👷 Equipe: <strong>${r.equipe}</strong> | Turno: <strong>${r.turno}</strong> | Data: <strong>${diaSem}, ${dataBR}</strong></div>
-            ${r.jornadaEntrada ? `<div style="font-size:0.75rem;color:#93C5FD;margin-top:0.3rem;">🕐 Jornada: ${r.jornadaEntrada} às ${r.jornadaSaida||'—'}</div>` : ''}
+        <div onclick="toggleExpandCard('${r.id}')" style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:1rem;display:flex;align-items:center;gap:1rem;cursor:pointer;user-select:none;transition:background 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#2D4A73,#2D5FB5)'" onmouseout="this.style.background='linear-gradient(135deg,#1E3A5F,#1E4DA1)'">
+          <div style="width:45px;height:45px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">👷</div>
+          <div style="flex:1;">
+            <div style="font-weight:800;font-size:0.95rem;display:flex;align-items:center;gap:0.75rem;">
+              <span id="icon_${r.id}" style="font-size:1.2rem;transition:transform 0.3s;">▶</span>
+              <span>Equipe: <strong>${r.equipe}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong>${r.turno}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong>${diaSem}, ${dataBR}</strong></span>
+            </div>
+            ${r.jornadaEntrada ? `<div style="font-size:0.75rem;color:#93C5FD;margin-top:0.3rem;">🕐 Jornada: <strong>${r.jornadaEntrada}</strong> às <strong>${r.jornadaSaida||'—'}</strong></div>` : ''}
           </div>
-          <div style="text-align:right;white-space:nowrap;font-weight:800;font-size:0.95rem;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</div>
-        </div>
-
-        <!-- MÉTRICAS -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid #E5E7EB;">
-          <div style="padding:0.75rem;border-right:1px solid #E5E7EB;text-align:center;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1E3A5F;">${totalOcorrencias}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.2rem;">Ocorrências</div>
-          </div>
-          <div style="padding:0.75rem;border-right:1px solid #E5E7EB;text-align:center;">
-            <div style="font-size:1.3rem;font-weight:800;color:#DC2626;">${foraDoTempo}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.2rem;">Fora do tempo</div>
-          </div>
-          <div style="padding:0.75rem;border-right:1px solid #E5E7EB;text-align:center;">
-            <div style="font-size:1.3rem;font-weight:800;color:#10B981;">${dentroDotempo}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.2rem;">Dentro do tempo</div>
-          </div>
-          <div style="padding:0.75rem;text-align:center;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1E4DA1;">${totalOcorrencias}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.2rem;">Ocorrências</div>
+          <div style="text-align:right;white-space:nowrap;">
+            <div style="font-weight:800;font-size:1rem;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</div>
           </div>
         </div>
 
-        <!-- ABAS DE NAVEGAÇÃO -->
-        <div style="display:flex;gap:0;border-bottom:1px solid #E5E7EB;background:#F9FAFB;">
-          <button onclick="switchReuTab('${r.id}','timeline')" class="reu-tab-${r.id}" data-tab="timeline" style="flex:1;padding:0.75rem;border:none;background:transparent;cursor:pointer;font-size:0.8rem;font-weight:700;color:#6B7280;border-bottom:3px solid transparent;transition:all 0.2s;" onmouseover="this.style.color='#1E3A5F'" onmouseout="this.style.color='#6B7280'">
-            🕐 LINHA DO TEMPO DA JORNADA
-          </button>
-          <button onclick="switchReuTab('${r.id}','eventos')" class="reu-tab-${r.id}" data-tab="eventos" style="flex:1;padding:0.75rem;border:none;background:transparent;cursor:pointer;font-size:0.8rem;font-weight:700;color:#6B7280;border-bottom:3px solid transparent;transition:all 0.2s;" onmouseover="this.style.color='#1E3A5F'" onmouseout="this.style.color='#6B7280'">
-            📋 EVENTOS DA JORNADA
-          </button>
-        </div>
-
-        <!-- TAB: TIMELINE -->
-        <div id="reu-timeline-${r.id}" style="display:none;padding:1.25rem;" class="reu-tab-content-${r.id}"></div>
-
-        <!-- TAB: EVENTOS -->
-        <div id="reu-eventos-${r.id}" style="display:none;padding:1.25rem;" class="reu-tab-content-${r.id}"></div>
-
-        <!-- RESUMO DA JORNADA (SEMPRE VISÍVEL) -->
-        <div style="padding:1.25rem;border-top:2px solid #E5E7EB;">
-          <div style="font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:1rem;">📊 RESUMO DA JORNADA</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;">
-            <div style="text-align:center;padding:0.75rem;background:#F0F4FF;border-radius:6px;border-left:4px solid #1E40AF;">
-              <div style="font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:0.3rem;">⏱️ Total da Jornada</div>
-              <div style="font-size:1.1rem;font-weight:800;color:#1E3A5F;">${pad(totalH)}h${pad(totalM)}min</div>
-            </div>
-            <div style="text-align:center;padding:0.75rem;background:#FEF3C7;border-radius:6px;border-left:4px solid #DC2626;">
-              <div style="font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:0.3rem;">⚠️ Fora do tempo</div>
-              <div style="font-size:1.1rem;font-weight:800;color:#DC2626;">${foraDoTempo}</div>
-            </div>
-            <div style="text-align:center;padding:0.75rem;background:#F0FFF4;border-radius:6px;border-left:4px solid #10B981;">
-              <div style="font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:0.3rem;">✅ Dentro do tempo</div>
-              <div style="font-size:1.1rem;font-weight:800;color:#10B981;">${dentroDotempo}</div>
-            </div>
-            <div style="text-align:center;padding:0.75rem;background:#F5F5F5;border-radius:6px;border-left:4px solid #9CA3AF;">
-              <div style="font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:0.3rem;">📋 Total</div>
-              <div style="font-size:1.1rem;font-weight:800;color:#1E3A5F;">${totalOcorrencias}</div>
-            </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid #E5E7EB;background:white;">
+          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1E3A5F;">${totalOcorrencias}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Ocorrências</div>
+          </div>
+          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#DC2626;">${foraDoTempo}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Fora do tempo</div>
+          </div>
+          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#10B981;">${dentroDotempo}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Dentro do tempo</div>
+          </div>
+          <div style="padding:1rem;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1E4DA1;">${pad(totalH)}h${pad(totalM)}</div>
+            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Tempo total</div>
           </div>
         </div>
 
-        <!-- LEGENDA -->
-        <div style="padding:1.25rem;border-top:1px solid #E5E7EB;background:#F9FAFB;">
-          <div style="font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:0.75rem;">📌 LEGENDA</div>
-          <div style="display:flex;flex-wrap:wrap;gap:1rem;font-size:0.75rem;">
-            <div style="display:flex;align-items:center;gap:0.4rem;"><span style="font-size:1rem;">🚩</span> <span>Tempo de Plataforma</span></div>
-            <div style="display:flex;align-items:center;gap:0.4rem;"><span style="font-size:1rem;">🚗</span> <span>Deslocamento</span></div>
-            <div style="display:flex;align-items:center;gap:0.4rem;"><span style="font-size:1rem;">⚡</span> <span>Incidência</span></div>
-            <div style="display:flex;align-items:center;gap:0.4rem;"><span style="font-size:1rem;">⏸️</span> <span>Tempo Ocioso</span></div>
-            <div style="display:flex;align-items:center;gap:0.4rem;"><span style="color:#10B981;font-weight:800;">✓</span> <span>Dentro do tempo</span></div>
-            <div style="display:flex;align-items:center;gap:0.4rem;"><span style="color:#DC2626;font-weight:800;">⚠️</span> <span>Fora do tempo</span></div>
+        <div id="content_${r.id}" style="display:none;">
+          ${r.comentariosReg ? `<div style="padding:0.85rem 1.25rem;background:#F0FDF4;border-bottom:1px solid #D1F0DF;border-left:4px solid #065F46;">
+            <div style="font-size:0.75rem;font-weight:800;color:#065F46;text-transform:uppercase;margin-bottom:0.5rem;">💬 Comentários Geral</div>
+            <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.comentariosReg}</div>
+          </div>` : ''}
+
+          ${r.obs ? `<div style="padding:0.85rem 1.25rem;background:#FEF3C7;border-bottom:1px solid #FCD34D;border-left:4px solid #92400E;">
+            <div style="font-size:0.75rem;font-weight:800;color:#92400E;text-transform:uppercase;margin-bottom:0.5rem;">📝 Observações</div>
+            <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.obs}</div>
+          </div>` : ''}
+
+          <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
+
+          <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;overflow:visible;'>
+            <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
+            <div id='reu_map_${r.id}' style='height:380px;width:90%;max-width:1000px;margin:0 auto;border-radius:8px;border:1.5px solid #BFDBFE;'></div>
+          </div>
+
+          <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
+            <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
+              <thead>
+                <tr style="background:#F8FAFF;">
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
+                    <select id="reu-status-filter-${r.id}"
+                      onchange="filterReuniaoStatus('${r.id}')"
+                      style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:800;border:1.5px solid #E0E7FF;border-radius:6px;padding:2px 6px;background:white;color:#374151;cursor:pointer;outline:none;">
+                      <option value="todos">Status ▾</option>
+                      <option value="todos">Todos</option>
+                      <option value="fora">⚠️ Fora do Tempo</option>
+                      <option value="dentro">✅ Dentro do Tempo</option>
+                    </select>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="reu-table-${r.id}"></tbody>
+            </table>
           </div>
         </div>
       `;
       listEl.appendChild(card);
 
-      // Renderizar conteúdo das abas
-      const timelineDiv = card.querySelector(`#reu-timeline-${r.id}`);
-      const eventosDiv = card.querySelector(`#reu-eventos-${r.id}`);
-
-      // TAB: Timeline (com a timeline visual)
+      const tlDiv = card.querySelector(`#reu_tl_${r.id}`);
       const tlEl = buildTimelineEl(r);
-      if (tlEl) timelineDiv.appendChild(tlEl);
+      if (tlEl) tlDiv.appendChild(tlEl);
 
-      // TAB: Eventos (ícones + barras + tabela)
-      const eventsHTML = `
-        <div style="margin-bottom:1.5rem;">
-          <div style="font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:0.75rem;">📍 EVENTOS DA JORNADA</div>
-          <div style="position:relative;height:100px;margin-bottom:1rem;padding:0 20px;border:1px solid #E5E7EB;border-radius:6px;background:#F9FAFB;overflow-x:auto;">
-            ${r.entries.map(e => {
-              const cat = categorias[e.catKey] || {};
-              const color = catColors[e.catKey] || '#888';
-              const mins = e.mins || 0;
-              const eventH = Math.floor(mins/60), eventM = mins%60;
-              return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:0.3rem;margin-right:1rem;margin-top:0.5rem;">
-                <div style="width:40px;height:40px;border:2px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:${color};background:white;font-weight:800;">${cat.icon||'•'}</div>
-                <div style="font-size:0.65rem;font-weight:700;color:${color};">${pad(eventH)}h${pad(eventM)}</div>
-                <div style="font-size:0.6rem;color:#6B7280;text-align:center;">${e.hinicio||'—'}</div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
+      const tableBody = card.querySelector(`#reu-table-${r.id}`);
+      r.entries.forEach((e, idx) => {
+        const cat = categorias[e.catKey] || {};
+        const mins = e.mins || 0;
+        const h = Math.floor(mins/60), m = mins%60;
+        const needsJust = entryNeedsJustificativa(e);
+        
+        const tr = document.createElement('tr');
+        tr.className = `reu-row-${r.id} ${needsJust ? 'reu-fora' : 'reu-dentro'}`;
+        tr.style.cssText = `background:${idx%2===0 ? 'white' : '#F9FAFB'};${needsJust ? 'display:none;' : ''}`;
+        tr.innerHTML = `
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">
+            <span style="display:inline-flex;align-items:center;gap:0.4rem;"><span style="font-size:0.9rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}</span>
+          </td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#6B7280;">${e.descricao||'—'}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;font-weight:700;">${pad(h)}h${pad(m)}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;">${needsJust ? '⚠️ Fora' : '✅ Dentro'}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
 
-        <div style="margin-bottom:1.5rem;">
-          <div style="font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:0.75rem;">📊 EVENTOS DA JORNADA (VISÃO GERAL)</div>
-          <div style="position:relative;height:50px;background:white;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;">
-            ${r.entries.map(e => {
-              const cat = categorias[e.catKey] || {};
-              const color = catColors[e.catKey] || '#888';
-              const eventStart = toMins(e.hinicio || r.jornadaEntrada);
-              const eventEnd = toMins(e.hfim || r.jornadaEntrada);
-              const eventDuration = eventEnd - eventStart;
-              const startMin = toMins(r.jornadaEntrada);
-              const endMin = r.jornadaSaida ? toMins(r.jornadaSaida) : startMin + (r.totalMin || 480);
-              const totalSpan = endMin - startMin;
-              const barStartPos = ((eventStart - startMin) / totalSpan) * 100;
-              const barWidth = (eventDuration / totalSpan) * 100;
-              const needsJust = entryNeedsJustificativa(e);
-              return `<div style="position:absolute;left:${barStartPos}%;top:0;width:${barWidth}%;height:100%;background:${color};display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:white;font-weight:800;border:2px solid ${needsJust ? '#DC2626' : '#10B981'};box-sizing:border-box;animation:${needsJust ? 'piscar 0.8s infinite' : 'none'};">${cat.icon||'•'}</div>`;
-            }).join('')}
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:0.85rem;font-weight:800;color:#1E3A5F;margin-bottom:0.75rem;">📋 DETALHAMENTO DAS OCORRÊNCIAS</div>
-          <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
-            <thead>
-              <tr style="background:#1E3A5F;color:white;">
-                <th style="padding:0.5rem;text-align:left;font-weight:700;border:1px solid #E5E7EB;">#</th>
-                <th style="padding:0.5rem;text-align:left;font-weight:700;border:1px solid #E5E7EB;">Início</th>
-                <th style="padding:0.5rem;text-align:left;font-weight:700;border:1px solid #E5E7EB;">Fim</th>
-                <th style="padding:0.5rem;text-align:left;font-weight:700;border:1px solid #E5E7EB;">Tipo de ocorrência</th>
-                <th style="padding:0.5rem;text-align:center;font-weight:700;border:1px solid #E5E7EB;">Duração</th>
-                <th style="padding:0.5rem;text-align:center;font-weight:700;border:1px solid #E5E7EB;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${r.entries.map((e, idx) => {
-                const cat = categorias[e.catKey] || {};
-                const mins = e.mins || 0;
-                const h = Math.floor(mins/60), m = mins%60;
-                const needsJust = entryNeedsJustificativa(e);
-                return `<tr style="border:1px solid #E5E7EB;${idx%2===0 ? 'background:#F9FAFB;' : ''}">
-                  <td style="padding:0.5rem;border:1px solid #E5E7EB;font-weight:700;">${idx+1}</td>
-                  <td style="padding:0.5rem;border:1px solid #E5E7EB;">${e.hinicio||'—'}</td>
-                  <td style="padding:0.5rem;border:1px solid #E5E7EB;">${e.hfim||'—'}</td>
-                  <td style="padding:0.5rem;border:1px solid #E5E7EB;">${cat.nome||e.catKey}</td>
-                  <td style="padding:0.5rem;border:1px solid #E5E7EB;text-align:center;font-weight:700;">${pad(h)}h${pad(m)}</td>
-                  <td style="padding:0.5rem;border:1px solid #E5E7EB;text-align:center;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;">${needsJust ? '⚠️ Fora' : '✅ Dentro'}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-      eventosDiv.innerHTML = eventsHTML;
-
-      // Ativar primeira aba
-      switchReuTab(r.id, 'timeline');
-    });
-  }
-
-  function switchReuTab(recordId, tab) {
-    // Hide all tabs for this record
-    document.querySelectorAll(`.reu-tab-content-${recordId}`).forEach(el => el.style.display = 'none');
-    
-    // Remove active state from all tabs
-    document.querySelectorAll(`.reu-tab-${recordId}`).forEach(btn => {
-      btn.style.color = '#6B7280';
-      btn.style.borderBottomColor = 'transparent';
-    });
-
-    // Show selected tab
-    const tabEl = document.getElementById(`reu-${tab}-${recordId}`);
-    if (tabEl) {
-      tabEl.style.display = 'block';
-      
-      // Set active state
-      const activeBtn = document.querySelector(`.reu-tab-${recordId}[data-tab="${tab}"]`);
-      if (activeBtn) {
-        activeBtn.style.color = '#1E3A5F';
-        activeBtn.style.borderBottomColor = '#1E40AF';
+      if (r.entries.some(e => e.catKey === 'deslocamento' || e.catKey === 'deslocamentos')) {
+        const mapSection = card.querySelector(`#reu_map_section_${r.id}`);
+        if (mapSection) {
+          mapSection.style.display = 'block';
+          const mapDiv = card.querySelector(`#reu_map_${r.id}`);
+          setTimeout(() => buildRouteMap(r, `reu_map_${r.id}`), 100);
+        }
       }
-
-      // Invalidar mapas se necessário
-      if (tab === 'timeline') {
-        setTimeout(() => {
-          if (window._leafletMaps) {
-            Object.values(window._leafletMaps).forEach(map => {
-              if (map && map.invalidateSize) map.invalidateSize();
-            });
-          }
-        }, 100);
-      }
-    }
+    });
   }
 
 
