@@ -213,16 +213,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 220px;
-    right: 0;
     z-index: 100;
     box-shadow: 0 2px 12px rgba(0,0,0,0.2);
     min-width: 0;
     overflow: hidden;
-    width: auto;
-    height: auto;
   }
   .topbar-title {
     font-family: 'Barlow Condensed', sans-serif;
@@ -1513,7 +1509,6 @@
     transition: background 0.15s;
   }
   .equipe-selected-badge button:hover { background: rgba(0,132,61,0.22); }
-  .equipe-footer {
     text-align: center;
     padding: 1.5rem;
     font-size: 0.78rem;
@@ -1523,499 +1518,6 @@
     border-top: 1px solid var(--gray-200);
   }
 </style>
-<script>
-// ════════════════════════════════════════════════════════════════
-//  SISTEMA DE LOGIN E AUTENTICAÇÃO — v3 (Login Individual)
-// ════════════════════════════════════════════════════════════════
-
-const USERS_KEY        = 'enel_users_v3';
-const CURRENT_USER_KEY = 'enel_current_user';
-const FB_USERS_PATH    = 'produtividade/usuarios';
-
-// ── Usuário logado ──────────────────────────────────────────────
-function getCurrentUserImmediate() {
-  try { const s = localStorage.getItem(CURRENT_USER_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
-}
-function isAdmin() { const u = getCurrentUserImmediate(); return u && u.perfil === 'admin'; }
-function nomeUsuario() { const u = getCurrentUserImmediate(); return u ? u.nome : ''; }
-
-// ── CONTROLE DE ACESSO POR PERFIL ──────────────────────────────────
-function applyAccessControl() {
-  const admin = isAdmin();
-  
-  // Abas restritas apenas para admin
-  const adminOnlyTabs = ['form', 'notify', 'config'];
-  const adminOnlyButtons = ['tabBtnForm', 'tabBtnNotify', 'tabBtnConfig'];
-  
-  // Ocultar/mostrar abas
-  adminOnlyTabs.forEach(tab => {
-    const el = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
-    if (el) el.style.display = admin ? 'block' : 'none';
-  });
-  
-  // Ocultar/mostrar botões da sidebar
-  adminOnlyButtons.forEach(btn => {
-    const el = document.getElementById(btn);
-    if (el) el.style.display = admin ? 'block' : 'none';
-  });
-  
-  // Se usuário comum tentar acessar aba restrita, redireciona
-  const currentTab = document.querySelector('[id^="tab"]:not([style*="display: none"])');
-  if (!admin && currentTab && adminOnlyTabs.includes(currentTab.id.replace('tab', '').toLowerCase())) {
-    switchTab('inicio'); // Redireciona para início
-  }
-  
-  console.log(`[ACCESS] Acesso ${admin ? '👑 ADMIN' : '👤 USUÁRIO'} aplicado`);
-}
-
-// Interceptar switchTab para validar acesso
-const originalSwitchTab = switchTab;
-function switchTab(tab) {
-  const admin = isAdmin();
-  const adminOnlyTabs = ['form', 'notify', 'config'];
-  
-  // Se não é admin e tenta acessar aba restrita, bloqueia
-  if (!admin && adminOnlyTabs.includes(tab)) {
-    console.warn(`[SEGURANÇA] Acesso negado: usuário tentou acessar aba '${tab}'`);
-    showCopyToast('❌ Acesso negado. Esta aba é restrita ao administrador.');
-    return;
-  }
-  
-  // Se passou na validação, executa switchTab original
-  originalSwitchTab(tab);
-}
-
-// ── Cache local de usuários ─────────────────────────────────────
-function getUsersLocal() {
-  try { return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch { return []; }
-}
-function saveUsersLocal(users) {
-  try { localStorage.setItem(USERS_KEY, JSON.stringify(users)); } catch {}
-}
-
-// ── Firebase: lê todos os usuários ─────────────────────────────
-function fetchUsersFromFirebase() {
-  return fetch(`${FB_URL}/${FB_USERS_PATH}.json`)
-    .then(r => r.json())
-    .then(data => {
-      if (!data || typeof data !== 'object') return [];
-      return Object.values(data).filter(Boolean);
-    })
-    .catch(() => []);
-}
-
-// ── Firebase: salva/atualiza um usuário ────────────────────────
-function saveUserToFirebase(user) {
-  return fetch(`${FB_URL}/${FB_USERS_PATH}/${user.login}.json`, {
-    method: 'PUT',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(user)
-  }).catch(e => console.warn('saveUserToFirebase err:', e));
-}
-
-// ── Firebase: exclui usuário ────────────────────────────────────
-function deleteUserFromFirebase(login) {
-  return fetch(`${FB_URL}/${FB_USERS_PATH}/${login}.json`, { method: 'DELETE' })
-    .catch(e => console.warn('deleteUserFromFirebase err:', e));
-}
-
-// ── Inicializa: garante admin padrão + migra v2 → v3 ──────────
-function initUsersImmediate() {
-  // Migração de enel_users_v2 → v3 (uma única vez)
-  const oldData = localStorage.getItem('enel_users_v2');
-  if (oldData && !localStorage.getItem(USERS_KEY)) {
-    try {
-      const old = JSON.parse(oldData);
-      if (Array.isArray(old) && old.length > 0) {
-        saveUsersLocal(old);
-        console.log('[Auth] Migrado', old.length, 'usuários de v2 → v3');
-      }
-    } catch(e) {}
-  }
-
-  // Tenta carregar do Firebase de forma assíncrona
-  fetchUsersFromFirebase().then(fbUsers => {
-    if (fbUsers.length > 0) {
-      saveUsersLocal(fbUsers);
-    } else {
-      // Firebase vazio: garante usuário admin padrão
-      const local = getUsersLocal();
-      if (local.length === 0) {
-        const admin = { id: 1, nome: 'Administrador', login: 'enel', senha: 'brasil', perfil: 'admin', primeiroAcesso: false };
-        saveUsersLocal([admin]);
-        saveUserToFirebase(admin);
-      } else {
-        local.forEach(u => saveUserToFirebase(u));
-      }
-    }
-  });
-  // Garante ao menos o admin localmente antes da resposta do Firebase
-  const local = getUsersLocal();
-  if (local.length === 0) {
-    const admin = { id: 1, nome: 'Administrador', login: 'enel', senha: 'brasil', perfil: 'admin', primeiroAcesso: false };
-    saveUsersLocal([admin]);
-  }
-}
-
-// ── Validação de login ─────────────────────────────────────────
-function validateLoginImmediate(login, senha) {
-  const users = getUsersLocal();
-  const user = users.find(u => u.login.toLowerCase() === login.toLowerCase());
-  if (!user || user.senha !== senha) return null;
-  return user;
-}
-
-// ── Submit de login ────────────────────────────────────────────
-function submitLoginImmediate(event) {
-  event.preventDefault();
-  const loginVal = document.getElementById('loginUser').value.trim();
-  const senhaVal = document.getElementById('loginPass').value;
-  const errorEl  = document.getElementById('loginError');
-
-  // Tenta local primeiro
-  let user = validateLoginImmediate(loginVal, senhaVal);
-
-  if (!user) {
-    // Tenta no Firebase (caso o usuário não esteja no cache local)
-    fetchUsersFromFirebase().then(fbUsers => {
-      if (fbUsers.length > 0) saveUsersLocal(fbUsers);
-      const fbUser = fbUsers.find(u => u.login.toLowerCase() === loginVal.toLowerCase() && u.senha === senhaVal);
-      if (fbUser) {
-        _doLogin(fbUser);
-      } else {
-        if (errorEl) { errorEl.textContent = '❌ Login ou senha incorretos.'; errorEl.style.display = 'block'; }
-      }
-    }).catch(() => {
-      if (errorEl) { errorEl.textContent = '❌ Login ou senha incorretos.'; errorEl.style.display = 'block'; }
-    });
-    return;
-  }
-  _doLogin(user);
-}
-
-function _doLogin(user) {
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  localStorage.setItem('enel_auth', '1');
-  if (user.primeiroAcesso) {
-    showChangePasswordDialogImmediate(true);
-  } else {
-    window.location.reload();
-  }
-}
-
-// ── Logout ─────────────────────────────────────────────────────
-function logoutImmediate() {
-  localStorage.removeItem(CURRENT_USER_KEY);
-  localStorage.removeItem('enel_auth');
-  window.location.reload();
-}
-
-// ── Alterar senha ──────────────────────────────────────────────
-function showChangePasswordDialogImmediate(isFirstAccess = false) {
-  const existing = document.getElementById('pwdDialog');
-  if (existing) existing.remove();
-  const html = `
-    <div id="pwdDialog" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:100000;padding:1rem;">
-      <div style="background:white;border-radius:14px;padding:2rem;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:800;color:#1E3A5F;margin-bottom:1.25rem;">
-          🔑 ${isFirstAccess ? 'Criar sua senha de acesso' : 'Alterar Senha'}
-        </div>
-        ${isFirstAccess ? `<div style="font-size:0.82rem;color:#6B7280;background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:0.65rem 0.85rem;margin-bottom:1rem;">⚠️ Este é seu primeiro acesso. Por favor, crie uma nova senha pessoal.</div>` : ''}
-        ${!isFirstAccess ? `<div style="margin-bottom:1rem;"><label style="font-size:0.75rem;font-weight:700;color:#374151;display:block;margin-bottom:0.3rem;">SENHA ATUAL</label><input type="password" id="currentPwdInput" autocomplete="current-password" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.55rem 0.8rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;"></div>` : ''}
-        <div style="margin-bottom:1rem;"><label style="font-size:0.75rem;font-weight:700;color:#374151;display:block;margin-bottom:0.3rem;">NOVA SENHA</label><input type="password" id="newPwdInput" autocomplete="new-password" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.55rem 0.8rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;"></div>
-        <div style="margin-bottom:1.25rem;"><label style="font-size:0.75rem;font-weight:700;color:#374151;display:block;margin-bottom:0.3rem;">CONFIRMAR NOVA SENHA</label><input type="password" id="confirmPwdInput" autocomplete="new-password" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.55rem 0.8rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;"></div>
-        <div id="pwdError" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:8px;"></div>
-        <div style="display:flex;gap:0.5rem;">
-          <button onclick="submitChangePasswordImmediate(${isFirstAccess})" style="flex:1;font-family:'Barlow',sans-serif;font-size:0.95rem;font-weight:800;background:linear-gradient(135deg,#003087,#00843D);color:white;padding:0.6rem;border:none;border-radius:8px;cursor:pointer;">✅ Confirmar</button>
-          ${!isFirstAccess ? `<button onclick="document.getElementById('pwdDialog').remove()" style="flex:1;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;background:#E5E7EB;color:#374151;padding:0.6rem;border:none;border-radius:8px;cursor:pointer;">Cancelar</button>` : ''}
-        </div>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function submitChangePasswordImmediate(isFirstAccess) {
-  const newPwd     = document.getElementById('newPwdInput')?.value || '';
-  const confirmPwd = document.getElementById('confirmPwdInput')?.value || '';
-  const errorEl    = document.getElementById('pwdError');
-  if (!newPwd || !confirmPwd) { errorEl.textContent = 'Preencha todos os campos.'; errorEl.style.display = 'block'; return; }
-  if (newPwd !== confirmPwd)  { errorEl.textContent = 'As senhas não conferem.';    errorEl.style.display = 'block'; return; }
-  if (newPwd.length < 4)      { errorEl.textContent = 'Senha deve ter ao menos 4 caracteres.'; errorEl.style.display = 'block'; return; }
-  if (!isFirstAccess) {
-    const currentPwd = document.getElementById('currentPwdInput')?.value || '';
-    const user = getCurrentUserImmediate();
-    if (!user || user.senha !== currentPwd) { errorEl.textContent = 'Senha atual incorreta.'; errorEl.style.display = 'block'; return; }
-  }
-  const users = getUsersLocal();
-  const user  = getCurrentUserImmediate();
-  const idx   = users.findIndex(u => u.login === user.login);
-  if (idx === -1) return;
-  
-  // Update users array
-  users[idx].senha = newPwd;
-  users[idx].primeiroAcesso = false;
-  
-  // Save to localStorage immediately
-  saveUsersLocal(users);
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(users[idx]));
-  
-  // Also save to Firebase
-  saveUserToFirebase(users[idx]).then(() => {
-    document.getElementById('pwdDialog')?.remove();
-    if (isFirstAccess) {
-      // Give user feedback before reload
-      _showToastAuth('✅ Senha criada com sucesso!');
-      setTimeout(() => window.location.reload(), 800);
-    } else {
-      _showToastAuth('✅ Senha alterada com sucesso!');
-    }
-  }).catch(() => {
-    // Even if Firebase fails, the local change is saved
-    document.getElementById('pwdDialog')?.remove();
-    if (isFirstAccess) {
-      _showToastAuth('✅ Senha criada (salvar no servidor...)');
-      setTimeout(() => window.location.reload(), 800);
-    } else {
-      _showToastAuth('✅ Senha alterada localmente (sincronizando...)');
-    }
-  });
-}
-
-function _showToastAuth(msg) {
-  const t = document.getElementById('saveToast');
-  const m = document.getElementById('saveToastMsg');
-  if (t && m) { m.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
-  else alert(msg);
-}
-
-// ── Menu do usuário na topbar ──────────────────────────────────
-function toggleUserMenuTopbar() {
-  const existing = document.getElementById('userMenu');
-  if (existing) { existing.remove(); return; }
-  const user = getCurrentUserImmediate();
-  const html = `
-    <div id="userMenu" style="position:fixed;top:46px;right:1rem;background:white;border-radius:12px;padding:0.25rem;z-index:10001;box-shadow:0 8px 32px rgba(0,0,0,0.2);min-width:220px;border:1px solid #E5E7EB;" onclick="event.stopPropagation()">
-      <div style="padding:0.75rem 1rem 0.5rem;border-bottom:1px solid #F3F4F6;">
-        <div style="font-size:0.75rem;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;">Usuário logado</div>
-        <div style="font-size:0.95rem;font-weight:800;color:#1E3A5F;margin-top:2px;">${user?.nome || '—'}</div>
-        <div style="font-size:0.72rem;color:#9CA3AF;">${user?.login || ''} · ${user?.perfil === 'admin' ? '👑 Admin' : '👤 Usuário'}</div>
-      </div>
-      <button onclick="showChangePasswordDialogImmediate(false)" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;background:none;border:none;padding:0.65rem 1rem;text-align:left;cursor:pointer;color:#374151;border-radius:8px;display:flex;align-items:center;gap:0.5rem;">🔑 Alterar Senha</button>
-      <button onclick="logoutImmediate()" style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;background:none;border:none;padding:0.65rem 1rem;text-align:left;cursor:pointer;color:#DC2626;border-radius:8px;display:flex;align-items:center;gap:0.5rem;border-top:1px solid #F3F4F6;">🚪 Sair</button>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-  setTimeout(() => {
-    document.addEventListener('click', () => { const m = document.getElementById('userMenu'); if (m) m.remove(); }, { once: true });
-  }, 100);
-}
-
-// ── Gestão de usuários (admin) — chamada da aba config ─────────
-function renderCfgUsuarios() {
-  const el = document.getElementById('cfgUsuariosList');
-  if (!el) return;
-  const current = getCurrentUserImmediate();
-  const isAdm = current && current.perfil === 'admin';
-
-  // Controla visibilidade da seção inteira
-  const card = document.getElementById('cfgCardUsuarios');
-  if (card) card.style.display = isAdm ? 'block' : 'none';
-  if (!isAdm) { el.innerHTML = '<div style="font-size:0.85rem;color:#DC2626;">⛔ Acesso restrito a administradores.</div>'; return; }
-
-  const users = getUsersLocal();
-  
-  // Garante que há pelo menos um usuário (admin atual)
-  if (users.length === 0 && current) {
-    const defaultAdmin = { login: current.login, nome: current.nome || 'Administrador', perfil: 'admin', primeiroAcesso: false };
-    users.push(defaultAdmin);
-    saveUsersLocal(users);
-  }
-
-  el.innerHTML = `
-    <div style="margin-bottom:1.25rem;">
-      <div style="font-size:0.75rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.6rem;">➕ Novo Usuário</div>
-      <div class="cfg-add-row" style="flex-wrap:wrap;gap:0.5rem;align-items:flex-end;">
-        <div>
-          <div style="font-size:0.68rem;font-weight:700;color:#6B7280;margin-bottom:3px;">Nome completo</div>
-          <input type="text" id="cfgUserNome" placeholder="Ex: João Silva" class="cfg-input" style="min-width:160px;">
-        </div>
-        <div>
-          <div style="font-size:0.68rem;font-weight:700;color:#6B7280;margin-bottom:3px;">Login (BR + matrícula)</div>
-          <input type="text" id="cfgUserLogin" placeholder="Ex: br0148272697" class="cfg-input" style="max-width:190px;" oninput="this.value=this.value.toLowerCase()">
-        </div>
-        <div>
-          <div style="font-size:0.68rem;font-weight:700;color:#6B7280;margin-bottom:3px;">Perfil</div>
-          <select id="cfgUserPerfil" class="cfg-input" style="max-width:130px;">
-            <option value="usuario">👤 Usuário</option>
-            <option value="admin">👑 Admin</option>
-          </select>
-        </div>
-        <button class="cfg-btn-add" onclick="cfgAddUser()" style="margin-top:auto;">+ Adicionar</button>
-      </div>
-      <div id="cfgUserMsg" style="font-size:0.8rem;margin-top:0.5rem;display:none;padding:0.4rem 0.65rem;border-radius:6px;"></div>
-    </div>
-
-    <div style="border:1px solid var(--gray-200);border-radius:var(--radius-sm);overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="background:#F3F4F6;">
-            <th style="padding:0.6rem 0.85rem;text-align:left;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Nome</th>
-            <th style="padding:0.6rem 0.85rem;text-align:left;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Login</th>
-            <th style="padding:0.6rem 0.85rem;text-align:center;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Perfil</th>
-            <th style="padding:0.6rem 0.85rem;text-align:center;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Status</th>
-            <th style="padding:0.6rem 0.85rem;text-align:center;font-size:0.7rem;font-weight:800;color:#374151;text-transform:uppercase;">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${users.map(u => `
-            <tr style="border-top:1px solid #F3F4F6;${u.login === current?.login ? 'background:#F0FDF4;' : ''}">
-              <td style="padding:0.6rem 0.85rem;font-size:0.88rem;font-weight:700;color:#1E3A5F;">
-                ${u.nome}
-                ${u.login === current?.login ? '<span style="font-size:0.6rem;background:#DCFCE7;color:#16A34A;padding:2px 7px;border-radius:99px;font-weight:800;margin-left:4px;">você</span>' : ''}
-              </td>
-              <td style="padding:0.6rem 0.85rem;font-size:0.82rem;color:#6B7280;font-family:monospace;">${u.login}</td>
-              <td style="padding:0.6rem 0.85rem;text-align:center;">
-                <span style="font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:99px;background:${u.perfil==='admin'?'#EDE9FE':'#EFF6FF'};color:${u.perfil==='admin'?'#7C3AED':'#1E4DA1'};">
-                  ${u.perfil === 'admin' ? '👑 Admin' : '👤 Usuário'}
-                </span>
-              </td>
-              <td style="padding:0.6rem 0.85rem;text-align:center;">
-                <span style="font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:99px;background:${u.primeiroAcesso?'#FEF3C7':'#DCFCE7'};color:${u.primeiroAcesso?'#92400E':'#15803D'};">
-                  ${u.primeiroAcesso ? '⚠️ Senha padrão' : '✅ Ativo'}
-                </span>
-              </td>
-              <td style="padding:0.6rem 0.85rem;text-align:center;">
-                <div style="display:flex;gap:0.35rem;justify-content:center;flex-wrap:wrap;">
-                  <button onclick="cfgResetUserPass('${u.login}')" title="Resetar senha para: brasil"
-                    style="font-family:'Barlow',sans-serif;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid #D97706;background:#FEF3C7;color:#92400E;cursor:pointer;">🔄 Reset</button>
-                  ${u.login !== current?.login ? `
-                    <button onclick="cfgTogglePerfil('${u.login}')" title="Alternar admin/usuário"
-                      style="font-family:'Barlow',sans-serif;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid #A5B4FC;background:#EEF2FF;color:#3730A3;cursor:pointer;">⇅ Perfil</button>
-                    <button onclick="cfgDeleteUser('${u.login}')" title="Excluir usuário"
-                      style="font-family:'Barlow',sans-serif;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:6px;border:1.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;">🗑</button>
-                  ` : ''}
-                </div>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div style="font-size:0.72rem;color:#9CA3AF;margin-top:0.75rem;">
-      💡 Senha padrão para novos usuários: <strong>brasil</strong> · O usuário deverá alterar no primeiro acesso.
-    </div>`;
-}
-
-function cfgAddUser() {
-  const nome   = document.getElementById('cfgUserNome')?.value.trim();
-  const login  = document.getElementById('cfgUserLogin')?.value.trim().toLowerCase();
-  const perfil = document.getElementById('cfgUserPerfil')?.value || 'usuario';
-  const msgEl  = document.getElementById('cfgUserMsg');
-
-  const showMsg = (txt, ok) => {
-    if (!msgEl) return;
-    msgEl.textContent = txt;
-    msgEl.style.background = ok ? '#DCFCE7' : '#FEE2E2';
-    msgEl.style.color = ok ? '#15803D' : '#DC2626';
-    msgEl.style.display = 'block';
-    setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
-  };
-
-  if (!nome || !login) { showMsg('⚠️ Preencha nome e login.', false); return; }
-  if (!login.startsWith('br') && login !== 'enel') { showMsg('⚠️ Login deve começar com "br" (ex: br0148272697).', false); return; }
-  const users = getUsersLocal();
-  if (users.find(u => u.login === login)) { showMsg('⚠️ Este login já existe no sistema.', false); return; }
-
-  const novo = { id: Date.now(), nome, login, senha: 'brasil', perfil, primeiroAcesso: true };
-  users.push(novo);
-  saveUsersLocal(users);
-  saveUserToFirebase(novo);
-  document.getElementById('cfgUserNome').value  = '';
-  document.getElementById('cfgUserLogin').value = '';
-  renderCfgUsuarios();
-  showMsg(`✅ Usuário "${nome}" criado com sucesso. Senha inicial: brasil`, true);
-}
-
-function cfgDeleteUser(login) {
-  const users = getUsersLocal();
-  const u = users.find(x => x.login === login);
-  if (!confirm(`Excluir o usuário "${u?.nome || login}"?\n\nEsta ação não pode ser desfeita.`)) return;
-  const updated = users.filter(x => x.login !== login);
-  saveUsersLocal(updated);
-  deleteUserFromFirebase(login);
-  renderCfgUsuarios();
-  _showToastAuth(`🗑 Usuário ${u?.nome || login} excluído.`);
-}
-
-function cfgResetUserPass(login) {
-  const users = getUsersLocal();
-  const u = users.find(x => x.login === login);
-  if (!confirm(`Resetar a senha de "${u?.nome || login}" para "brasil"?\n\nO usuário precisará criar uma nova senha no próximo acesso.`)) return;
-  const idx = users.findIndex(x => x.login === login);
-  if (idx === -1) return;
-  users[idx].senha = 'brasil';
-  users[idx].primeiroAcesso = true;
-  saveUsersLocal(users);
-  saveUserToFirebase(users[idx]);
-  renderCfgUsuarios();
-  _showToastAuth(`✅ Senha de ${users[idx].nome} resetada para "brasil".`);
-}
-
-function cfgTogglePerfil(login) {
-  const users = getUsersLocal();
-  const idx = users.findIndex(u => u.login === login);
-  if (idx === -1) return;
-  const novoPerf = users[idx].perfil === 'admin' ? 'usuario' : 'admin';
-  if (!confirm(`Alterar o perfil de "${users[idx].nome}" para ${novoPerf === 'admin' ? '👑 Admin' : '👤 Usuário'}?`)) return;
-  users[idx].perfil = novoPerf;
-  saveUsersLocal(users);
-  saveUserToFirebase(users[idx]);
-  renderCfgUsuarios();
-  _showToastAuth(`✅ Perfil de ${users[idx].nome} alterado para ${novoPerf}.`);
-  
-  // ── ATUALIZAR CONTROLE DE ACESSO se o perfil do usuário atual mudou ──
-  if (users[idx].login === getCurrentUserImmediate()?.login) {
-    applyAccessControl();
-  }
-}
-
-function applyInicioImage() {
-  const container = document.querySelector('.inicio-img-container');
-  if (container) {
-    container.style.backgroundImage = 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 500 500%22%3E%3Crect fill=%22%2300843D%22 width=%22500%22 height=%22500%22/%3E%3C/svg%3E")';
-    container.style.backgroundSize = 'cover';
-  }
-}
-
-initUsersImmediate();
-
-// Valida sessão: se enel_auth=1 mas não há currentUser válido, limpa
-(function validateSession() {
-  const auth = localStorage.getItem('enel_auth');
-  const userRaw = localStorage.getItem('enel_current_user');
-  let userValid = false;
-  try {
-    const u = userRaw ? JSON.parse(userRaw) : null;
-    if (u && u.login && u.nome) userValid = true;
-  } catch(e) {}
-  if (auth === '1' && !userValid) {
-    localStorage.removeItem('enel_auth');
-    localStorage.removeItem('enel_current_user');
-  }
-})();
-
-const loggedInUser = getCurrentUserImmediate();
-if (!loggedInUser) {
-  document.addEventListener('DOMContentLoaded', () => {
-    const ls = document.getElementById('loginScreen');
-    if (ls) ls.style.display = 'flex';
-    setTimeout(() => document.getElementById('loginUser')?.focus(), 150);
-  });
-} else {
-  document.addEventListener('DOMContentLoaded', () => {
-    const ls = document.getElementById('loginScreen');
-    if (ls) ls.style.display = 'none';
-  });
-}
-</script>
 </head>
 <body>
 
@@ -2032,68 +1534,42 @@ if (!loggedInUser) {
 </div>
 
 <script>
-// Esconde login imediatamente se já autenticado com usuário válido — evita flash
-// Mas invalida sessão órfã (enel_auth sem currentUser)
-(function() {
-  const auth = localStorage.getItem('enel_auth');
-  const userRaw = localStorage.getItem('enel_current_user');
-  let userValid = false;
-  try {
-    const u = userRaw ? JSON.parse(userRaw) : null;
-    if (u && u.login && u.nome) userValid = true;
-  } catch(e) {}
-
-  if (auth === '1' && !userValid) {
-    // Sessão órfã — limpar tudo e forçar login
-    localStorage.removeItem('enel_auth');
-    localStorage.removeItem('enel_current_user');
-  }
-
-  if (localStorage.getItem('enel_auth') === '1' && userValid) {
-    document.write('<style>#loginScreen{display:none!important}</style>');
-  }
-})();
+// Esconde login imediatamente se já autenticado — evita flash
+if (localStorage.getItem('enel_auth') === '1') {
+  document.write('<style>#loginScreen{display:none!important}</style>');
+}
 </script>
 <!-- ── TELA DE LOGIN ── -->
-<div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:none;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
+<div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#003087 0%,#00843D 100%);display:flex;align-items:center;justify-content:center;z-index:99999;padding:1rem;">
   <div style="background:white;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
-    <div style="width:56px;height:56px;background:linear-gradient(135deg,#003087,#00843D);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;font-size:1.6rem;">⚡</div>
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;">⚡</div>
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#003087;text-transform:uppercase;letter-spacing:0.05em;">ENEL BRASIL</div>
-    <div style="font-size:0.82rem;color:#6B7280;margin-bottom:0.25rem;">Análise de Produtividade · Polo São Gonçalo</div>
-    <div style="font-size:0.72rem;color:#9CA3AF;margin-bottom:1.75rem;">Use seu login BR + matrícula e senha pessoal</div>
+    <div style="font-size:0.85rem;color:#6B7280;margin-bottom:2rem;">Análise de Produtividade · Polo São Gonçalo</div>
 
-    <form onsubmit="submitLoginImmediate(event)" style="display:flex;flex-direction:column;gap:0;">
     <div style="margin-bottom:1rem;text-align:left;">
-      <label style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.35rem;">Login</label>
-      <input type="text" id="loginUser" placeholder="Ex: br0148272697" autocomplete="username"
-        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;transition:border 0.15s;"
-        onfocus="this.style.borderColor='#003087'" onblur="this.style.borderColor='#D1D5DB'"
+      <label style="font-size:0.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.35rem;">Usuário</label>
+      <input type="text" id="loginUser" placeholder="Digite seu login"
+        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;"
         onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
     </div>
 
-    <div style="margin-bottom:1.25rem;text-align:left;">
-      <label style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.35rem;">Senha</label>
-      <div style="position:relative;">
-        <input type="password" id="loginPass" placeholder="Digite sua senha" autocomplete="current-password"
-          style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 2.6rem 0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;transition:border 0.15s;"
-          onfocus="this.style.borderColor='#003087'" onblur="this.style.borderColor='#D1D5DB'">
-        <button type="button" onclick="(function(){ const i=document.getElementById('loginPass'); const b=document.getElementById('loginPassEye'); i.type=i.type==='password'?'text':'password'; b.textContent=i.type==='password'?'👁':'🙈'; })()" id="loginPassEye"
-          style="position:absolute;right:0.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;padding:0;color:#6B7280;">👁</button>
-      </div>
+    <div style="margin-bottom:1.5rem;text-align:left;">
+      <label style="font-size:0.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.35rem;">Senha</label>
+      <input type="password" id="loginPass" placeholder="Digite sua senha"
+        style="width:100%;font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.65rem 0.9rem;border:1.5px solid #D1D5DB;border-radius:8px;outline:none;box-sizing:border-box;"
+        onkeydown="if(event.key==='Enter')doLogin()">
     </div>
 
-    <div id="loginError" style="font-size:0.82rem;color:#DC2626;margin-bottom:0.85rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:6px;text-align:left;">
-      ❌ Login ou senha incorretos.
+    <div id="loginErr" style="font-size:0.82rem;color:#DC2626;margin-bottom:1rem;display:none;background:#FEE2E2;padding:0.5rem 0.75rem;border-radius:6px;">
+      ❌ Usuário ou senha incorretos.
     </div>
 
-    <button type="submit"
-      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;transition:opacity 0.15s;"
-      onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+    <button onclick="doLogin()"
+      style="width:100%;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:800;padding:0.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#003087,#00843D);color:white;cursor:pointer;letter-spacing:0.04em;">
       ENTRAR
     </button>
 
-    <div style="font-size:0.7rem;color:#D1D5DB;margin-top:1.5rem;text-align:center;">© 2026 Enel Brasil · Uso interno</div>
-    </form>
+    <div style="font-size:0.7rem;color:#9CA3AF;margin-top:1.5rem;">© 2026 Enel Brasil · Uso interno</div>
   </div>
 </div>
 
@@ -2130,6 +1606,11 @@ if (!loggedInUser) {
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.11 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.21h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.21 16z"/></svg>
       Notificar
     </button>
+    <button class="sidebar-item" id="tabBtnReuniao" onclick="switchTab('reuniao')" style="color:rgba(129,140,248,0.8);">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Reunião
+      <span class="sidebar-badge" id="tabBadgeReuniao" style="display:none;background:#6366F1;">0</span>
+    </button>
     <button class="sidebar-item" id="tabBtnAcao" onclick="switchTab('acao')" style="color:rgba(252,165,165,0.8);">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Ação
@@ -2152,61 +1633,52 @@ if (!loggedInUser) {
   </div>
 </nav>
 
-<!-- ── TOPBAR (FIXED) ── -->
-<div class="topbar">
-  <div>
-    <div class="topbar-title" id="topbarTitle">Registro</div>
-    <div class="topbar-sub">Gestão de Equipes · Campo Operacional</div>
-  </div>
-  <div class="topbar-metrics" id="topbarMetrics">
-    <!-- Firebase status -->
-    <div class="topbar-metric" id="fbStatusMetric">
-      <span id="fbStatusDot" style="width:7px;height:7px;border-radius:50%;background:#4ADE80;display:inline-block;transition:background 0.3s;box-shadow:0 0 6px #4ADE80;"></span>
-      <span class="topbar-metric-label" id="fbStatusLabel">Sincronizado</span>
-      <span id="fbDebugLabel" style="margin-left:4px;cursor:pointer;opacity:0.5;" title="Diagnóstico" onclick="toggleFbDebug()">
-        <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </span>
-    </div>
-    <div class="topbar-sep"></div>
-    <!-- Relógio -->
-    <div class="topbar-metric clock-metric">
-      <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span class="topbar-metric-value" id="topbarClock">--:--:--</span>
-      <span class="topbar-metric-label" id="topbarDate">--/--/----</span>
-    </div>
-    <div class="topbar-sep"></div>
-    <!-- Hoje -->
-    <div class="topbar-metric">
-      <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span class="topbar-metric-value" id="topbarTodayCount">0</span>
-      <span class="topbar-metric-label">Hoje</span>
-    </div>
-    <div class="topbar-sep"></div>
-    <!-- Total -->
-    <div class="topbar-metric">
-      <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-      <span class="topbar-metric-value" id="topbarTotalCount">0</span>
-      <span class="topbar-metric-label">Total</span>
-    </div>
-    <div class="topbar-sep"></div>
-    <!-- Pendentes -->
-    <div class="topbar-metric">
-      <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span class="topbar-metric-value pending-val" id="topbarPending">0</span>
-      <span class="topbar-metric-label">Pendentes</span>
-    </div>
-    <div class="topbar-sep"></div>
-    <!-- Usuário logado -->
-    <button onclick="toggleUserMenuTopbar()" style="display:flex;align-items:center;gap:0.45rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:0.3rem 0.7rem;cursor:pointer;color:white;font-family:'Barlow',sans-serif;font-size:0.8rem;font-weight:700;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-      <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      <span id="topbarUserName" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
-      <svg style="width:10px;height:10px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
-  </div>
-</div>
-
 <!-- ── Main content ── -->
 <div class="main-content">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbarTitle">Registro</div>
+      <div class="topbar-sub">Gestão de Equipes · Campo Operacional</div>
+    </div>
+    <div class="topbar-metrics" id="topbarMetrics">
+      <!-- Firebase status -->
+      <div class="topbar-metric" id="fbStatusMetric">
+        <span id="fbStatusDot" style="width:7px;height:7px;border-radius:50%;background:#4ADE80;display:inline-block;transition:background 0.3s;box-shadow:0 0 6px #4ADE80;"></span>
+        <span class="topbar-metric-label" id="fbStatusLabel">Sincronizado</span>
+        <span id="fbDebugLabel" style="margin-left:4px;cursor:pointer;opacity:0.5;" title="Diagnóstico" onclick="toggleFbDebug()">
+          <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+      </div>
+      <div class="topbar-sep"></div>
+      <!-- Relógio -->
+      <div class="topbar-metric clock-metric">
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="topbar-metric-value" id="topbarClock">--:--:--</span>
+        <span class="topbar-metric-label" id="topbarDate">--/--/----</span>
+      </div>
+      <div class="topbar-sep"></div>
+      <!-- Hoje -->
+      <div class="topbar-metric">
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="topbar-metric-value" id="topbarTodayCount">0</span>
+        <span class="topbar-metric-label">Hoje</span>
+      </div>
+      <div class="topbar-sep"></div>
+      <!-- Total -->
+      <div class="topbar-metric">
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <span class="topbar-metric-value" id="topbarTotalCount">0</span>
+        <span class="topbar-metric-label">Total</span>
+      </div>
+      <div class="topbar-sep"></div>
+      <!-- Pendentes -->
+      <div class="topbar-metric">
+        <svg class="topbar-metric-icon" style="width:14px;height:14px;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span class="topbar-metric-value pending-val" id="topbarPending">0</span>
+        <span class="topbar-metric-label">Pendentes</span>
+      </div>
+    </div>
+  </div>
 
 <script>
 // ── Relógio independente — imune a erros do resto do JS ──
@@ -2494,15 +1966,30 @@ if (!loggedInUser) {
 <!-- ── ABA COORDENAÇÃO ── -->
 
 <!-- ── ABA REUNIÃO ── -->
+<div id="tabReuniao" style="display:none;">
+  <div style="max-width:1100px;margin:0 auto;padding:1.5rem 2rem 3rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#4F46E5;text-transform:uppercase;letter-spacing:0.05em;">📋 Painel de Reunião</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);">Registros selecionados para apresentação · Visão gerencial</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6366F1;background:white;color:#6366F1;cursor:pointer;">🖨️ Imprimir</button>
+      </div>
+    </div>
+    <div id="reuniaoList"></div>
+  </div>
+</div><!-- /tabReuniao -->
+
 <!-- ── ABA AÇÃO ── -->
-<div id="tabAcao" style="display:none;padding-top:60px;">
-  <div style="max-width:1000px;margin:0 auto;padding:1.5rem 1rem;">
+<div id="tabAcao" style="display:none;">
+  <div style="max-width:860px;margin:0 auto;padding:1.5rem 1rem;">
 
     <!-- Cabeçalho + contador -->
     <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;">
       <div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#1E3A5F;letter-spacing:0.02em;">⚡ Módulo de Ação</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Ações pendentes e respondidas das ocorrências fora do tempo</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Ações pendentes das ocorrências fora do tempo</div>
       </div>
       <div style="text-align:center;background:white;border:1.5px solid #FCA5A5;border-radius:10px;padding:0.5rem 1rem;min-width:70px;">
         <div id="acaoSubBadgePendente" style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#DC2626;line-height:1;">0</div>
@@ -2510,63 +1997,14 @@ if (!loggedInUser) {
       </div>
     </div>
 
-    <!-- Sub-abas -->
-    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;border-bottom:2px solid #E5E7EB;flex-wrap:wrap;">
-      <button onclick="switchAcaoSub('pendentes')" id="acaoSubBtnPendentes" style="font-family:'Barlow',sans-serif;padding:0.75rem 1.5rem;background:none;border:none;border-bottom:3px solid #7C3AED;color:#7C3AED;font-weight:700;cursor:pointer;font-size:0.95rem;">⏳ Pendentes</button>
-      <button onclick="switchAcaoSub('respondidas')" id="acaoSubBtnRespondidas" style="font-family:'Barlow',sans-serif;padding:0.75rem 1.5rem;background:none;border:none;border-bottom:3px solid transparent;color:#9CA3AF;font-weight:700;cursor:pointer;font-size:0.95rem;">✅ Respondidas</button>
-    </div>
-
-    <!-- Sub-aba: Pendentes -->
-    <div id="acaoSubPendentes" style="display:block;">
-      <div id="acaoList"></div>
-    </div>
-
-    <!-- Sub-aba: Respondidas -->
-    <div id="acaoSubRespondidas" style="display:none;">
-      <!-- Filtros -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:0.75rem;margin-bottom:1.5rem;padding:1rem;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.4rem;">📅 Data Inicial</label>
-          <input type="date" id="filtro_respondidas_data_ini" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;font-size:0.85rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.4rem;">📅 Data Final</label>
-          <input type="date" id="filtro_respondidas_data_fim" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;font-size:0.85rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.4rem;">👥 Equipe</label>
-          <select id="filtro_respondidas_equipe" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;font-size:0.85rem;cursor:pointer;">
-            <option value="">Todas</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.4rem;">🏷️ Tipo de Ação</label>
-          <select id="filtro_respondidas_tipo" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;font-size:0.85rem;cursor:pointer;">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.4rem;">📌 Status</label>
-          <select id="filtro_respondidas_status" style="width:100%;padding:0.5rem;border:1px solid #D1D5DB;border-radius:6px;font-size:0.85rem;cursor:pointer;">
-            <option value="">Todos</option>
-            <option value="realizada">✅ Realizada</option>
-            <option value="nao_realizada">❌ Não Realizada</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <button onclick="aplicarFiltrosAcoesRespondidas()" style="width:100%;padding:0.5rem;background:#7C3AED;color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem;">🔍 Filtrar</button>
-        </div>
-      </div>
-
-      <!-- Lista de ações respondidas -->
-      <div id="acaoListRespondidas"></div>
-    </div>
+    <!-- Lista de cards -->
+    <div id="acaoList"></div>
 
   </div>
 </div><!-- /tabAcao -->
 
 <!-- Painel de tratativa — fora de qualquer container para overlay correto -->
-<div id="acaoTratativaPanel" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;box-sizing:border-box;" onclick="fecharTratativa(event)">
+<div id="acaoTratativaPanel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;align-items:flex-start;justify-content:center;padding:2rem 1rem;box-sizing:border-box;" onclick="fecharTratativa(event)">
   <div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
     <div id="acaoTratativaContent"></div>
   </div>
@@ -2575,7 +2013,7 @@ if (!loggedInUser) {
 <!-- ── ABA DASHBOARD ── -->
 <div id="tabDashboard" style="display:none;">
   <!-- Sub-abas -->
-  <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;background:white;padding:60px 1.5rem 0 1.5rem;margin-top:0;">
+  <div style="display:flex;gap:0;border-bottom:2px solid #E5E7EB;background:white;padding:0 1.5rem;">
     <button id="dashSubBtnDashboard" onclick="switchDashSub('dashboard')"
       style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid #065F46;background:transparent;color:#065F46;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -2586,32 +2024,33 @@ if (!loggedInUser) {
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
       Banco de Dados
     </button>
-    <button id="dashSubBtnReuniao" onclick="switchDashSub('reuniao')"
-      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
-      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16v2H4zm0 4h16v10H4zm0 12h16v2H4z"/><line x1="9" y1="8" x2="9" y2="14"/><line x1="15" y1="8" x2="15" y2="14"/></svg>
-      Visão Detalhada
-    </button>
   </div>
 
   <!-- Conteúdo sub-aba Dashboard -->
   <div id="dashSubDashboard" style="display:block;">
 
-    <!-- Cards de Resumo Melhorados -->
-    <div id="dash-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;"></div>
+    <!-- Cabeçalho -->
+    <div style="margin-bottom:1.25rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;letter-spacing:0.02em;">📊 Dashboard de Gestão</div>
+        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:2px;">Visão executiva das ocorrências e ações</div>
+      </div>
+      <button onclick="renderDashboard()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:6px 14px;border-radius:8px;border:1.5px solid #6EE7B7;background:white;color:#065F46;cursor:pointer;">🔄 Atualizar</button>
+    </div>
 
     <!-- Filtros -->
-    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
-      <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9CA3AF;margin-bottom:0.75rem;">🔍 Filtros</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0.5rem;">
+    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
+      <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9CA3AF;margin-bottom:0.75rem;">🔍 Filtros</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.65rem;">
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Equipe</label>
-          <input type="text" id="dash-f-equipe" placeholder="Todas"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;box-sizing:border-box;">
+          <input type="text" id="dash-f-equipe" placeholder="Todas" oninput="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Turno</label>
-          <select id="dash-f-turno"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;">
+          <select id="dash-f-turno" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
             <option value="">Todos</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -2620,20 +2059,20 @@ if (!loggedInUser) {
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Resp. Ocorrência</label>
-          <select id="dash-f-resp-oc"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;">
+          <select id="dash-f-resp-oc" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
             <option value="">Todos</option>
           </select>
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Resp. Ação</label>
-          <select id="dash-f-resp-ac"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;"></select>
+          <select id="dash-f-resp-ac" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;"></select>
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Status</label>
-          <select id="dash-f-status"
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px;outline:none;background:white;">
+          <select id="dash-f-status" onchange="renderDashboard()"
+            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;background:white;">
             <option value="">Todos</option>
             <option value="pendente">🔴 Pendente</option>
             <option value="realizada">🟢 Realizada</option>
@@ -2641,17 +2080,16 @@ if (!loggedInUser) {
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Data início</label>
-          <input type="date" id="dash-f-data-ini"
+          <input type="date" id="dash-f-data-ini" oninput="renderDashboard()"
             style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
         </div>
         <div>
           <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Data fim</label>
-          <input type="date" id="dash-f-data-fim"
+          <input type="date" id="dash-f-data-fim" oninput="renderDashboard()"
             style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 8px;outline:none;box-sizing:border-box;">
         </div>
-        <div style="display:flex;align-items:flex-end;gap:0.5rem;">
-          <button onclick="limparFiltrosDash()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;cursor:pointer;flex:1;">🔄 Limpar</button>
-          <button onclick="renderDashboard()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:6px;border:1.5px solid #065F46;background:#065F46;color:white;cursor:pointer;flex:1;">🔍 Buscar</button>
+        <div style="display:flex;align-items:flex-end;">
+          <button onclick="limparFiltrosDash()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;cursor:pointer;width:100%;">✕ Limpar</button>
         </div>
       </div>
     </div>
@@ -2662,83 +2100,42 @@ if (!loggedInUser) {
     <!-- Alertas -->
     <div id="dash-alertas" style="margin-bottom:1.25rem;"></div>
 
-    <!-- Grid de gráficos 3 colunas -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;">
-      <!-- REINCIDÊNCIA GERAL -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">📋</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA GERAL</div>
-          </div>
-        </div>
-        <div id="dash-reincidencia" style="font-size:0.85rem;"></div>
+    <!-- Grid de gráficos -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">📊 Ações por Equipe</div>
+        <div id="dash-chart-equipe"></div>
       </div>
-
-      <!-- REINCIDÊNCIA POR CATEGORIA -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">📁</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA POR CATEGORIA</div>
-          </div>
-        </div>
-        <div id="dash-reincidencia-cat" style="font-size:0.85rem;"></div>
-      </div>
-
-      <!-- TOP 5 PROBLEMAS -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">⭐</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">TOP 5 PROBLEMAS</div>
-          </div>
-        </div>
-        <div id="dash-top-problemas" style="font-size:0.85rem;"></div>
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">👤 Ranking de Responsáveis</div>
+        <div id="dash-chart-resp"></div>
       </div>
     </div>
 
-    <!-- Grid Ações por Equipe + Ranking Responsáveis -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
-      <!-- AÇÕES POR EQUIPE -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">👥</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">AÇÕES POR EQUIPE</div>
-            <div style="font-size:0.7rem;color:#9CA3AF;">Percentual de ações realizadas</div>
-          </div>
-        </div>
-        <div id="dash-chart-equipe" style="font-size:0.85rem;"></div>
+    <!-- Top problemas -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">🏆 Top 5 Problemas</div>
+        <div id="dash-top-problemas"></div>
       </div>
-
-      <!-- RANKING RESPONSÁVEIS -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">📊</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">RANKING DE RESPONSÁVEIS</div>
-            <div style="font-size:0.7rem;color:#9CA3AF;">Por quantidade de ações</div>
-          </div>
-        </div>
-        <div id="dash-chart-resp" style="font-size:0.85rem;"></div>
+      <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;margin-bottom:0.85rem;">🔁 Reincidência por Equipe</div>
+        <div id="dash-reincidencia"></div>
       </div>
     </div>
 
     <!-- Tabela detalhada -->
-    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-        <div>
-          <div style="font-size:0.85rem;font-weight:800;color:#374151;">📋 TABELA DETALHADA</div>
-        </div>
+    <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;padding:1.1rem 1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
+        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;">📋 Tabela Detalhada</div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
           <input type="text" id="dash-busca" placeholder="🔍 Buscar..." oninput="renderDashboard()"
-            style="font-family:'Barlow',sans-serif;font-size:0.8rem;border:1px solid #E5E7EB;border-radius:4px;padding:6px 10px;outline:none;width:150px;">
-          <button onclick="exportDashExcel()" style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:700;padding:6px 12px;border-radius:4px;border:none;background:#16A34A;color:white;cursor:pointer;">📊 Excel</button>
+            style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:5px 10px;outline:none;width:180px;">
+          <button onclick="exportDashExcel()" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 14px;border-radius:8px;border:1.5px solid #16A34A;background:white;color:#16A34A;cursor:pointer;">⬇️ Excel</button>
         </div>
       </div>
-      <div style="overflow-x:auto;border-top:1px solid #E5E7EB;padding-top:1rem;">
-        <table id="dash-tabela" style="width:100%;border-collapse:collapse;font-size:0.77rem;"></table>
+      <div style="overflow-x:auto;">
+        <table id="dash-tabela" style="width:100%;border-collapse:collapse;font-size:0.78rem;"></table>
       </div>
     </div>
 
@@ -2760,7 +2157,7 @@ if (!loggedInUser) {
         </div>
         <div class="db-search-field">
           <label class="db-search-label">🔄 Turno</label>
-          <select id="dbFilterTurno" class="db-search-input" onchange="applyDBFilters()">
+          <select id="dbFilterTurno" class="db-search-input">
             <option value="">Todos</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
@@ -2769,7 +2166,16 @@ if (!loggedInUser) {
         </div>
         <div class="db-search-field" style="flex:2;">
           <label class="db-search-label">👷 Equipe</label>
-          <input type="text" id="dbFilterEquipe" placeholder="Buscar equipe..." onkeydown="if(event.key==='Enter')applyDBFilters()" onkeyup="applyDBFilters()" class="db-search-input">
+          <input type="text" id="dbFilterEquipe" placeholder="Buscar equipe..." onkeydown="if(event.key==='Enter')applyDBFilters()" class="db-search-input">
+        </div>
+        <div class="db-search-field">
+          <label class="db-search-label">⏰ Status Prazo</label>
+          <select id="dbFilterPrazo" class="db-search-input">
+            <option value="">Todos</option>
+            <option value="vencido">Fora do Prazo</option>
+            <option value="atencao">Atenção</option>
+            <option value="ok">No prazo</option>
+          </select>
         </div>
         <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:0.4rem;">
           <button class="db-btn-search" onclick="applyDBFilters()">🔍 Buscar</button>
@@ -2780,60 +2186,6 @@ if (!loggedInUser) {
       <div id="dbList"></div>
     </div>
   </div><!-- /dashSubDB -->
-
-  <!-- Conteúdo sub-aba Reunião (Visão Detalhada) -->
-  <div id="dashSubReuniao" style="display:none;">
-    <div style="max-width:1400px;margin:0 auto;padding:1.5rem 2rem 3rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-        <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;color:#065F46;text-transform:uppercase;letter-spacing:0.05em;">👁️ Visão Detalhada</div>
-          <div style="font-size:0.8rem;color:var(--gray-400);">Todos os registros · Filtráveis por data, turno e equipe</div>
-        </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <button onclick="printReuniao()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:0.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid #6EE7B7;background:white;color:#065F46;cursor:pointer;">🖨️ Imprimir</button>
-        </div>
-      </div>
-
-      <!-- ── FILTROS ── -->
-      <div style="background:white;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:0 1px 6px rgba(0,0,0,0.06);border:1px solid #E5E7EB;display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap;">
-        <!-- Data Início -->
-        <div style="flex:1;min-width:140px;">
-          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Data Início</label>
-          <input type="date" id="reuniaoFilterDataInicio" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
-        </div>
-
-        <!-- Data Fim -->
-        <div style="flex:1;min-width:140px;">
-          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Data Fim</label>
-          <input type="date" id="reuniaoFilterDataFim" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
-        </div>
-
-        <!-- Turno -->
-        <div style="flex:1;min-width:120px;">
-          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Turno</label>
-          <select id="reuniaoFilterTurno" style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onchange="renderReuniao()">
-            <option value="">Todos</option>
-            <option value="A">Turno A</option>
-            <option value="B">Turno B</option>
-            <option value="C">Turno C</option>
-          </select>
-        </div>
-
-        <!-- Equipe (busca) -->
-        <div style="flex:2;min-width:180px;">
-          <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--gray-600);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.02em;">Equipe</label>
-          <input type="text" id="reuniaoFilterEquipe" placeholder="Buscar equipe..." style="width:100%;padding:0.6rem;border:1px solid #D1D5DB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.9rem;" onkeyup="renderReuniao()">
-        </div>
-
-        <!-- Botão Limpar Filtros -->
-        <button onclick="limparFiltrosReuniao()" style="padding:0.6rem 1.2rem;background:#6B7280;color:white;border:none;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#4B5563'" onmouseout="this.style.background='#6B7280'">🔄 Limpar</button>
-        <button onclick="renderReuniao()" style="padding:0.6rem 1.2rem;background:#065F46;color:white;border:none;border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#065F46'">🔍 Buscar</button>
-      </div>
-
-      <!-- CARDS RESUMIDOS -->
-      <div id="reuniaoList" style="display:flex;flex-direction:column;gap:1.5rem;"></div>
-    </div>
-  </div><!-- /dashSubReuniao -->
 
 </div><!-- /tabDashboard -->
 
@@ -2919,15 +2271,6 @@ if (!loggedInUser) {
     </div>
   </div>
 
-  <!-- Seção 3: Supervisores por Turno -->
-  <div class="cfg-card">
-    <div class="cfg-card-header">👤 Supervisores por Turno</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Supervisores sugeridos automaticamente ao selecionar o turno no Registro.</div>
-      <div id="cfgSupervisoresList"></div>
-    </div>
-  </div>
-
   <!-- Seção: Responsáveis de Ação -->
   <div class="cfg-card">
     <div class="cfg-card-header">⚡ Responsáveis de Ação</div>
@@ -2970,15 +2313,6 @@ if (!loggedInUser) {
     </div>
   </div>
 
-  <!-- Seção: Gestão de Usuários -->
-  <div class="cfg-card" id="cfgCardUsuarios">
-    <div class="cfg-card-header">👥 Gestão de Usuários</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:1rem;">Gerencie os usuários com acesso à plataforma. Somente administradores podem criar, editar ou excluir usuários.</div>
-      <div id="cfgUsuariosList"></div>
-    </div>
-  </div>
-
   <!-- Seção 5: Senhas -->
   <div class="cfg-card">
     <div class="cfg-card-header">🔐 Alterar Senha de Administrador</div>
@@ -2989,20 +2323,6 @@ if (!loggedInUser) {
         <button class="cfg-btn-save" onclick="cfgChangePass()">💾 Alterar</button>
       </div>
       <div id="cfgPassMsg" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
-    </div>
-  </div>
-
-  <!-- Seção: Gestão de Tipos de Ação -->
-  <div class="cfg-card">
-    <div class="cfg-card-header">⚡ Gestão de Tipos de Ação</div>
-    <div class="cfg-card-body">
-      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Tipos de ação disponíveis para seleção na Tratativa da Ação.</div>
-      <div class="cfg-add-row">
-        <input type="text" id="cfgNewTipoAcao" placeholder="Ex: Aplicado Feedback" class="cfg-input" style="max-width:250px;"
-          onkeydown="if(event.key==='Enter')cfgAddTipoAcao()">
-        <button class="cfg-btn-add" onclick="cfgAddTipoAcao()">+ Adicionar</button>
-      </div>
-      <div id="cfgTipoAcaoList" class="cfg-tag-list"></div>
     </div>
   </div>
 
@@ -3072,18 +2392,6 @@ if (!loggedInUser) {
       <div class="resumo-obs" id="rObs"></div>
     </div>
 
-    <!-- Ações -->
-    <div class="resumo-section" id="rAcoesSection" style="display:none;">
-      <div class="resumo-section-title">⚡ Ações</div>
-      <div id="rAcoes"></div>
-    </div>
-
-    <!-- Comentários Geral -->
-    <div class="resumo-section" id="rComentariosSection" style="display:none;">
-      <div class="resumo-section-title">💬 Comentários Geral</div>
-      <div class="resumo-obs" id="rComentarios"></div>
-    </div>
-
     <!-- Mapa de Deslocamento -->
     <div class="resumo-section" id="rMapSection" style="display:none;">
       <div class="resumo-section-title">🗺️ Mapa de Deslocamento</div>
@@ -3149,17 +2457,6 @@ if (!loggedInUser) {
 
       <!-- Ocorrências -->
       <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#7C3AED;margin-bottom:0.65rem;">⚡ Ocorrências</div>
-      
-      <!-- Guia de Ações -->
-      <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;padding:0.75rem;margin-bottom:1rem;">
-        <div style="font-weight:700;color:#991B1B;font-size:0.75rem;margin-bottom:0.5rem;">📊 COMO USAR OS BOTÕES:</div>
-        <div style="font-size:0.7rem;color:#7F1D1D;line-height:1.4;">
-          <div style="margin-bottom:0.4rem;">🗑 <strong>Excluir:</strong> Remove apenas esta ocorrência (pede confirmação)</div>
-          <div style="margin-bottom:0.4rem;">⬆ <strong>Subir:</strong> Move a ocorrência para cima na sequência</div>
-          <div>⬇ <strong>Descer:</strong> Move a ocorrência para baixo na sequência</div>
-        </div>
-      </div>
-      
       <div id="editEntriesList"></div>
 
       <!-- Adicionar nova ocorrência -->
@@ -3171,21 +2468,6 @@ if (!loggedInUser) {
           <button onclick="editAddEntry('ocioso')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #9F1239;color:#9F1239;background:white;cursor:pointer;">⏸️ Ocioso</button>
           <button onclick="editAddEntry('intervalo')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #6B21A8;color:#6B21A8;background:white;cursor:pointer;">☕ Intervalo</button>
           <button onclick="editAddEntry('incidencia')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid #D97706;color:#D97706;background:white;cursor:pointer;">⚡ Incidência</button>
-        </div>
-      </div>
-
-      <!-- Resumo de Funcionalidades -->
-      <div style="margin-top:1.5rem;padding:1rem;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:6px;">
-        <div style="font-weight:700;color:#065F46;font-size:0.8rem;margin-bottom:0.6rem;">✨ O QUE VOCÊ PODE FAZER AQUI:</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.7rem;color:#047857;">
-          <div>✅ Editar horas (início/fim)</div>
-          <div>✅ Editar duração</div>
-          <div>✅ Editar observações</div>
-          <div>✅ Editar justificativas</div>
-          <div>✅ Deletar ocorrências</div>
-          <div>✅ Reordenar ocorrências</div>
-          <div>✅ Adicionar novos lançamentos</div>
-          <div>✅ Editar comentários gerais</div>
         </div>
       </div>
 
@@ -3332,25 +2614,6 @@ if (!loggedInUser) {
   };
 
   let entryCounter = 0; // global unique ID for each entry
-
-  // ════════════════════════════════════════════════════════════════
-  //  CONSTANTES DE CONFIGURAÇÃO (DECLARADAS NO INÍCIO)
-  // ════════════════════════════════════════════════════════════════
-  const DB_KEY = 'enel_prod_records';
-  const CFG_CAT_LIMITES_KEY = 'enel_cfg_cat_limites';
-  const CFG_EQUIPES_KEY = 'enel_cfg_equipes';
-  const CFG_CAUSAS_KEY = 'enel_cfg_causas';
-  const CFG_OBS_KEY = 'enel_cfg_obs_placeholder';
-  const CFG_PASS_KEY = 'enel_cfg_pass';
-  const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
-  const CFG_LIMITES_KEY = 'enel_cfg_incidencia_limites';
-  const CFG_SUPERVISORES_KEY = 'enel_cfg_supervisores';
-  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
-  const CFG_RESP_OC_KEY = 'enel_cfg_resp_oc';
-  const CFG_TIPOS_ACAO_KEY = 'enel_cfg_tipos_acao';
-  const DRAFT_KEY = 'enel_form_draft';
-  const ACOES_KEY = 'enel_acoes';
-  const FB_ACOES_PATH = 'produtividade/acoes';
 
   function addEntry(catKey) {
     const wrap = document.getElementById('justWrap');
@@ -3884,6 +3147,8 @@ if (!loggedInUser) {
     }
   }
 
+  const CFG_CAT_LIMITES_KEY = 'enel_cfg_cat_limites';
+
   // Default limits — overridden by admin config
   let DESLOC_LIMITE_MIN    = 30;
   let OCIOSO_LIMITE_MIN    = 10;
@@ -4376,6 +3641,10 @@ if (!loggedInUser) {
     'SG001SXE-A','SG003SXE-A','SG004SXE-A','SG005SX-A','SG007SXE-A',
     'SG010SXE-A','SG011SXE-A','SG026RXE-A',
   ];
+  const CFG_EQUIPES_KEY  = 'enel_cfg_equipes';
+  const CFG_CAUSAS_KEY   = 'enel_cfg_causas';
+  const CFG_OBS_KEY      = 'enel_cfg_obs_placeholder';
+  const CFG_PASS_KEY     = 'enel_cfg_pass';
 
   // ── Central config cache (synced from Firebase) ──
   let _cfgCache = {};
@@ -4391,11 +3660,8 @@ if (!loggedInUser) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     try {
       const fbKey = key.replace(/[.#$[\]]/g,'_');
-      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config/${fbKey}.json`, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(value)
-      }).catch(e => console.warn('Config save error:', e));
+      db.ref('produtividade/config/' + fbKey).set(value)
+        .catch(e => console.warn('Config save error:', e));
     } catch(e) {}
   }
 
@@ -4422,7 +3688,7 @@ if (!loggedInUser) {
         renderContactChips();
         applyCatLimites();
       }).catch(e => {
-        // Aviso silencioso - Firebase pode não estar configurado
+        console.warn(`Config sync error:`, e);
         initDefaults();
       });
   }
@@ -4765,6 +4031,7 @@ if (!loggedInUser) {
   //  BANCO DE DADOS (localStorage)
   // ══════════════════════════════════════════
 
+  const DB_KEY = 'enel_prod_records';
   const catColors = {
     plataforma:   '#00843D',
     deslocamento: '#1E4DA1',
@@ -4841,13 +4108,9 @@ if (!loggedInUser) {
   function saveDB(records) {
     _dbCache = [...records].sort((a, b) => b.id - a.id);
     try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch(e) {}
-    // Save each record to Firebase via REST API
     records.forEach(r => {
-      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(r)
-      }).catch(e => console.warn('SaveDB error:', e));
+      db.ref('produtividade/records/r_' + r.id).set(r)
+        .catch(e => console.warn('SaveDB error:', e));
     });
     setFbStatus(true);
   }
@@ -4898,10 +4161,31 @@ if (!loggedInUser) {
     tryDelete(1);
   }
 
-  // Listener Firebase desabilitado — usando REST API polling exclusivamente
+  // Listener Firebase — fonte de verdade para todos os usuários
   function _attachListener() {
-    // Disabled: Firebase SDK listener removed
-    // Using REST API polling via syncFromFirebase() every 2 seconds instead
+    db.ref('produtividade/records').off('value');
+
+    db.ref('produtividade/records').on('value', snap => {
+      if (_deleting) return;
+
+      const data = snap.val();
+      const records = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+  
+      if (records.length === 0 && _dbCache.length > 0) {
+        console.warn('[FB] Vazio ignorado — cache tem', _dbCache.length);
+        return;
+      }
+
+      _dbCache = records;
+      _firebaseReady = true;
+      try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+      refreshAllUI(records);
+
+    }, err => {
+      console.error('[FB] Erro listener:', err.code, err.message);
+      if (err.code === 'PERMISSION_DENIED') showFirebaseRulesWarning();
+      else setFbStatus(false);
+    });
   }
 
   function showFirebaseRulesWarning() {
@@ -4926,6 +4210,7 @@ if (!loggedInUser) {
     applyDBFilters();
     const activeBtn = document.querySelector('.sidebar-item.active')?.id;
     if (activeBtn === 'tabBtnNotify')    renderNotifyTab();
+    if (activeBtn === 'tabBtnReuniao')   renderReuniao();
     if (activeBtn === 'tabBtnDashboard') renderDashboard();
   }
 
@@ -4986,33 +4271,33 @@ if (!loggedInUser) {
         .then(data => {
           setFbStatus(true);
 
-          // Processa dados do Firebase - pode vir como objeto ou array
-          let fbRecords = [];
-          if (data && typeof data === 'object') {
-            // Se for um objeto com chaves (estrutura /records/r_123), converte para array
-            if (Array.isArray(data)) {
-              fbRecords = data;
-            } else {
-              fbRecords = Object.values(data);
-            }
-            // Filtra valores válidos
-            fbRecords = fbRecords
-              .filter(r => r && typeof r === 'object' && r.id && !_deletedIds.has(String(r.id)))
-              .sort((a, b) => b.id - a.id);
-          }
+          const fbRecords = (data && typeof data === 'object')
+            ? Object.values(data)
+                .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
+                .sort((a, b) => b.id - a.id)
+            : [];
 
           const fbCount    = fbRecords.length;
           const cacheCount = _dbCache.length;
 
-          // SEMPRE atualizar cache e localStorage quando Firebase tem dados
           if (fbCount > 0) {
+            const fbIds    = new Set(fbRecords.map(r => String(r.id)));
+            const cacheIds = new Set(_dbCache.map(r => String(r.id)));
+            const hasNew     = fbRecords.some(r => !cacheIds.has(String(r.id)));
+            const hasDeleted = [...cacheIds].some(id => !fbIds.has(id));
+            const hasEdited  = fbRecords.some(fr => {
+              const c = _dbCache.find(r => String(r.id) === String(fr.id));
+              return c && JSON.stringify(c) !== JSON.stringify(fr);
+            });
+
+            // Always update cache and UI when Firebase has data
             _dbCache = fbRecords;
             try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
-            refreshAllUI(fbRecords);
-            console.log(`[SYNC] ${fbCount} registros sincronizados do Firebase`);
+            if (hasNew || hasDeleted || hasEdited || fbCount !== cacheCount) {
+              refreshAllUI(fbRecords);
+            }
           } else if (fbCount === 0 && cacheCount > 0) {
             // Firebase vazio mas cache tem dados → faz upload
-            console.warn('[SYNC] Firebase vazio, enviando dados do cache...');
             _dbCache.forEach(r => {
               fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
                 method: 'PUT',
@@ -5020,18 +4305,14 @@ if (!loggedInUser) {
                 body: JSON.stringify(r)
               }).catch(() => {});
             });
-          } else {
-            console.log('[SYNC] Firebase vazio e cache vazio');
           }
         })
-        .catch(err => { 
-          console.error('[SYNC] Erro ao sincronizar:', err.message);
-          setFbStatus(false); 
-        });
+        .catch(() => { setFbStatus(false); });
     };
 
-    // Sync imediato
+    // Sync imediato + polling a cada 3s
     syncFromFirebase();
+    setInterval(syncFromFirebase, 3000);
 
     // Sync de contatos (10s)
     setInterval(() => {
@@ -5103,10 +4384,6 @@ if (!loggedInUser) {
       const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
       const acaoNecessaria = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value || '';
       const acaoResponsavel = acaoNecessaria === 'sim' ? (document.getElementById('acao-resp-' + id)?.value || '') : '';
-      const acaoDescricao = acaoNecessaria === 'sim' ? (document.getElementById('acao-desc-' + id)?.value || '') : '';
-      const acaoData = acaoNecessaria === 'sim' ? (document.getElementById('acao-data-' + id)?.value || '') : '';
-      const acaoTipo = acaoNecessaria === 'sim' ? (document.getElementById('acao-tipo-' + id)?.value || '') : '';
-      const acaoStatus = acaoNecessaria === 'sim' ? (document.querySelector(`input[name="acao-status-${id}"]:checked`)?.value || '') : '';
       const acaoRespAcao = acaoNecessaria === 'sim' ? (() => {
         try { return JSON.parse(document.getElementById('acao-resp-acao-' + id)?.value || '[]'); } catch { return []; }
       })() : [];
@@ -5132,113 +4409,14 @@ if (!loggedInUser) {
         return d < 0 ? d + 1440 : d;
       })() : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoDescricao, acaoData, acaoTipo, acaoStatus, acaoRespAcao });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoRespAcao });
     });
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
     const jornadaSaida   = document.getElementById('jornadaSaida')?.value || '';
-    const comentariosReg    = (document.getElementById('comentariosReg')?.value || '').trim();
+    const comentarios    = (document.getElementById('comentariosReg')?.value || '').trim();
 
-    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentariosReg, entries, totalMin };
-  }
-
-  // ── FUNÇÕES PARA EDITAR OCORRÊNCIAS INDIVIDUALMENTE ──
-
-  function deleteEntryConfirm(idx) {
-    if (!confirm('Deseja excluir esta ocorrência?')) return;
-    deleteEntry(idx);
-  }
-
-  function deleteEntry(idx) {
-    const wrap = document.getElementById('justWrap');
-    if (!wrap) return;
-    const items = wrap.querySelectorAll('.entry-item');
-    if (idx >= 0 && idx < items.length) {
-      items[idx].remove();
-      // Recalcula tudo automaticamente
-      recalculateAfterEdit();
-    }
-  }
-
-  function moveEntryUp(idx) {
-    const wrap = document.getElementById('justWrap');
-    if (!wrap || idx <= 0) return;
-    const items = wrap.querySelectorAll('.entry-item');
-    if (idx > 0 && idx < items.length) {
-      const current = items[idx];
-      const previous = items[idx - 1];
-      previous.parentNode.insertBefore(current, previous);
-      // Recalcula tudo automaticamente
-      recalculateAfterEdit();
-    }
-  }
-
-  function moveEntryDown(idx) {
-    const wrap = document.getElementById('justWrap');
-    if (!wrap || idx < 0) return;
-    const items = wrap.querySelectorAll('.entry-item');
-    if (idx >= 0 && idx < items.length - 1) {
-      const current = items[idx];
-      const next = items[idx + 1];
-      current.parentNode.insertBefore(next, current);
-      // Recalcula tudo automaticamente
-      recalculateAfterEdit();
-    }
-  }
-
-  function recalculateAfterEdit() {
-    // Recarrega o registro da forma atual
-    const form = collectFormData();
-    
-    // Valida sequência de horários
-    if (!validateTimeSequence(form.entries)) {
-      showCopyToast('⚠️ Aviso: A ordem dos horários não é sequencial. Verifique!');
-      return;
-    }
-    
-    // Recalcula tempos totais
-    const totalMins = form.entries.reduce((sum, e) => sum + (e.mins || 0), 0);
-    const h = Math.floor(totalMins / 60);
-    const m = totalMins % 60;
-    const totalTimeEl = document.getElementById('totalTime');
-    if (totalTimeEl) {
-      totalTimeEl.textContent = `${pad(h)}h ${pad(m)}min`;
-    }
-    
-    // Reexibe o registro (recarrega a visualização)
-    const currentId = new URLSearchParams(window.location.search).get('view');
-    if (!currentId) {
-      const data = document.getElementById('data').value;
-      const allRec = loadDB().filter(r => r.data === data);
-      if (allRec.length > 0) {
-        displayRecord(allRec[0]);
-      }
-    }
-    
-    showCopyToast('✅ Ocorrência atualizada com sucesso!');
-  }
-
-  function validateTimeSequence(entries) {
-    if (entries.length === 0) return true;
-    
-    for (let i = 0; i < entries.length - 1; i++) {
-      const current = entries[i];
-      const next = entries[i + 1];
-      
-      if (!current.hinicio || !current.hfim || !next.hinicio || !next.hfim) continue;
-      
-      const [ch, cm] = current.hfim.split(':').map(Number);
-      const [nh, nm] = next.hinicio.split(':').map(Number);
-      
-      const currentEnd = ch * 60 + cm;
-      const nextStart = nh * 60 + nm;
-      
-      // Permitir uma margem pequena (até 30 minutos de intervalo)
-      if (nextStart < currentEnd - 30 && nextStart > currentEnd + 30) {
-        return false;
-      }
-    }
-    return true;
+    return { data, turno, equipe, obs, jornadaEntrada, jornadaSaida, comentarios, entries, totalMin };
   }
 
   function saveRecord() {
@@ -5271,8 +4449,6 @@ if (!loggedInUser) {
       id: Date.now(),
       registroId,
       savedAt: new Date().toISOString(),
-      criadoPor: nomeUsuario() || '—',
-      criadoPorLogin: (getCurrentUserImmediate()?.login) || '—',
       ...form
     };
 
@@ -5294,13 +4470,19 @@ if (!loggedInUser) {
     const allRec = loadDB();
     const pendingCount = allRec.filter(r => needsJustificativa(r) && r.status !== 'revisado' && r.status !== 'parcial').length;
     updateTabBadgeRetorno(pendingCount);
+    
+    // Add record to cache immediately so it appears in dashboard/db tables
+    _dbCache = [record, ..._dbCache.filter(r => String(r.id) !== String(record.id))];
+    try { localStorage.setItem(DB_KEY, JSON.stringify(_dbCache)); } catch {}
+    
+    // Update dashboard if it's currently visible
+    if (_currentTab === 'dashboard') {
+      if (_dashSub === 'dashboard') renderDashboard();
+      if (_dashSub === 'db') applyDBFilters();
+    }
 
-    // Refresh UI imediatamente (o polling global vai sincronizar com Firebase em 2s)
-    refreshAllUI(allRec);
-
-    // Switch to Dashboard > Visão Detalhada automatically
-    switchTab('dashboard');
-    setTimeout(() => { switchDashSub('reuniao'); }, 100);
+    // Switch to Notify tab
+    switchTab('notify');
 
     // Auto-clear form for next entry
     document.getElementById('data').value = today;
@@ -5329,46 +4511,80 @@ if (!loggedInUser) {
     const dataVal   = document.getElementById('dbFilterData')?.value || '';
     const turnoVal  = document.getElementById('dbFilterTurno')?.value || '';
     const equipeVal = (document.getElementById('dbFilterEquipe')?.value || '').trim().toUpperCase();
+    const prazoVal  = document.getElementById('dbFilterPrazo')?.value || '';
 
     // Visual feedback on Buscar button
     const btn = document.querySelector('.db-btn-search');
     if (btn) {
-      const hasFilter = dataVal || turnoVal || equipeVal;
+      const hasFilter = dataVal || turnoVal || equipeVal || prazoVal;
       btn.style.background = hasFilter ? 'var(--green-dark)' : 'var(--green)';
       btn.textContent = hasFilter ? '🔍 Filtrado' : '🔍 Buscar';
     }
 
-    renderDB(dataVal, turnoVal, equipeVal);
+    renderDB(dataVal, turnoVal, equipeVal, prazoVal);
   }
 
   function clearDBFilters() {
     document.getElementById('dbFilterData').value = '';
     document.getElementById('dbFilterTurno').value = '';
     document.getElementById('dbFilterEquipe').value = '';
+    document.getElementById('dbFilterPrazo').value = '';
     // Reset button
     const btn = document.querySelector('.db-btn-search');
     if (btn) { btn.style.background = 'var(--green)'; btn.textContent = '🔍 Buscar'; }
-    renderDB('', '', '');
+    renderDB('', '', '', '');
   }
 
-  function renderDB(dataVal, turnoVal, equipeVal) {
+  function renderDB(dataVal, turnoVal, equipeVal, prazoVal) {
     const allRecords = loadDB();
+    const acoes = loadAcoes();
+    const PRAZO_RESPOSTA_DIAS = 2;
 
     let records = allRecords.filter(r => {
       if (dataVal  && r.data  !== dataVal)  return false;
       if (turnoVal && r.turno !== turnoVal) return false;
       if (equipeVal && !r.equipe.toUpperCase().includes(equipeVal)) return false;
+      
+      // Filtro de prazo: verifica se alguma ação relacionada ao registro está vencida
+      if (prazoVal) {
+        let recordPrazoStatus = null;
+        (r.entries || []).forEach(e => {
+          if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
+            const key = getAcaoKey(r.id, e);
+            const acao = acoes[key];
+            const isRealizada = acao && acao.status === 'realizada';
+            
+            // Só considerar prazo se a ação NÃO foi realizada
+            if (!isRealizada) {
+              const prazoInfo = calcPrazoAcao(r.data);
+              if (prazoInfo && !recordPrazoStatus) {
+                recordPrazoStatus = prazoInfo.status;
+              }
+            }
+          }
+        });
+        
+        if (prazoVal === 'vencido' && recordPrazoStatus !== 'vencido') return false;
+        if (prazoVal === 'atencao' && recordPrazoStatus !== 'atencao') return false;
+        if (prazoVal === 'ok' && recordPrazoStatus !== 'ok') return false;
+      }
+      
       return true;
     });
 
     // Subtitle with active filter details
-    const hasFilter = dataVal || turnoVal || equipeVal;
+    const hasFilter = dataVal || turnoVal || equipeVal || prazoVal;
     let filterDesc = '';
     if (hasFilter) {
       const parts = [];
       if (dataVal) { const [y,m,d] = dataVal.split('-'); parts.push(d+'/'+m+'/'+y); }
       if (turnoVal) parts.push('Turno '+turnoVal);
       if (equipeVal) parts.push(equipeVal);
+      if (prazoVal) { 
+        if (prazoVal === 'vencido') parts.push('⏰ Fora do Prazo');
+        else if (prazoVal === 'atencao') parts.push('⏰ Atenção');
+        else if (prazoVal === 'ok') parts.push('⏰ No Prazo');
+      }
       filterDesc = parts.join(' · ');
     }
     const sub = hasFilter
@@ -5436,7 +4652,6 @@ if (!loggedInUser) {
               <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
               <span class="db-meta-pill">👷 ${r.equipe}</span>
               <span class="db-meta-pill">🔖 ${r.entries.length} lançamento${r.entries.length!==1?'s':''}</span>
-              ${r.criadoPor ? `<span class="db-meta-pill" style="background:#EFF6FF;color:#1E4DA1;" title="Criado por ${r.criadoPor}">👤 ${r.criadoPor}</span>` : ''}
               ${(() => {
                 const acoes = loadAcoes();
                 const comAcao = (r.entries||[]).filter(e => e.acaoNecessaria === 'sim' && e.acaoResponsavel);
@@ -5456,6 +4671,8 @@ if (!loggedInUser) {
             <div class="db-record-actions">
               <button class="db-action-btn" data-action="view"   data-id="${r.id}" title="Ver resumo">👁</button>
               <button class="db-action-btn" data-action="edit"   data-id="${r.id}" title="Editar registro" style="color:#1E4DA1;">✏️</button>
+              <button class="db-action-btn" data-action="meeting" data-id="${r.id}" title="${r.reuniao ? 'Remover da reunião' : 'Incluir na reunião'}"
+                style="color:${r.reuniao ? '#6366F1' : 'var(--gray-400)'};font-size:0.9rem;">${r.reuniao ? '📋' : '📋'}</button>
               <button class="db-action-btn del" data-action="delete" data-id="${r.id}" title="Excluir">🗑</button>
             </div>
             <span class="db-toggle-icon" onclick="toggleDBRecord(${r.id})" style="cursor:pointer;">▾</span>
@@ -5463,13 +4680,16 @@ if (!loggedInUser) {
         </div>
         <div class="db-record-body">
           <div class="db-record-cats">${catTags}</div>
-          ${r.comentariosReg ? `<div style="font-size:0.78rem;color:#6B7280;margin:0.5rem 0;padding:0.5rem;background:#F9FAFB;border-radius:6px;border-left:3px solid #1E4DA1;"><strong>💬 Comentários:</strong> ${r.comentariosReg}</div>` : ''}
           <div class="db-entries-mini">${miniEntries}</div>
           ${obsHtml}
         </div>`;
       listEl.appendChild(card);
 
       // Direct event listeners — most reliable approach
+      card.querySelector('[data-action="meeting"]')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleReuniao(r.id);
+      });
       card.querySelector('[data-action="view"]')?.addEventListener('click', function(e) {
         e.stopPropagation();
         viewRecord(r.id, e);
@@ -5487,43 +4707,11 @@ if (!loggedInUser) {
 
   function deleteRecord(id) {
     const records = loadDB().filter(r => r.id !== id);
-    _deletedIds.add(String(id));
-    try { localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds])); } catch {}
     saveDB(records);
-    
-    // Add to tombstones on Firebase
-    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted/${id}.json`, {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({deletedAt: new Date().toISOString()})
-    }).catch(() => {});
-    
     updateTabBadge();
     updateTabBadgeRetorno(loadDB().filter(r => needsJustificativa(r) && r.status !== 'revisado').length);
     applyDBFilters();
     showCopyToast('🗑 Registro excluído.');
-    
-    // Trigger immediate sync for other users
-    setTimeout(() => {
-      const syncFromFirebase = () => {
-        fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
-          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-          .then(data => {
-            const fbRecords = (data && typeof data === 'object')
-              ? Object.values(data)
-                  .filter(r => r && r.id && !_deletedIds.has(String(r.id)))
-                  .sort((a, b) => b.id - a.id)
-              : [];
-            if (fbRecords.length >= 0) {
-              _dbCache = fbRecords;
-              try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
-              refreshAllUI(fbRecords);
-            }
-          })
-          .catch(() => {});
-      };
-      syncFromFirebase();
-    }, 500);
   }
 
   function toggleDBRecord(id) {
@@ -5709,69 +4897,8 @@ if (!loggedInUser) {
       if (obsSection) obsSection.style.display = 'none';
     }
 
-    // Ações
-    const acoes = loadAcoes();
-    const acoesDoRegistro = [];
-    r.entries.forEach(e => {
-      if (e.acaoNecessaria === 'sim' && e.acaoResponsavel) {
-        const key = getAcaoKey(r.id, e);
-        const acao = acoes[key] || {};
-        acoesDoRegistro.push({
-          entry: e,
-          acao: acao,
-          key: key
-        });
-      }
-    });
-
-    const acoesSection = document.getElementById('rAcoesSection');
-    const rAcoes = document.getElementById('rAcoes');
-    if (acoesDoRegistro.length > 0 && rAcoes) {
-      rAcoes.innerHTML = '';
-      const acoesList = document.createElement('div');
-      acoesList.style.cssText = 'display:flex;flex-direction:column;gap:0.85rem;';
-      
-      acoesDoRegistro.forEach(({entry, acao}) => {
-        const acaoCard = document.createElement('div');
-        acaoCard.style.cssText = 'background:white;border:1.5px solid #E5E7EB;border-radius:10px;padding:0.9rem 1rem;';
-        
-        const status = acao.status === 'realizada' ? '🟢 Realizada' : '🔴 Pendente';
-        const statusColor = acao.status === 'realizada' ? '#16A34A' : '#DC2626';
-        
-        acaoCard.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
-            <div style="flex:1;">
-              <div style="font-size:0.75rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:0.3rem;">${entry.catKey === 'incidencia' ? '🔢 ' : ''}${categorias[entry.catKey]?.nome || entry.catKey}</div>
-              <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.4rem;">Resp: <strong>${entry.acaoResponsavel}</strong></div>
-              ${acao.respExec ? `<div style="font-size:0.78rem;color:#6B7280;">Exec: ${acao.respExec}</div>` : ''}
-              ${acao.tipoAcao ? `<div style="font-size:0.75rem;color:#7C3AED;font-weight:700;margin-top:0.3rem;">🏷️ Tipo: ${acao.tipoAcao}</div>` : ''}
-              ${acao.descricao ? `<div style="font-size:0.78rem;color:#4B5563;margin-top:0.4rem;"><strong>Descrição:</strong> ${acao.descricao}</div>` : ''}
-            </div>
-            <span style="font-size:0.75rem;font-weight:700;background:#F3F4F6;color:${statusColor};padding:3px 10px;border-radius:99px;white-space:nowrap;">${status}</span>
-          </div>
-          ${acao.dataAcao ? `<div style="font-size:0.75rem;color:#9CA3AF;margin-top:0.5rem;">📅 Data: ${acao.dataAcao.split('-').reverse().join('/')}</div>` : ''}
-        `;
-        acoesList.appendChild(acaoCard);
-      });
-      
-      rAcoes.appendChild(acoesList);
-      if (acoesSection) acoesSection.style.display = 'block';
-    } else {
-      if (acoesSection) acoesSection.style.display = 'none';
-    }
-
-    // Comentários Geral
-    const comentariosSection = document.getElementById('rComentariosSection');
-    if (r.comentariosReg && comentariosSection) {
-      document.getElementById('rComentarios').innerHTML = r.comentariosReg;
-      comentariosSection.style.display = 'block';
-    } else if (comentariosSection) {
-      comentariosSection.style.display = 'none';
-    }
-
     const savedDate = new Date(r.savedAt);
-    const autorStr = r.criadoPor ? ` · por ${r.criadoPor}` : '';
-    set('rFooterDate', `Salvo em ${savedDate.toLocaleDateString('pt-BR')} às ${savedDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${autorStr}`);
+    set('rFooterDate', `Salvo em ${savedDate.toLocaleDateString('pt-BR')} às ${savedDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`);
 
     // Build timeline
     buildTimeline(r);
@@ -5923,9 +5050,9 @@ if (!loggedInUser) {
     // Fit bounds
     setTimeout(() => {
       if (allLatLngs.length === 1) {
-        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 12);
+        map.setView([allLatLngs[0][0], allLatLngs[0][1]], 15);
       } else {
-        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [150, 150], maxZoom: 13 });
+        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [30, 30] });
       }
       map.invalidateSize();
     }, 100);
@@ -6087,78 +5214,29 @@ if (!loggedInUser) {
 
   function switchDashSub(sub) {
     _dashSub = sub;
-    
     const subDash = document.getElementById('dashSubDashboard');
     const subDB   = document.getElementById('dashSubDB');
-    const subReu  = document.getElementById('dashSubReuniao');
     const btnD    = document.getElementById('dashSubBtnDashboard');
     const btnDB   = document.getElementById('dashSubBtnDB');
-    const btnReu  = document.getElementById('dashSubBtnReuniao');
-    
-    // Hide all sub-tabs
-    if (subDash) subDash.style.display = 'none';
-    if (subDB)   subDB.style.display   = 'none';
-    if (subReu)  subReu.style.display  = 'none';
-    
-    // Reset button styles
+    if (subDash) subDash.style.display = sub === 'dashboard' ? 'block' : 'none';
+    if (subDB)   subDB.style.display   = sub === 'db'        ? 'block' : 'none';
     if (btnD) {
-      btnD.style.borderBottomColor = 'transparent';
-      btnD.style.color = '#9CA3AF';
+      btnD.style.borderBottomColor = sub === 'dashboard' ? '#065F46' : 'transparent';
+      btnD.style.color             = sub === 'dashboard' ? '#065F46' : '#9CA3AF';
     }
     if (btnDB) {
-      btnDB.style.borderBottomColor = 'transparent';
-      btnDB.style.color = '#9CA3AF';
+      btnDB.style.borderBottomColor = sub === 'db' ? '#065F46' : 'transparent';
+      btnDB.style.color             = sub === 'db' ? '#065F46' : '#9CA3AF';
     }
-    if (btnReu) {
-      btnReu.style.borderBottomColor = 'transparent';
-      btnReu.style.color = '#9CA3AF';
-    }
-    
-    // Show selected sub-tab and highlight button
-    if (sub === 'dashboard') {
-      if (subDash) subDash.style.display = 'block';
-      if (btnD) {
-        btnD.style.borderBottomColor = '#065F46';
-        btnD.style.color = '#065F46';
-      }
-      // Clear all filters to show all data
-      document.getElementById('dash-f-equipe').value = '';
-      document.getElementById('dash-f-turno').value = '';
-      document.getElementById('dash-f-resp-oc').value = '';
-      document.getElementById('dash-f-resp-ac').value = '';
-      document.getElementById('dash-f-status').value = '';
-      document.getElementById('dash-f-data-ini').value = '';
-      document.getElementById('dash-f-data-fim').value = '';
-      document.getElementById('dash-busca').value = '';
-      // Load all data
-      renderDashboard();
-    } else if (sub === 'db') {
-      if (subDB) subDB.style.display = 'block';
-      if (btnDB) {
-        btnDB.style.borderBottomColor = '#065F46';
-        btnDB.style.color = '#065F46';
-      }
+    if (sub === 'db') {
       applyDBFilters();
       setTimeout(() => { if (_dashSub === 'db') applyDBFilters(); }, 300);
-    } else if (sub === 'reuniao') {
-      if (subReu) subReu.style.display = 'block';
-      if (btnReu) {
-        btnReu.style.borderBottomColor = '#065F46';
-        btnReu.style.color = '#065F46';
-      }
-      renderReuniao();
     }
-    
+    if (sub === 'dashboard') renderDashboard();
     window.scrollTo({ top:0, behavior:'smooth' });
   }
 
   function switchTab(tab) {
-    // Prevent non-admin users from accessing config tab
-    if (tab === 'config' && !isAdmin()) {
-      _showToastAuth('❌ Acesso restrito ao administrador');
-      return;
-    }
-
     if (_currentTab === 'form' && tab !== 'form') saveDraft();
     if (_currentTab === 'config' && tab !== 'config') lockConfig();
 
@@ -6166,46 +5244,24 @@ if (!loggedInUser) {
     document.getElementById('tabInicio').style.display      = tab === 'inicio'    ? 'block' : 'none';
     document.getElementById('tabForm').style.display        = tab === 'form'      ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'    ? 'block' : 'none';
+    document.getElementById('tabReuniao').style.display     = tab === 'reuniao'   ? 'block' : 'none';
     document.getElementById('tabAcao').style.display        = tab === 'acao'      ? 'block' : 'none';
-    const dashTab = document.getElementById('tabDashboard');
-    if (dashTab) {
-      dashTab.style.display = tab === 'dashboard' ? 'block' : 'none';
-    }
+    document.getElementById('tabDashboard').style.display   = tab === 'dashboard' ? 'block' : 'none';
     document.getElementById('tabConfig').style.display      = tab === 'config'    ? 'block' : 'none';
-    ['Inicio','Form','Notify','Acao','Dashboard','Config'].forEach(t => {
+    ['Inicio','Form','Notify','Reuniao','Acao','Dashboard','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
     if (titleEl) titleEl.textContent = TAB_TITLES[tab] || '';
-    if (tab === 'reuniao') {
-      // Redirect Reunião to Dashboard > Visão Detalhada
-      _currentTab = 'dashboard';
-      document.getElementById('tabDashboard').style.display = 'block';
-      ['Inicio','Form','Notify','Acao','Dashboard','Config'].forEach(t => {
-        document.getElementById('tabBtn' + t)?.classList.toggle('active', t.toLowerCase() === 'reuniao');
-      });
-      const titleEl = document.getElementById('topbarTitle');
-      if (titleEl) titleEl.textContent = 'Painel de Reunião';
-      // Clear all filters to show all records
-      const dataInicio = document.getElementById('reuniaoFilterDataInicio');
-      const dataFim = document.getElementById('reuniaoFilterDataFim');
-      const turno = document.getElementById('reuniaoFilterTurno');
-      const equipe = document.getElementById('reuniaoFilterEquipe');
-      if (dataInicio) dataInicio.value = '';
-      if (dataFim) dataFim.value = '';
-      if (turno) turno.value = '';
-      if (equipe) equipe.value = '';
-      updateConfigButtonVisibility();
-      switchDashSub('reuniao');
-      window.scrollTo({ top:0, behavior:'smooth' });
-      return;
-    }
+    if (tab === 'reuniao')   { renderReuniao();  window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
-    if (tab === 'dashboard') { updateConfigButtonVisibility(); switchDashSub(_dashSub); }
+    if (tab === 'dashboard') { switchDashSub(_dashSub); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
   }
+
+  const DRAFT_KEY = 'enel_form_draft';
 
   function saveDraft() {
     try {
@@ -6597,7 +5653,6 @@ if (!loggedInUser) {
               <span class="db-meta-pill">🔄 Turno ${r.turno}</span>
               <span class="db-meta-pill">👷 ${r.equipe}</span>
               <span class="db-meta-pill">🔖 ${r.entries.length} ocorrência${r.entries.length !== 1 ? 's' : ''}</span>
-              ${r.criadoPor ? `<span class="db-meta-pill" style="background:#EFF6FF;color:#1E4DA1;" title="Criado por ${r.criadoPor}">👤 ${r.criadoPor}</span>` : ''}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:0.65rem;">
@@ -6967,13 +6022,10 @@ if (!loggedInUser) {
 
   function saveContacts(contacts) {
     saveCfg(CONTACTS_KEY, contacts);
-    // Also push directly to contacts node via REST API for real-time sync
+    // Also push directly to contacts node for real-time sync
     try {
-      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json', {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(contacts)
-      }).catch(e => console.warn('Firebase contacts save error:', e));
+      db.ref('produtividade/contacts').set(contacts)
+        .catch(e => console.warn('Firebase contacts save error:', e));
     } catch(e) {}
   }
 
@@ -7432,17 +6484,7 @@ entryLines.join('\n\n') + '\n' +
   function checkConfigPass() {
     const inp = document.getElementById('configPassInput');
     const err = document.getElementById('configPassErr');
-    const currentUser = getCurrentUserImmediate();
-
-    // Se usuário logado é admin, aceita a senha dele OU a senha de config legada
-    let ok = false;
-    if (currentUser && currentUser.perfil === 'admin' && inp.value === currentUser.senha) {
-      ok = true;
-    } else if (inp.value === getConfigPass()) {
-      ok = true;
-    }
-
-    if (ok) {
+    if (inp.value === getConfigPass()) {
       document.getElementById('configLock').style.display = 'none';
       document.getElementById('configPanel').style.display = 'block';
       inp.value = '';
@@ -7450,7 +6492,6 @@ entryLines.join('\n\n') + '\n' +
       renderConfigPanel();
     } else {
       err.style.display = 'block';
-      err.textContent = 'Senha incorreta. Use sua senha de acesso (apenas admins).';
       inp.value = '';
       inp.focus();
     }
@@ -7464,6 +6505,7 @@ entryLines.join('\n\n') + '\n' +
   }
 
   // ── Imagem Início ──
+  const CFG_INICIO_IMG_KEY = 'enel_cfg_inicio_img';
 
   function renderConfigPanel() {
     renderCfgEquipes();
@@ -7474,33 +6516,6 @@ entryLines.join('\n\n') + '\n' +
     renderCfgContacts();
     renderCfgRespAcao();
     renderCfgRespOc();
-    renderCfgTiposAcao();
-    // Gestão de usuários — recarrega do Firebase antes de renderizar
-    fetchUsersFromFirebase().then(fbUsers => {
-      if (fbUsers.length > 0) {
-        saveUsersLocal(fbUsers);
-      } else {
-        // Se não há usuários no Firebase, cria usuário admin padrão
-        const current = getCurrentUserImmediate();
-        const localUsers = getUsersLocal();
-        if (localUsers.length === 0 && current) {
-          const defaultAdmin = { login: current.login, nome: current.nome || 'Administrador', perfil: 'admin', primeiroAcesso: false };
-          saveUsersLocal([defaultAdmin]);
-        }
-      }
-      renderCfgUsuarios();
-    }).catch(() => {
-      // Se houver erro, tenta usar local storage
-      const localUsers = getUsersLocal();
-      if (localUsers.length === 0) {
-        const current = getCurrentUserImmediate();
-        if (current) {
-          const defaultAdmin = { login: current.login, nome: current.nome || 'Administrador', perfil: 'admin', primeiroAcesso: false };
-          saveUsersLocal([defaultAdmin]);
-        }
-      }
-      renderCfgUsuarios();
-    });
   }
 
   // ── Equipes ──
@@ -7623,6 +6638,8 @@ entryLines.join('\n\n') + '\n' +
     });
   }
 
+  const CFG_LIMITES_KEY = 'enel_cfg_incidencia_limites';
+
   function getCustomLimites() {
     return getCfg(CFG_LIMITES_KEY, {});
   }
@@ -7740,55 +6757,6 @@ entryLines.join('\n\n') + '\n' +
     saveContacts(loadContacts().filter(c => c.phone !== phone));
     renderCfgContacts();
     renderContactChips();
-  }
-
-  // ── Tipos de Ação ──
-  function getTiposAcao() {
-    const defaultTipos = [
-      'Aplicado Feedback',
-      'Aplicado Advertência',
-      'Realinhamento de processo',
-      'Orientação à equipe',
-      'Ação corretiva operacional',
-      'Não se aplica'
-    ];
-    return getCfg(CFG_TIPOS_ACAO_KEY, defaultTipos);
-  }
-
-  function saveTiposAcao(tipos) {
-    saveCfg(CFG_TIPOS_ACAO_KEY, tipos);
-  }
-
-  function renderCfgTiposAcao() {
-    const listEl = document.getElementById('cfgTipoAcaoList');
-    if (!listEl) return;
-    const tipos = getTiposAcao();
-    listEl.innerHTML = tipos.map((t, idx) => `
-      <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.85rem;background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:99px;width:fit-content;font-size:0.85rem;font-weight:700;color:var(--gray-800);">
-        ${t}
-        <button onclick="cfgRemoveTipoAcao(${idx})"
-          style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:1rem;padding:0;display:flex;align-items:center;">✕</button>
-      </div>
-    `).join('');
-  }
-
-  function cfgAddTipoAcao() {
-    const inp = document.getElementById('cfgNewTipoAcao');
-    const val = inp.value.trim();
-    if (!val) return;
-    const tipos = getTiposAcao();
-    if (!tipos.includes(val)) { tipos.push(val); saveTiposAcao(tipos); }
-    inp.value = '';
-    renderCfgTiposAcao();
-    showCopyToast('✅ Tipo de ação adicionado!');
-  }
-
-  function cfgRemoveTipoAcao(idx) {
-    const tipos = getTiposAcao();
-    tipos.splice(idx, 1);
-    saveTiposAcao(tipos);
-    renderCfgTiposAcao();
-    showCopyToast('🗑 Tipo de ação removido.');
   }
 
   // ── Senha ──
@@ -7927,32 +6895,14 @@ entryLines.join('\n\n') + '\n' +
       const limitBadge = (e.catKey === 'deslocamento' || e.catKey === 'ocioso' || e.catKey === 'plataforma' || e.catKey === 'incidencia')
         ? `<span style="font-size:0.65rem;font-weight:800;padding:2px 8px;border-radius:99px;${needsLimit ? 'background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;' : 'background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;'}">
             ${needsLimit ? '⚠️ Fora do tempo' : '✅ Dentro do tempo'}</span>` : '';
-      
-      // ── CARREGAR DADOS DE AÇÃO ──
-      const acoes = loadAcoes();
-      const acaoKey = getAcaoKey(r.id, e);
-      const acaoData = acoes[acaoKey] || {};
-      const acaoNecessaria = e.acaoNecessaria || (acaoData.status ? 'sim' : '');
-      const acaoResponsavel = e.acaoResponsavel || acaoData.respExec || '';
-      const acaoDescricao = e.acaoDescricao || acaoData.descricao || '';
-      const acaoDataField = e.acaoData || acaoData.dataAcao || '';
-      const acaoTipo = e.acaoTipo || acaoData.tipoAcao || '';
-      const acaoStatus = e.acaoStatus || acaoData.status || '';
 
       card.innerHTML = `
         <div class="edit-entry-header">
-          <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:0.88rem;flex-wrap:wrap;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-              <span style="background:${color}20;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;">${cat?.icon||'?'}</span>
-              <span>${cat?.nome||e.catKey}</span>
-              <span class="r-entry-num" style="background:${color}">Nº${idx+1}</span>
-              ${limitBadge}
-            </div>
-            <div style="display:flex;gap:0.35rem;">
-              ${idx > 0 ? `<button type="button" onclick="moveEditEntryUp(${idx})" style="padding:4px 8px;background:#1E4DA1;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#1E3A5F'" onmouseout="this.style.background='#1E4DA1'">⬆ Subir</button>` : ''}
-              ${idx < (r.entries.length - 1) ? `<button type="button" onclick="moveEditEntryDown(${idx})" style="padding:4px 8px;background:#1E4DA1;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#1E3A5F'" onmouseout="this.style.background='#1E4DA1'">⬇ Descer</button>` : ''}
-              <button type="button" onclick="deleteEditEntryConfirm(${idx})" style="padding:4px 8px;background:#DC2626;color:white;border:none;border-radius:4px;font-size:0.75rem;font-weight:700;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#991B1B'" onmouseout="this.style.background='#DC2626'">🗑 Excluir</button>
-            </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:0.88rem;flex-wrap:wrap;">
+            <span style="background:${color}20;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;">${cat?.icon||'?'}</span>
+            <span>${cat?.nome||e.catKey}</span>
+            <span class="r-entry-num" style="background:${color}">Nº${idx+1}</span>
+            ${limitBadge}
           </div>
         </div>
         <div class="edit-entry-fields">
@@ -8003,135 +6953,16 @@ entryLines.join('\n\n') + '\n' +
             </div>
           `}
           <div style="grid-column:1/-1;">
-            <label class="edit-field-label">⚠️ Justificativa</label>
-            <textarea class="edit-field-input" id="edit_just_${idx}" rows="2" style="resize:vertical;${e.justificativa ? 'background:#FEF2F2;border-color:#FCA5A5;' : ''}">${e.justificativa||''}</textarea>
-          </div>
-          <div style="grid-column:1/-1;border-top:1px solid #E5E7EB;padding-top:0.75rem;margin-top:0.75rem;">
-            <label class="edit-field-label" style="color:#DC2626;font-weight:700;">⚡ Ação Necessária?</label>
-            <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
-              <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
-                <input type="radio" name="edit_acao_${idx}" value="sim" ${e.acaoNecessaria === 'sim' ? 'checked' : ''} style="cursor:pointer;">
-                Sim
-              </label>
-              <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
-                <input type="radio" name="edit_acao_${idx}" value="nao" ${e.acaoNecessaria !== 'sim' ? 'checked' : ''} style="cursor:pointer;">
-                Não
-              </label>
-            </div>
-            ${e.acaoNecessaria === 'sim' || acaoNecessaria === 'sim' ? `
-            <div>
-              <label class="edit-field-label">👤 Responsável da Ação</label>
-              <input class="edit-field-input" id="edit_acao_resp_${idx}" value="${acaoResponsavel||''}" placeholder="Nome do responsável">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
-              <div>
-                <label class="edit-field-label">📅 Data da Ação</label>
-                <input type="date" class="edit-field-input" id="edit_acao_data_${idx}" value="${acaoDataField||''}">
-              </div>
-              <div>
-                <label class="edit-field-label">🏷️ Tipo de Ação</label>
-                <select class="edit-field-input" id="edit_acao_tipo_${idx}" style="cursor:pointer;">
-                  <option value="">Selecione tipo</option>
-                  ${getTiposAcao().map(t => `<option value="${t}" ${acaoTipo === t ? 'selected' : ''}>${t}</option>`).join('')}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label class="edit-field-label">📝 Descrição da Ação</label>
-              <textarea class="edit-field-input" id="edit_acao_desc_${idx}" rows="2" style="resize:vertical;border-color:#DC2626;" placeholder="O que precisa ser feito?">${acaoDescricao||''}</textarea>
-            </div>
-            <div style="border-top:1px solid #E5E7EB;padding-top:0.75rem;margin-top:0.75rem;">
-              <label class="edit-field-label" style="color:#059669;">✅ Ação Realizada?</label>
-              <div style="display:flex;gap:0.5rem;">
-                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
-                  <input type="radio" name="edit_acao_status_${idx}" value="realizada" ${acaoStatus === 'realizada' ? 'checked' : ''} style="cursor:pointer;">
-                  Sim, foi realizada
-                </label>
-                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
-                  <input type="radio" name="edit_acao_status_${idx}" value="nao_realizada" ${acaoStatus === 'nao_realizada' ? 'checked' : ''} style="cursor:pointer;">
-                  Não foi realizada
-                </label>
-              </div>
-            </div>
-            ` : ''}
+            <label class="edit-field-label">📋 Observação</label>
+            <textarea class="edit-field-input" id="edit_obs_${idx}" rows="2" style="resize:vertical;">${e.obs||''}</textarea>
           </div>
         </div>`;
       entriesEl.appendChild(card);
     });
 
-    // ── CAMPO DE COMENTÁRIOS GERAIS ──
-    // Remove old general fields div if exists
-    const oldGeneralDiv = entriesEl.parentElement.querySelector('[data-general-fields]');
-    if (oldGeneralDiv) oldGeneralDiv.remove();
-    
-    const generalFieldsDiv = document.createElement('div');
-    generalFieldsDiv.setAttribute('data-general-fields', 'true');
-    generalFieldsDiv.style.cssText = 'grid-column:1/-1;padding:1rem;background:#F0FDF4;border-radius:8px;border:1px solid #86EFAC;margin-top:1rem;';
-    generalFieldsDiv.innerHTML = `
-      <div>
-        <label class="edit-field-label" style="color:#166634;font-weight:700;">💬 Comentários Gerais</label>
-        <textarea class="edit-field-input" id="editComentariosReg" rows="2" style="resize:vertical;border-color:#86EFAC;">${r.comentariosReg||''}</textarea>
-      </div>
-    `;
-    entriesEl.parentElement.appendChild(generalFieldsDiv);
-
     const modal = document.getElementById('editRecordModal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-  }
-
-  function deleteEditEntry(idx) {
-    const entriesEl = document.getElementById('editEntriesList');
-    if (!entriesEl) return;
-    const cards = entriesEl.querySelectorAll('.edit-entry-card:not([data-new-idx])');
-    if (idx >= 0 && idx < cards.length) {
-      cards[idx].remove();
-      // Recarrega para renumerar
-      refreshEditEntries();
-      showCopyToast('✅ Ocorrência removida! Clique em Salvar para confirmar.');
-    }
-  }
-
-  function moveEditEntryUp(idx) {
-    const entriesEl = document.getElementById('editEntriesList');
-    if (!entriesEl || idx <= 0) return;
-    const cards = entriesEl.querySelectorAll('.edit-entry-card:not([data-new-idx])');
-    if (idx > 0 && idx < cards.length) {
-      const current = cards[idx];
-      const previous = cards[idx - 1];
-      previous.parentNode.insertBefore(current, previous);
-      refreshEditEntries();
-      showCopyToast('✅ Ocorrência movida para cima!');
-    }
-  }
-
-  function moveEditEntryDown(idx) {
-    const entriesEl = document.getElementById('editEntriesList');
-    if (!entriesEl || idx < 0) return;
-    const cards = entriesEl.querySelectorAll('.edit-entry-card:not([data-new-idx])');
-    if (idx >= 0 && idx < cards.length - 1) {
-      const current = cards[idx];
-      const next = cards[idx + 1];
-      current.parentNode.insertBefore(next, current);
-      refreshEditEntries();
-      showCopyToast('✅ Ocorrência movida para baixo!');
-    }
-  }
-
-  function refreshEditEntries() {
-    // Recarrega a visualização das entradas para renumerar
-    const entriesEl = document.getElementById('editEntriesList');
-    if (!entriesEl) return;
-    const cards = entriesEl.querySelectorAll('.edit-entry-card:not([data-new-idx])');
-    cards.forEach((card, idx) => {
-      // Atualiza os IDs dos inputs para corresponder à nova posição
-      const oldIdx = Array.from(cards).indexOf(card);
-      if (oldIdx === idx) return; // Sem mudança necessária
-      
-      // Atualiza o número da entrada (Nº)
-      const numBadge = card.querySelector('.r-entry-num');
-      if (numBadge) numBadge.textContent = `Nº${idx+1}`;
-    });
   }
 
   function saveEditRecord() {
@@ -8164,8 +6995,6 @@ entryLines.join('\n\n') + '\n' +
         }
         // Recompute obsCausa
         e.obsCausa = (document.getElementById('edit_obscausa_' + idx)?.value || '').trim() || e.obsCausa;
-        // Salvar justificativa
-        e.justificativa = (document.getElementById('edit_just_' + idx)?.value || '').trim() || '';
       } else {
         // For time-based entries: prefer hinicio/hfim if available, else use mins input
         const hini = document.getElementById('edit_hinicio_' + idx)?.value || '';
@@ -8183,44 +7012,7 @@ entryLines.join('\n\n') + '\n' +
           if (hfim) e.hfim = hfim;
         }
       }
-      e.justificativa = (document.getElementById('edit_just_' + idx)?.value || '').trim() || '';
-
-      // ── SALVAR AÇÕES ──
-      const acaoNecessariaRadio = document.querySelector(`input[name="edit_acao_${idx}"]:checked`)?.value || 'nao';
-      e.acaoNecessaria = acaoNecessariaRadio;
-      if (acaoNecessariaRadio === 'sim') {
-        const acaoResp = (document.getElementById('edit_acao_resp_' + idx)?.value || '').trim();
-        const acaoDesc = (document.getElementById('edit_acao_desc_' + idx)?.value || '').trim();
-        const acaoDate = (document.getElementById('edit_acao_data_' + idx)?.value || '').trim();
-        const acaoTp = (document.getElementById('edit_acao_tipo_' + idx)?.value || '').trim();
-        const acaoStat = document.querySelector(`input[name="edit_acao_status_${idx}"]:checked`)?.value || '';
-        
-        e.acaoResponsavel = acaoResp;
-        e.acaoDescricao = acaoDesc;
-        e.acaoData = acaoDate;
-        e.acaoTipo = acaoTp;
-        e.acaoStatus = acaoStat;
-        e.acaoRespAcao = acaoResp ? [acaoResp] : [];
-        
-        // Salvar na tabela de ações também
-        if (acaoResp || acaoDesc || acaoDate || acaoTp) {
-          saveAcaoData(id, idx, {
-            respExec: acaoResp,
-            descricao: acaoDesc,
-            dataAcao: acaoDate,
-            tipoAcao: acaoTp,
-            status: acaoStat || 'realizada'
-          });
-        }
-      } else {
-        e.acaoNecessaria = '';
-        e.acaoResponsavel = '';
-        e.acaoDescricao = '';
-        e.acaoData = '';
-        e.acaoTipo = '';
-        e.acaoStatus = '';
-        e.acaoRespAcao = [];
-      }
+      e.obs = (document.getElementById('edit_obs_' + idx)?.value || '').trim();
 
       // Recompute classification status
       if (e.catKey === 'deslocamento') {
@@ -8294,9 +7086,6 @@ entryLines.join('\n\n') + '\n' +
       showCopyToast('✅ Registro atualizado! Sem desvios detectados.');
     }
 
-    // ── SALVAR COMENTÁRIOS E OBSERVAÇÕES GERAIS ──
-    r.comentariosReg = (document.getElementById('editComentariosReg')?.value || '').trim();
-
     r.editedAt = new Date().toISOString();
     records[rIdx] = r;
     saveDB(records);
@@ -8347,19 +7136,6 @@ entryLines.join('\n\n') + '\n' +
       if (tt) tt.textContent = records.length;
       if (tp) tp.textContent = pending;
 
-      // Atualiza nome do usuário logado na topbar
-      const topbarUN = document.getElementById('topbarUserName');
-      if (topbarUN) {
-        const cu = getCurrentUserImmediate();
-        if (cu) {
-          const isAdm = cu.perfil === 'admin';
-          topbarUN.textContent = cu.nome;
-          topbarUN.title = `${cu.login} · ${isAdm ? 'Administrador' : 'Usuário'}`;
-        } else {
-          topbarUN.textContent = '—';
-        }
-      }
-
       // Atualiza badge de ações pendentes (sidebar) a cada segundo
       try {
         const acoes = loadAcoes();
@@ -8400,23 +7176,10 @@ entryLines.join('\n\n') + '\n' +
 
   // ── Verificação de autenticação (roda primeiro) ──
   (function checkAuth() {
-    const auth = localStorage.getItem('enel_auth');
-    const userRaw = localStorage.getItem('enel_current_user');
-    let userValid = false;
-    try {
-      const u = userRaw ? JSON.parse(userRaw) : null;
-      if (u && u.login && u.nome) userValid = true;
-    } catch(e) {}
-
-    if (auth === '1' && userValid) {
+    if (localStorage.getItem('enel_auth') === '1') {
       const screen = document.getElementById('loginScreen');
       if (screen) screen.style.display = 'none';
     } else {
-      // Limpa sessão inválida e mostra login
-      localStorage.removeItem('enel_auth');
-      localStorage.removeItem('enel_current_user');
-      const screen = document.getElementById('loginScreen');
-      if (screen) screen.style.display = 'flex';
       setTimeout(() => document.getElementById('loginUser')?.focus(), 100);
     }
   })();
@@ -8437,77 +7200,11 @@ entryLines.join('\n\n') + '\n' +
     applyCatLimites();
     const _custom = getCustomLimites();
     Object.entries(_custom).forEach(([k,v]) => { INCIDENCIA_LIMITES[k] = v; });
-    
-    // ── APLICAR CONTROLE DE ACESSO POR PERFIL ──
-    applyAccessControl();
-    
     switchTab('inicio');
   } catch(e) {
     console.error('Erro na inicialização:', e);
     try { switchTab('inicio'); } catch(e2) {}
   }
-
-  // ──────────────────────────────────────────
-  // POLLING GLOBAL - SINCRONIZAÇÃO A CADA 2s
-  // ──────────────────────────────────────────
-  setInterval(() => {
-    if (_deleting) return;
-    
-    // PASSO 1: Busca registros DELETADOS do Firebase PRIMEIRO
-    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/deleted.json')
-      .then(r => r.json())
-      .then(deletedData => {
-        // Sincroniza deletados com todos os usuários
-        if (deletedData && typeof deletedData === 'object') {
-          let hasNewDeletes = false;
-          Object.keys(deletedData).forEach(id => {
-            if (!_deletedIds.has(String(id))) {
-              _deletedIds.add(String(id));
-              hasNewDeletes = true;
-            }
-          });
-          if (hasNewDeletes) {
-            try { localStorage.setItem('enel_deleted_ids', JSON.stringify([..._deletedIds])); } catch {}
-          }
-        }
-      })
-      .catch(() => {});
-    
-    // PASSO 2: Busca registros ATIVOS do Firebase
-    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(data => {
-        setFbStatus(true);
-
-        // Processa dados do Firebase - filtra pelos deletados
-        let fbRecords = [];
-        if (data && typeof data === 'object') {
-          if (Array.isArray(data)) {
-            fbRecords = data;
-          } else {
-            fbRecords = Object.values(data);
-          }
-          fbRecords = fbRecords
-            .filter(r => r && typeof r === 'object' && r.id && !_deletedIds.has(String(r.id)))
-            .sort((a, b) => b.id - a.id);
-        }
-
-        const fbCount = fbRecords.length;
-        const cacheCount = _dbCache.length;
-        
-        // SEMPRE atualizar quando há diferenças
-        if (fbCount !== cacheCount || JSON.stringify(_dbCache) !== JSON.stringify(fbRecords)) {
-          _dbCache = fbRecords;
-          try { localStorage.setItem(DB_KEY, JSON.stringify(fbRecords)); } catch {}
-          refreshAllUI(fbRecords);
-          console.log(`[POLLING] ${fbCount} registros sincronizados (${_deletedIds.size} deletados)`);
-        }
-      })
-      .catch(err => { 
-        console.error('[POLLING] Erro ao sincronizar:', err.message);
-        setFbStatus(false); 
-      });
-  }, 2000);
 
   // ══════════════════════════════════════════
   //  ABA COORDENAÇÃO
@@ -8554,41 +7251,20 @@ entryLines.join('\n\n') + '\n' +
     document.body.style.overflow = '';
   }
 
-  // ── Supervisores por Turno ──
-  const SUPERVISORES_DEFAULT = {
-    A: ['Lucas Costa'],
-    B: ['Dalmir', 'Darvison', 'Alexandre'],
-    C: ['Marcelo', 'Adriano', 'Helio']
-  };
-  function getSupervisores() { return getCfg(CFG_SUPERVISORES_KEY, JSON.parse(JSON.stringify(SUPERVISORES_DEFAULT))); }
-  function saveSupervisores(obj) { saveCfg(CFG_SUPERVISORES_KEY, obj); }
-
-  function onTurnoChange(turno) {
-    const field = document.getElementById('supervisorField');
-    const display = document.getElementById('supervisorDisplay');
-    if (!field || !display) return;
-    const sups = getSupervisores();
-    const lista = sups[turno] || [];
-    if (lista.length) {
-      display.textContent = lista.join(', ');
-      field.style.display = '';
-    } else {
-      field.style.display = 'none';
-    }
-  }
-
   // ══════════════════════════════════════════
   //  ABA REUNIÃO
   // ══════════════════════════════════════════
 
-  function removeFromReuniao(id) {
+
+  function toggleReuniao(id) {
     const records = loadDB();
     const r = records.find(rec => rec.id === id);
     if (!r) return;
-    r.reuniao = false;  // Remove explicitly
+    r.reuniao = !r.reuniao;
     saveDB(records);
-    renderReuniao();
-    showCopyToast('📋 Removido da reunião.');
+    applyDBFilters();
+    updateBadgeReuniao();
+    showCopyToast(r.reuniao ? '📋 Incluído na reunião!' : '📋 Removido da reunião.');
   }
 
   function updateBadgeReuniao() {
@@ -8597,88 +7273,18 @@ entryLines.join('\n\n') + '\n' +
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
   }
 
-  function updateConfigButtonVisibility() {
-    const btn = document.getElementById('tabBtnConfig');
-    if (!btn) return;
-    const isAdminUser = isAdmin();
-    btn.style.display = isAdminUser ? 'flex' : 'none';
-    btn.style.pointerEvents = isAdminUser ? 'auto' : 'none';
-  }
-
-  function limparFiltrosReuniao() {
-    document.getElementById('reuniaoFilterDataInicio').value = '';
-    document.getElementById('reuniaoFilterDataFim').value = '';
-    document.getElementById('reuniaoFilterTurno').value = '';
-    document.getElementById('reuniaoFilterEquipe').value = '';
-    renderReuniao();
-  }
-
-  // ── Expandir/Colapsar cards na Visão Detalhada ──
-  function toggleExpandCard(recordId) {
-    const contentEl = document.getElementById(`content_${recordId}`);
-    const iconEl = document.getElementById(`icon_${recordId}`);
-    
-    if (contentEl.style.display === 'none') {
-      // Expandir
-      contentEl.style.display = 'block';
-      iconEl.textContent = '▼';
-      iconEl.style.transform = 'rotate(0deg)';
-      
-      // Redimensionar mapa após expandir
-      setTimeout(() => {
-        if (_leafletMaps && _leafletMaps[`reu_map_${recordId}`]) {
-          _leafletMaps[`reu_map_${recordId}`].invalidateSize();
-        }
-      }, 100);
-    } else {
-      // Colapsar
-      contentEl.style.display = 'none';
-      iconEl.textContent = '▶';
-      iconEl.style.transform = 'rotate(0deg)';
-    }
-  }
-
   function renderReuniao() {
     const listEl = document.getElementById('reuniaoList');
     if (!listEl) return;
     const all = loadDB();
-    
-    // Apply filters
-    const dataInicio = document.getElementById('reuniaoFilterDataInicio')?.value || '';
-    const dataFim = document.getElementById('reuniaoFilterDataFim')?.value || '';
-    const turno = document.getElementById('reuniaoFilterTurno')?.value || '';
-    const equipe = document.getElementById('reuniaoFilterEquipe')?.value.trim().toUpperCase() || '';
-    
-    let filtered = all;
-    
-    // Filter by date range
-    if (dataInicio) {
-      filtered = filtered.filter(r => r.data >= dataInicio);
-    }
-    if (dataFim) {
-      filtered = filtered.filter(r => r.data <= dataFim);
-    }
-    
-    // Filter by turno
-    if (turno) {
-      filtered = filtered.filter(r => r.turno === turno);
-    }
-    
-    // Filter by equipe (case-insensitive partial match)
-    if (equipe) {
-      filtered = filtered.filter(r => r.equipe.toUpperCase().includes(equipe));
-    }
-    
-    // Sort by data descending
-    filtered = filtered.sort((a, b) => b.data.localeCompare(a.data));
-    
+    const marked = all.filter(r => r.reuniao);
     updateBadgeReuniao();
 
-    if (!filtered.length) {
+    if (!marked.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-        <div style="font-size:1rem;font-weight:700;">Nenhum registro encontrado</div>
-        <div style="font-size:0.82rem;margin-top:0.5rem;">Ajuste os filtros ou crie novos registros</div>
+        <div style="font-size:1rem;font-weight:700;">Nenhum registro selecionado para reunião</div>
+        <div style="font-size:0.82rem;margin-top:0.5rem;">No Banco de Dados, clique em 📋 para incluir um registro</div>
       </div>`;
       return;
     }
@@ -8687,7 +7293,7 @@ entryLines.join('\n\n') + '\n' +
     const toMins = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; };
 
     listEl.innerHTML = '';
-    filtered.forEach(r => {
+    marked.forEach(r => {
       const [ry,rm,rd] = r.data.split('-');
       const dataBR = rd+'/'+rm+'/'+ry;
       const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
@@ -8717,7 +7323,6 @@ entryLines.join('\n\n') + '\n' +
         return `<tr style="border-bottom:1px solid #F3F4F6;">
           <td style="padding:0.55rem 0.75rem;font-weight:700;color:${color};">
             ${cat?.icon||''} ${cat?.nome||e.catKey}
-            ${e.hinicio && e.hfim ? `<div style="font-size:0.75rem;font-weight:600;color:#1E4DA1;margin-top:3px;">🕐 ${e.hinicio} - ${e.hfim}</div>` : ''}
             ${e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.68rem;font-weight:800;color:#92400E;margin-top:2px;">🔢 Nº ${e.numinc}</div>` : ''}
           </td>
           <td style="padding:0.55rem 0.75rem;color:#374151;">
@@ -8741,99 +7346,60 @@ entryLines.join('\n\n') + '\n' +
           <td colspan="2" style="padding:0.55rem 0.75rem;color:#991B1B;font-weight:700;">⏱ Tempo de retorno: <strong>${logoffEntry.logoffMin || 0} min</strong></td>
         </tr>` : '';
 
-      const totalOcorrencias = r.entries.length;
-      const foraDoTempo = r.entries.filter(e => entryNeedsJustificativa(e)).length;
-      const dentroDotempo = totalOcorrencias - foraDoTempo;
-
       const card = document.createElement('div');
-      card.style.cssText = 'background:white;border-radius:10px;border:1px solid #E5E7EB;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:1rem;';
+      card.style.cssText = 'background:white;border-radius:10px;margin-bottom:1.75rem;box-shadow:0 2px 12px rgba(79,70,229,0.1);border:1px solid #C7D2FE;overflow:hidden;';
       card.innerHTML = `
-        <!-- Card Header - CLICÁVEL -->
-        <div onclick="toggleExpandCard('${r.id}')" style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;padding:1rem;display:flex;align-items:center;gap:1rem;cursor:pointer;user-select:none;transition:background 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#2D4A73,#2D5FB5)'" onmouseout="this.style.background='linear-gradient(135deg,#1E3A5F,#1E4DA1)'">
-          <div style="width:45px;height:45px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">👷</div>
-          <div style="flex:1;">
-            <div style="font-weight:800;font-size:0.95rem;display:flex;align-items:center;gap:0.75rem;">
-              <span id="icon_${r.id}" style="font-size:1.2rem;transition:transform 0.3s;">▶</span>
-              <span>Equipe: <strong>${r.equipe}</strong></span>
-              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong>${r.turno}</strong></span>
-              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong>${diaSem}, ${dataBR}</strong></span>
+        <!-- Cabeçalho -->
+        <div style="background:linear-gradient(135deg,#1E3A5F,#1E4DA1);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+          <div style="display:flex;flex-direction:column;gap:0.3rem;">
+            <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:white;">👷 Equipe: <strong>${r.equipe}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Turno: <strong style="color:white;">${r.turno}</strong></span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.8);">| Data: <strong style="color:white;">${diaSem}, ${dataBR}</strong></span>
             </div>
-            ${r.jornadaEntrada ? `<div style="font-size:0.75rem;color:#93C5FD;margin-top:0.3rem;">🕐 Jornada: <strong>${r.jornadaEntrada}</strong> às <strong>${r.jornadaSaida||'—'}</strong></div>` : ''}
+            ${r.jornadaEntrada ? `<div style="font-size:0.78rem;color:#93C5FD;">🕐 Jornada: <strong style="color:white;">${r.jornadaEntrada}</strong> às <strong style="color:white;">${r.jornadaSaida||'—'}</strong></div>` : ''}
           </div>
-          <div style="text-align:right;white-space:nowrap;">
-            <div style="font-weight:800;font-size:1rem;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#93C5FD;">⏱ ${pad(totalH)}h${pad(totalM)}min total</span>
+            <button onclick="toggleReuniao(${r.id})" style="font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:#DC2626;color:white;cursor:pointer;">✕ Remover</button>
           </div>
         </div>
 
-        <!-- Métricas -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid #E5E7EB;background:white;">
-          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
-            <div style="font-size:1.5rem;font-weight:800;color:#1E3A5F;">${totalOcorrencias}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Ocorrências</div>
-          </div>
-          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
-            <div style="font-size:1.5rem;font-weight:800;color:#DC2626;">${foraDoTempo}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Fora do tempo</div>
-          </div>
-          <div style="padding:1rem;border-right:1px solid #E5E7EB;text-align:center;display:flex;flex-direction:column;justify-content:center;">
-            <div style="font-size:1.5rem;font-weight:800;color:#10B981;">${dentroDotempo}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Dentro do tempo</div>
-          </div>
-          <div style="padding:1rem;text-align:center;display:flex;flex-direction:column;justify-content:center;">
-            <div style="font-size:1.5rem;font-weight:800;color:#1E4DA1;">${pad(totalH)}h${pad(totalM)}</div>
-            <div style="font-size:0.65rem;color:#9CA3AF;font-weight:600;margin-top:0.4rem;">Tempo total</div>
-          </div>
+        <!-- Timeline -->
+        <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
+
+        <!-- Mapa de Deslocamento -->
+        <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;'>
+          <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
+          <div id='reu_map_${r.id}' style='height:280px;border-radius:8px;overflow:hidden;border:1.5px solid #BFDBFE;'></div>
         </div>
 
-        <!-- CONTEÚDO EXPANDÍVEL (COMEÇA FECHADO) -->
-        <div id="content_${r.id}" style="display:none;">
-          <!-- Comentários Geral -->
-          ${r.comentariosReg ? `<div style="padding:0.85rem 1.25rem;background:#F0FDF4;border-bottom:1px solid #D1F0DF;border-left:4px solid #065F46;">
-            <div style="font-size:0.75rem;font-weight:800;color:#065F46;text-transform:uppercase;margin-bottom:0.5rem;">💬 Comentários Geral</div>
-            <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.comentariosReg}</div>
-          </div>` : ''}
-
-          <!-- Observações -->
-          ${r.obs ? `<div style="padding:0.85rem 1.25rem;background:#FEF3C7;border-bottom:1px solid #FCD34D;border-left:4px solid #92400E;">
-            <div style="font-size:0.75rem;font-weight:800;color:#92400E;text-transform:uppercase;margin-bottom:0.5rem;">📝 Observações</div>
-            <div style="font-size:0.88rem;color:#2D3748;line-height:1.5;">${r.obs}</div>
-          </div>` : ''}
-
-          <!-- Timeline -->
-          <div id='reu_tl_${r.id}' style='padding:0.75rem 1.25rem 1.25rem;background:#FAFBFF;border-bottom:1px solid #E0E7FF;'><div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#4F46E5;margin-bottom:0.5rem;'>🕐 LINHA DO TEMPO DA JORNADA</div></div>
-
-          <div id='reu_map_section_${r.id}' style='display:none;padding:0.75rem 1.25rem 1rem;background:#F8FAFF;border-bottom:1px solid #E0E7FF;overflow:visible;'>
-            <div style='font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1E4DA1;margin-bottom:0.5rem;'>🗺️ MAPA DE DESLOCAMENTO</div>
-            <div id='reu_map_${r.id}' style='height:380px;width:90%;max-width:1000px;margin:0 auto;border-radius:8px;border:1.5px solid #BFDBFE;'></div>
+        <!-- Ocorrências -->
+        <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
+          <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
           </div>
-
-          <!-- Ocorrências -->
-          <div style="padding:0 1.25rem;padding-bottom:0.85rem;">
-            <div style="background:#1E3A5F;padding:0.5rem 0.85rem;margin:0 -1.25rem;display:flex;align-items:center;justify-content:space-between;">
-              <span style="font-size:0.78rem;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.05em;">Ocorrências do Dia</span>
-            </div>
-            <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
-              <thead>
-                <tr style="background:#F8FAFF;">
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
-                    <select id="reu-status-filter-${r.id}"
-                      onchange="filterReuniaoStatus('${r.id}')"
-                      style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:800;border:1.5px solid #E0E7FF;border-radius:6px;padding:2px 6px;background:white;color:#374151;cursor:pointer;outline:none;">
-                      <option value="todos">Status ▾</option>
-                      <option value="todos">Todos</option>
-                      <option value="fora">⚠️ Fora do Tempo</option>
-                      <option value="dentro">✅ Dentro do Tempo</option>
-                    </select>
-                  </th>
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
-                </tr>
-              </thead>
-              <tbody id="reu-tbody-${r.id}">${ocRows('todos')}${logoffRow}</tbody>
-            </table>
-          </div>
+          <table style="width:100%;border-collapse:collapse;margin-top:0.25rem;">
+            <thead>
+              <tr style="background:#F8FAFF;">
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
+                  <select id="reu-status-filter-${r.id}"
+                    onchange="filterReuniaoStatus('${r.id}')"
+                    style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:800;border:1.5px solid #E0E7FF;border-radius:6px;padding:2px 6px;background:white;color:#374151;cursor:pointer;outline:none;">
+                    <option value="todos">Status ▾</option>
+                    <option value="todos">Todos</option>
+                    <option value="fora">⚠️ Fora do Tempo</option>
+                    <option value="dentro">✅ Dentro do Tempo</option>
+                  </select>
+                </th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
+              </tr>
+            </thead>
+            <tbody id="reu-tbody-${r.id}">${ocRows('todos')}${logoffRow}</tbody>
+          </table>
         </div>`;
 
       listEl.appendChild(card);
@@ -8889,14 +7455,12 @@ entryLines.join('\n\n') + '\n' +
 
     // Populate resp ação filter
     const respSel = document.getElementById('dash-f-resp-ac');
-    if (respSel) {
-      respSel.innerHTML = '<option value="">Todos</option>'; // Reset options
+    if (respSel && respSel.options.length <= 1) {
       getRespAcao().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respSel.appendChild(o); });
     }
     // Populate resp ocorrência filter
     const respOcSel = document.getElementById('dash-f-resp-oc');
-    if (respOcSel) {
-      respOcSel.innerHTML = '<option value="">Todos</option>'; // Reset options
+    if (respOcSel && respOcSel.options.length <= 1) {
       getRespOc().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; respOcSel.appendChild(o); });
     }
 
@@ -8918,7 +7482,22 @@ entryLines.join('\n\n') + '\n' +
       if (fDataIni && r.data < fDataIni) return;
       if (fDataFim && r.data > fDataFim) return;
       (r.entries || []).forEach(e => {
-        const foraDoTempo = entryNeedsJustificativa(e);
+        // Determina se está fora do tempo — lógica robusta para todos os tipos
+        let foraDoTempo = false;
+        if (e.catKey === 'deslocamento') {
+          foraDoTempo = e.deslocStatus === 'fora' || (!e.deslocStatus && (e.mins || 0) > DESLOC_LIMITE_MIN);
+        } else if (e.catKey === 'ocioso') {
+          foraDoTempo = e.ociososStatus === 'fora' || (!e.ociososStatus && (e.mins || 0) > OCIOSO_LIMITE_MIN);
+        } else if (e.catKey === 'plataforma') {
+          foraDoTempo = e.plataformaStatus === 'fora' || (!e.plataformaStatus && (e.mins || 0) > PLATAFORMA_LIMITE_MIN);
+        } else if (e.catKey === 'incidencia') {
+          const limite = getIncidenciaLimite(e.causas);
+          if (limite === null || limite < 0) foraDoTempo = true;       // sem causa configurada → fora
+          else if (limite === 0) foraDoTempo = false;                   // sem limite → dentro
+          else foraDoTempo = (e.mins || 0) > limite;
+        } else {
+          foraDoTempo = entryNeedsJustificativa(e); // fallback para legados
+        }
         const temAcao = e.acaoNecessaria === 'sim' && e.acaoResponsavel;
         const key   = getAcaoKey(r.id, e);
         const saved = temAcao ? (acoes[key] || {}) : {};
@@ -8955,7 +7534,7 @@ entryLines.join('\n\n') + '\n' +
       return true;
     }).length;
     const total      = filtered.length;
-    const foraTotal  = filtered.filter(i => i.foraDoTempo).length;
+    const foraTotal  = filtered.filter(i => i.foraPrazo || (i.temAcao && !i.isRealizada && i.diasPend >= 0)).length;
     const pendentes  = filtered.filter(i => i.temAcao && !i.isRealizada).length;
     const realizadas = filtered.filter(i => i.isRealizada).length;
     const tempos     = filtered.filter(i => i.tempoRespDias !== null).map(i => i.tempoRespDias);
@@ -8965,18 +7544,14 @@ entryLines.join('\n\n') + '\n' +
     // ── Cards de resumo ──
     const cardsEl = document.getElementById('dash-cards');
     if (cardsEl) cardsEl.innerHTML = [
-      ['✓', 'Ações Realizadas', realizadas, '#16A34A', '#F0FDF4', '#6EE7B7'],
-      ['⏱', 'Ações Pendentes', pendentes, '#D97706', '#FFFBEB', '#FCD34D'],
-      ['⚠', 'Fora do tempo de resposta', foraPrazo, '#9F1239', '#FFF1F2', '#FDA4AF'],
-    ].map(([icon, label, val, color, bg, bdr]) => `
-      <div style="background:${bg};border:1.5px solid ${bdr};border-radius:12px;padding:1.2rem;display:flex;align-items:center;gap:1rem;">
-        <div style="width:60px;height:60px;border-radius:50%;background:${color}30;border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:${color};flex-shrink:0;">
-          ${icon}
-        </div>
-        <div style="flex:1;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;color:${color};line-height:1;">${val}</div>
-          <div style="font-size:0.7rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-top:4px;">${label}</div>
-        </div>
+      ['','Fora do Tempo',      foraTotal,      '#DC2626','#FEF2F2','#FCA5A5'],
+      ['','Ações Realizadas',   realizadas,     '#16A34A','#F0FDF4','#6EE7B7'],
+      ['','Ações Pendentes',    pendentes,      '#D97706','#FFFBEB','#FCD34D'],
+      ['','Fora do tempo de resposta', foraPrazo, '#9F1239','#FFF1F2','#FDA4AF'],
+    ].map(([icon,label,val,color,bg,bdr]) => `
+      <div style="background:${bg};border:1.5px solid ${bdr};border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:800;color:${color};line-height:1;">${val}</div>
+        <div style="font-size:0.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-top:3px;">${label}</div>
       </div>`).join('');
 
     // ── Alertas ──
@@ -9021,10 +7596,9 @@ entryLines.join('\n\n') + '\n' +
       }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     };
 
-    // ── Por Equipe (apenas com ações necessárias) ──
+    // ── Por Equipe ──
     const eqMap = {};
     filtered.forEach(i => {
-      if (!i.temAcao) return; // Só contar se tem ação necessária
       if (!eqMap[i.equipe]) eqMap[i.equipe] = {label:i.equipe,total:0,realizadas:0};
       eqMap[i.equipe].total++;
       if (i.isRealizada) eqMap[i.equipe].realizadas++;
@@ -9032,10 +7606,9 @@ entryLines.join('\n\n') + '\n' +
     barChart('dash-chart-equipe', Object.values(eqMap).sort((a,b)=>b.total-a.total),
       d => d.realizadas/d.total >= 0.7 ? '#16A34A' : d.realizadas/d.total >= 0.4 ? '#D97706' : '#DC2626');
 
-    // ── Por Responsável (apenas com ações necessárias) ──
+    // ── Por Responsável ──
     const respMap = {};
     filtered.forEach(i => {
-      if (!i.temAcao) return; // Só contar se tem ação necessária
       const k = i.respAc || '—';
       if (!respMap[k]) respMap[k] = {label:k,total:0,realizadas:0,tempos:[]};
       respMap[k].total++;
@@ -9058,20 +7631,12 @@ entryLines.join('\n\n') + '\n' +
       </div>`;
     }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
 
-    // ── Top 5 Problemas (por ID único) ──
+    // ── Top 5 Problemas ──
     const catMap = {};
-    filtered.forEach(i => {
-      const catKey = `${i.catNome}_${i.r.id}`; // ID único por categoria
-      if (!catMap[i.catNome]) catMap[i.catNome] = new Set();
-      catMap[i.catNome].add(catKey);
-    });
-    const catMapCounts = {};
-    Object.entries(catMap).forEach(([nome, set]) => {
-      catMapCounts[nome] = set.size; // Conta IDs únicos
-    });
+    filtered.forEach(i => { catMap[i.catNome] = (catMap[i.catNome]||0)+1; });
     const topEl = document.getElementById('dash-top-problemas');
     if (topEl) {
-      const top5 = Object.entries(catMapCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
       const maxC = top5[0]?.[1] || 1;
       topEl.innerHTML = top5.map(([nome,cnt],i) => `
         <div style="margin-bottom:0.55rem;display:flex;align-items:center;gap:0.6rem;">
@@ -9086,71 +7651,27 @@ entryLines.join('\n\n') + '\n' +
         </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     }
 
-    // ── Reincidência (por ID único) ──
+    // ── Reincidência ──
     const reincMap = {};
     filtered.forEach(i => {
       const k = i.equipe;
-      if (!reincMap[k]) reincMap[k] = { ids: new Set(), cats: {} };
-      reincMap[k].ids.add(i.r.id); // Adiciona ID único
-      
-      // Contar categoria por ID único
-      const catKey = `${i.catNome}_${i.r.id}`;
-      if (!reincMap[k].cats[catKey]) {
-        reincMap[k].cats[i.catNome] = (reincMap[k].cats[i.catNome]||0)+1;
-      }
+      if (!reincMap[k]) reincMap[k] = {};
+      reincMap[k][i.catNome] = (reincMap[k][i.catNome]||0)+1;
     });
     const rEl = document.getElementById('dash-reincidencia');
     if (rEl) {
-      const rows = Object.entries(reincMap).map(([eq,data]) => {
-        // Usar IDs únicos para contar reincidência
-        const uniqueIds = data.ids.size;
-        // Categoria com mais ocorrências nesta equipe
-        const top = Object.entries(data.cats).sort((a,b)=>b[1]-a[1])[0];
-        return { eq, cat: top?.[0]||'—', cnt: uniqueIds, totalOcorrencias: top?.[1]||0 };
+      const rows = Object.entries(reincMap).map(([eq,cats]) => {
+        const top = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
+        return { eq, cat: top?.[0]||'—', cnt: top?.[1]||0 };
       }).sort((a,b)=>b.cnt-a.cnt).slice(0,6);
       rEl.innerHTML = rows.map(r => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid #F3F4F6;">
           <div>
             <div style="font-size:0.82rem;font-weight:700;color:#374151;">${r.eq}</div>
+            <div style="font-size:0.68rem;color:#9CA3AF;">${r.cat}</div>
           </div>
-          <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt} IDs</span>
+          <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt}×</span>
         </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
-    }
-
-    // ── Reincidência por Categoria ──
-    const catReincMap = {};
-    filtered.forEach(i => {
-      const catKey = `${i.catNome}_${i.r.id}`;
-      if (!catReincMap[i.catNome]) catReincMap[i.catNome] = new Set();
-      catReincMap[i.catNome].add(catKey);
-    });
-    const catReincEl = document.getElementById('dash-reincidencia-cat');
-    if (catReincEl) {
-      const catRows = Object.entries(catReincMap)
-        .map(([cat, set]) => ({ cat, cnt: set.size }))
-        .sort((a,b) => b.cnt - a.cnt)
-        .slice(0, 8);
-      const maxCat = catRows[0]?.cnt || 1;
-      catReincEl.innerHTML = catRows.map((r, idx) => {
-        const cat = categorias[Object.keys(categorias).find(k => categorias[k].nome === r.cat)]?.icon || '📌';
-        const color = catColors[Object.keys(catColors).find(k => categorias[k]?.nome === r.cat)] || '#888';
-        return `
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
-            <span style="font-size:0.7rem;font-weight:800;color:#9CA3AF;width:18px;text-align:center;">${idx+1}</span>
-            <div style="flex:1;">
-              <div style="display:flex;justify-content:space-between;margin-bottom:2px;align-items:center;">
-                <span style="font-size:0.78rem;font-weight:600;color:#374151;display:flex;align-items:center;gap:0.3rem;">
-                  <span style="font-size:0.9rem;">${cat}</span> ${r.cat}
-                </span>
-                <span style="font-size:0.72rem;color:#6B7280;font-weight:600;">${r.cnt}</span>
-              </div>
-              <div style="height:6px;background:#F3F4F6;border-radius:99px;">
-                <div style="height:100%;width:${Math.round(r.cnt/maxCat*100)}%;background:${color};border-radius:99px;"></div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
     }
 
     // ── Tabela detalhada ──
@@ -9159,26 +7680,21 @@ entryLines.join('\n\n') + '\n' +
       const thStyle = 'padding:0.5rem 0.65rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:2px solid #F3F4F6;white-space:nowrap;';
       const tdStyle = 'padding:0.45rem 0.65rem;font-size:0.78rem;border-bottom:1px solid #F9FAFB;';
       table.innerHTML = `<thead><tr>
-        <th style="${thStyle}">ID</th>
         <th style="${thStyle}">Data</th>
         <th style="${thStyle}">Equipe</th>
         <th style="${thStyle}">Turno</th>
         <th style="${thStyle}">Categoria</th>
-        <th style="${thStyle}">Período</th>
         <th style="${thStyle}">Tempo Fora</th>
         <th style="${thStyle}">Resp. Ocorrência</th>
-        <th style="${thStyle}">Comentários Geral</th>
         <th style="${thStyle}">Justificativa</th>
         <th style="${thStyle}">Resp. Ação</th>
         <th style="${thStyle}">Obs. da Ação</th>
-        <th style="${thStyle}">Tipo de Ação</th>
         <th style="${thStyle}">Status</th>
         <th style="${thStyle}">Data Ação</th>
       </tr></thead>
       <tbody>${filtered.filter(i => i.foraDoTempo).map(i => {
         const [y,m,d] = i.data.split('-');
         const dataBR = `${d}/${m}/${y}`;
-        const periodo = i.e.hinicio && i.e.hfim ? `${i.e.hinicio} - ${i.e.hfim}` : '—';
         const sla = i.isRealizada
           ? (i.tempoRespDias !== null && i.tempoRespDias <= PRAZO_DIAS
               ? `<span style="background:#D1FAE5;color:#065F46;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ No prazo</span>`
@@ -9195,22 +7711,16 @@ entryLines.join('\n\n') + '\n' +
               : `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ Dentro do Tempo</span>`;
         const just = i.e.justificativa || '—';
         const obsAcao = i.saved.descricao || '—';
-        const comentarios = i.r.comentariosReg || '—';
-        const tipoAcao = i.saved.tipoAcao || '—';
         return `<tr>
-          <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.registroId || '—'}</td>
           <td style="${tdStyle}">${dataBR}</td>
           <td style="${tdStyle};font-weight:700;">${i.equipe}</td>
           <td style="${tdStyle}">${i.turno}</td>
           <td style="${tdStyle}">${i.catNome}</td>
-          <td style="${tdStyle};color:#1E4DA1;font-weight:600;">🕐 ${periodo}</td>
           <td style="${tdStyle};font-weight:700;color:#DC2626;">${i.tempoStr}</td>
           <td style="${tdStyle}">${i.respOc}</td>
-          <td style="${tdStyle};max-width:180px;color:#6B7280;font-size:0.75rem;">${comentarios}</td>
           <td style="${tdStyle};max-width:200px;color:#7C3AED;">${just}</td>
           <td style="${tdStyle};font-weight:600;">${i.respAc}</td>
           <td style="${tdStyle};max-width:220px;color:#374151;">${obsAcao}</td>
-          <td style="${tdStyle};color:#7C3AED;font-weight:600;">${tipoAcao}</td>
           <td style="${tdStyle}">${statusBadge}</td>
           <td style="${tdStyle}">${i.saved.dataAcao ? i.saved.dataAcao.split('-').reverse().join('/') : '—'}</td>
         </tr>`;
@@ -9235,7 +7745,7 @@ entryLines.join('\n\n') + '\n' +
       const fDataFim = document.getElementById('dash-f-data-fim')?.value || '';
       const fBusca   = (document.getElementById('dash-busca')?.value     || '').trim().toUpperCase();
 
-      const rows = [['Data','Equipe','Turno','Categoria','Período','Causa','Tempo Fora','Resp. Ocorrência',
+      const rows = [['Data','Equipe','Turno','Categoria','Causa','Tempo Fora','Resp. Ocorrência',
         'Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação']];
 
       records.forEach(r => {
@@ -9245,7 +7755,23 @@ entryLines.join('\n\n') + '\n' +
         if (fDataFim && r.data > fDataFim) return;
 
         (r.entries || []).forEach(e => {
-          if (!entryNeedsJustificativa(e)) return; // só fora do tempo
+          // Mesma lógica robusta do dashboard
+          let foraDoTempo = false;
+          if (e.catKey === 'deslocamento') {
+            foraDoTempo = e.deslocStatus === 'fora' || (!e.deslocStatus && (e.mins || 0) > DESLOC_LIMITE_MIN);
+          } else if (e.catKey === 'ocioso') {
+            foraDoTempo = e.ociososStatus === 'fora' || (!e.ociososStatus && (e.mins || 0) > OCIOSO_LIMITE_MIN);
+          } else if (e.catKey === 'plataforma') {
+            foraDoTempo = e.plataformaStatus === 'fora' || (!e.plataformaStatus && (e.mins || 0) > PLATAFORMA_LIMITE_MIN);
+          } else if (e.catKey === 'incidencia') {
+            const limite = getIncidenciaLimite(e.causas);
+            if (limite === null || limite < 0) foraDoTempo = true;
+            else if (limite === 0) foraDoTempo = false;
+            else foraDoTempo = (e.mins || 0) > limite;
+          } else {
+            foraDoTempo = entryNeedsJustificativa(e);
+          }
+          if (!foraDoTempo) return; // só fora do tempo
           const temAcao = e.acaoNecessaria === 'sim' && e.acaoResponsavel;
           const key   = getAcaoKey(r.id, e);
           const saved = temAcao ? (acoes[key] || {}) : {};
@@ -9256,7 +7782,6 @@ entryLines.join('\n\n') + '\n' +
           if (fStatus === 'realizada' && !isRealizada) return;
 
           const catNome  = categorias[e.catKey]?.nome || e.catKey;
-          const periodo  = e.hinicio && e.hfim ? `${e.hinicio} - ${e.hfim}` : '';
           const causaStr = e.causas?.join(', ') || e.obsCausa || '';
           const tempoStr = e.mins ? `${Math.floor(e.mins/60)}h${String(e.mins%60).padStart(2,'0')}min` : '';
           const dataTs   = r.data ? new Date(r.data+'T12:00:00').getTime() : 0;
@@ -9268,7 +7793,6 @@ entryLines.join('\n\n') + '\n' +
             r.equipe || '',
             r.turno  || '',
             catNome,
-            periodo,
             causaStr,
             tempoStr,
             e.acaoResponsavel || '',
@@ -9315,8 +7839,10 @@ entryLines.join('\n\n') + '\n' +
 
 
 
+  const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
   const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
 
+  const CFG_RESP_OC_KEY  = 'enel_cfg_resp_oc';
   const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
 
   function getRespAcao() {
@@ -9425,164 +7951,8 @@ entryLines.join('\n\n') + '\n' +
   let _acaoSubAtiva = 'pendente'; // sempre pendente
 
   function switchAcaoSub(sub) {
-    // Atualiza abas
-    document.getElementById('acaoSubPendentes').style.display = sub === 'pendentes' ? 'block' : 'none';
-    document.getElementById('acaoSubRespondidas').style.display = sub === 'respondidas' ? 'block' : 'none';
-    
-    // Atualiza botões
-    const btnPend = document.getElementById('acaoSubBtnPendentes');
-    const btnResp = document.getElementById('acaoSubBtnRespondidas');
-    
-    if (sub === 'pendentes') {
-      btnPend.style.borderBottomColor = '#7C3AED';
-      btnPend.style.color = '#7C3AED';
-      btnResp.style.borderBottomColor = 'transparent';
-      btnResp.style.color = '#9CA3AF';
-      _acaoSubAtiva = 'pendente';
-      renderAcaoTab();
-    } else {
-      btnPend.style.borderBottomColor = 'transparent';
-      btnPend.style.color = '#9CA3AF';
-      btnResp.style.borderBottomColor = '#7C3AED';
-      btnResp.style.color = '#7C3AED';
-      // Carrega ações respondidas
-      preencherFiltrosAcoes();
-      renderAcoesRespondidas();
-    }
-  }
-
-  function preencherFiltrosAcoes() {
-    const records = loadDB();
-    const acoes = loadAcoes();
-    const equipesSet = new Set();
-    const tiposSet = new Set();
-
-    records.forEach(r => {
-      if (r.equipe) equipesSet.add(r.equipe);
-      r.entries.forEach(e => {
-        const key = `${r.id}_${e.hinicio||''}_${e.catKey}`;
-        const acao = acoes[key];
-        if (acao?.tipoAcao) tiposSet.add(acao.tipoAcao);
-      });
-    });
-
-    // Preencher equipes
-    const equipeSel = document.getElementById('filtro_respondidas_equipe');
-    if (equipeSel) {
-      const equipeValue = equipeSel.value;
-      equipeSel.innerHTML = '<option value="">Todas</option>';
-      Array.from(equipesSet).sort().forEach(e => {
-        equipeSel.innerHTML += `<option value="${e}">${e}</option>`;
-      });
-      equipeSel.value = equipeValue;
-    }
-
-    // Preencher tipos de ação
-    const tipoSel = document.getElementById('filtro_respondidas_tipo');
-    if (tipoSel) {
-      const tipoValue = tipoSel.value;
-      tipoSel.innerHTML = '<option value="">Todos</option>';
-      Array.from(tiposSet).sort().forEach(t => {
-        tipoSel.innerHTML += `<option value="${t}">${t}</option>`;
-      });
-      tipoSel.value = tipoValue;
-    }
-  }
-
-  function aplicarFiltrosAcoesRespondidas() {
-    renderAcoesRespondidas();
-  }
-
-  function renderAcoesRespondidas() {
-    const records = loadDB();
-    const acoes = loadAcoes();
-    const listEl = document.getElementById('acaoListRespondidas');
-    if (!listEl) return;
-
-    // Obter filtros
-    const dataIni = document.getElementById('filtro_respondidas_data_ini')?.value || '';
-    const dataFim = document.getElementById('filtro_respondidas_data_fim')?.value || '';
-    const equipe = document.getElementById('filtro_respondidas_equipe')?.value || '';
-    const tipo = document.getElementById('filtro_respondidas_tipo')?.value || '';
-    const status = document.getElementById('filtro_respondidas_status')?.value || '';
-
-    let cards = [];
-
-    records.forEach(r => {
-      if (equipe && r.equipe !== equipe) return;
-      if (dataIni && r.data < dataIni) return;
-      if (dataFim && r.data > dataFim) return;
-
-      r.entries.forEach(e => {
-        const key = `${r.id}_${e.hinicio||''}_${e.catKey}`;
-        const acao = acoes[key];
-        
-        if (!acao || !acao.status) return; // Só mostra respondidas
-        if (tipo && acao.tipoAcao !== tipo) return;
-        if (status && acao.status !== status) return;
-
-        const cat = categorias[e.catKey] || {};
-        const color = catColors[e.catKey] || '#888';
-        const [ry,rm,rd] = (r.data||'').split('-');
-        const dataFormatada = rd && rm && ry ? `${rd}/${rm}/${ry}` : r.data || '—';
-        const statusBadge = acao.status === 'realizada' 
-          ? '✅ Realizada' 
-          : '❌ Não realizada';
-        const statusColor = acao.status === 'realizada' 
-          ? '#059669' 
-          : '#DC2626';
-
-        const card = document.createElement('div');
-        card.style.cssText = 'background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;margin-bottom:1rem;';
-        card.innerHTML = `
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
-            <span style="background:${color}20;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">${cat.icon||'?'}</span>
-            <strong style="color:#1F2937;flex:1;">${cat.nome||e.catKey}</strong>
-            <span style="background:${statusColor};color:white;padding:0.3rem 0.75rem;border-radius:4px;font-size:0.75rem;font-weight:700;">${statusBadge}</span>
-          </div>
-          
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;font-size:0.85rem;">
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">📅 Data</span>
-              <div style="color:#1F2937;font-weight:600;">${dataFormatada}</div>
-            </div>
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">👥 Equipe</span>
-              <div style="color:#1F2937;font-weight:600;">${r.equipe||'—'}</div>
-            </div>
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">👤 Responsável</span>
-              <div style="color:#1F2937;font-weight:600;">${acao.respExec||'—'}</div>
-            </div>
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">🏷️ Tipo</span>
-              <div style="color:#1F2937;font-weight:600;">${acao.tipoAcao||'—'}</div>
-            </div>
-          </div>
-
-          ${acao.descricao ? `
-          <div style="background:#F9FAFB;border-left:3px solid ${color};padding:0.75rem;border-radius:4px;margin-bottom:0.75rem;">
-            <div style="color:#6B7280;font-size:0.75rem;margin-bottom:0.3rem;">📝 Descrição da Ação</div>
-            <div style="color:#374151;font-size:0.85rem;">${acao.descricao}</div>
-          </div>
-          ` : ''}
-
-          ${acao.dataAcao ? `
-          <div style="color:#6B7280;font-size:0.8rem;">📅 Executada em: <strong style="color:#374151;">${acao.dataAcao}</strong></div>
-          ` : ''}
-        `;
-        
-        cards.push(card);
-      });
-    });
-
-    listEl.innerHTML = '';
-    if (cards.length === 0) {
-      listEl.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:#9CA3AF;"><div style="font-size:1.5rem;margin-bottom:0.5rem;">✨</div><div>Nenhuma ação respondida encontrada</div></div>';
-    } else {
-      cards.forEach(card => listEl.appendChild(card));
-      listEl.innerHTML += `<div style="text-align:center;padding:1rem;color:#6B7280;font-size:0.85rem;">Total: <strong>${cards.length}</strong> ação(ões) respondida(s)</div>`;
-    }
+    _acaoSubAtiva = 'pendente'; // ignora realizado — só mostra pendentes
+    renderAcaoTab();
   }
 
   function addRespAcaoChip(id, sel) {
@@ -9667,6 +8037,8 @@ entryLines.join('\n\n') + '\n' +
   }
 
   // Acoes salvas separadamente no localStorage
+  const ACOES_KEY = 'enel_acoes';
+  const FB_ACOES_PATH = 'produtividade/acoes';
   let _acoesCache = null; // null = not loaded yet
 
   function loadAcoes() {
@@ -9823,7 +8195,7 @@ entryLines.join('\n\n') + '\n' +
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
             <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
-            <button onclick="event.stopPropagation(); abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+            <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
           </div>
         </div>
         ${blinkingNames}
@@ -9838,7 +8210,6 @@ entryLines.join('\n\n') + '\n' +
   let _tratativaCards = {};
 
   function abrirTratativa(key) {
-    console.log('abrirTratativa called with key:', key);
     _tratativaKey = key;
     const records = loadDB();
     const acoes = loadAcoes();
@@ -9851,17 +8222,7 @@ entryLines.join('\n\n') + '\n' +
         if (getAcaoKey(r.id, e) === key) { foundR = r; foundE = e; }
       });
     });
-    if (!foundR || !foundE) {
-      console.warn('Registro ou entry não encontrados para key:', key);
-      return;
-    }
-
-    const panel = document.getElementById('acaoTratativaPanel');
-    const content = document.getElementById('acaoTratativaContent');
-    if (!panel || !content) {
-      console.warn('Panel ou content não encontrados');
-      return;
-    }
+    if (!foundR || !foundE) return;
 
     const [ry,rm,rd] = (foundR.data||'').split('-');
     const dataBR = rd && rm && ry ? `${rd}/${rm}/${ry}` : foundR.data || '—';
@@ -9870,6 +8231,10 @@ entryLines.join('\n\n') + '\n' +
     const causaStr = foundE.causas?.length ? foundE.causas.join(', ') : foundE.obsCausa || '—';
     const tempoStr = foundE.mins ? `${Math.floor(foundE.mins/60)}h ${String(foundE.mins%60).padStart(2,'0')}min` : '—';
     const isRealizada = saved.status === 'realizada';
+
+    const panel = document.getElementById('acaoTratativaPanel');
+    const content = document.getElementById('acaoTratativaContent');
+    if (!panel || !content) return;
 
     content.innerHTML = `
       <!-- Header -->
@@ -9915,6 +8280,10 @@ entryLines.join('\n\n') + '\n' +
           ${foundE.justificativa ? `<div style="grid-column:1/-1;background:#FEF9EC;border:1px solid #FCD34D;border-radius:8px;padding:0.6rem 0.85rem;">
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#92400E;">⚠️ Justificativa do registro</div>
             <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.justificativa}</div>
+          </div>` : ''}
+          ${foundE.obs ? `<div style="grid-column:1/-1;background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:0.6rem 0.85rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#1E40AF;">💬 Comentário do registro</div>
+            <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.obs}</div>
           </div>` : ''}
         </div>
       </div>
@@ -9963,14 +8332,6 @@ entryLines.join('\n\n') + '\n' +
             </div>
           </div>
           <div style="margin-bottom:0.75rem;">
-            <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Tipo de Ação</label>
-            <select id="trat-tipo-acao"
-              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;border:1.5px solid #D1FAE5;border-radius:8px;padding:7px 10px;outline:none;background:white;">
-              <option value="">— Selecione —</option>
-              ${getTiposAcao().map(t => `<option value="${t}"${saved.tipoAcao===t?' selected':''}>${t}</option>`).join('')}
-            </select>
-          </div>
-          <div style="margin-bottom:0.75rem;">
             <label style="font-size:0.72rem;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Descrição da ação tomada</label>
             <textarea id="trat-desc" rows="3" placeholder="Descreva o que foi feito..."
               style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #D1FAE5;border-radius:8px;padding:8px 10px;resize:vertical;outline:none;background:white;box-sizing:border-box;">${saved.descricao||''}</textarea>
@@ -10015,6 +8376,7 @@ entryLines.join('\n\n') + '\n' +
 
     panel.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    panel.scrollTop = 0;
   }
 
   function toggleTratativaDecisao() {
@@ -10051,12 +8413,11 @@ entryLines.join('\n\n') + '\n' +
     if (val === 'sim') {
       const respExec = document.getElementById('trat-resp')?.value || '';
       const dataAcao = document.getElementById('trat-data')?.value || '';
-      const tipoAcao = document.getElementById('trat-tipo-acao')?.value || '';
       if (!respExec || !dataAcao) { showCopyToast('⚠️ Preencha o Responsável e a Data da ação.'); return; }
       const desc = document.getElementById('trat-desc')?.value || '';
 
       // Salva status realizada IMEDIATAMENTE no localStorage (antes do FileReader)
-      acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, tipoAcao, descricao: desc };
+      acoes[_tratativaKey] = { ...saved, status: 'realizada', respExec, dataAcao, descricao: desc };
       persistAcoes(acoes);
 
       // Anexo — leitura assíncrona, atualiza depois sem bloquear o fluxo
@@ -10306,61 +8667,55 @@ entryLines.join('\n\n') + '\n' +
 
     el.innerHTML = lines.join('<br>') + '<br>⏳ Lendo Firebase...';
 
-    // Read directly from Firebase via REST API
-    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
-      .then(r => r.json())
-      .then(data => {
-        const fbCount = data && typeof data === 'object' ? Object.keys(data).length : 0;
-        const fbIds = data && typeof data === 'object' ? Object.keys(data).slice(0,3).join(', ') : '—';
-        lines.push(`<br>🔥 Firebase tem: <b style="color:${fbCount>0?'#4ADE80':'#F87171'}">${fbCount} registros</b>`);
-        lines.push(`🔑 Primeiros IDs: <span style="color:#FCD34D;font-size:0.65rem">${fbIds}</span>`);
+    // Read directly from Firebase
+    db.ref('produtividade/records').once('value').then(snap => {
+      const data = snap.val();
+      const fbCount = data ? Object.keys(data).length : 0;
+      const fbIds = data ? Object.keys(data).slice(0,3).join(', ') : '—';
+      lines.push(`<br>🔥 Firebase tem: <b style="color:${fbCount>0?'#4ADE80':'#F87171'}">${fbCount} registros</b>`);
+      lines.push(`🔑 Primeiros IDs: <span style="color:#FCD34D;font-size:0.65rem">${fbIds}</span>`);
 
-        if (fbCount > _dbCache.length) {
-          lines.push(`<br>⚠️ <b style="color:#FBBF24">Firebase tem MAIS registros que o cache!</b>`);
-          lines.push(`→ Forçando sincronização...`);
-          const records = Object.values(data).filter(Boolean).sort((a,b) => b.id - a.id);
-          _dbCache = records;
-          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-          refreshAllUI(records);
-          lines.push(`✅ <b style="color:#4ADE80">Sincronizado! ${records.length} registros carregados.</b>`);
-        } else if (fbCount === _dbCache.length) {
-          lines.push(`<br>✅ <b style="color:#4ADE80">Cache e Firebase sincronizados.</b>`);
-        } else if (fbCount < _dbCache.length && fbCount > 0) {
-          lines.push(`<br>⚠️ <b style="color:#FBBF24">Cache tem mais dados que Firebase. Enviando...</b>`);
-          _dbCache.forEach(r => {
-            fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-              method: 'PUT',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify(r)
-            }).catch(()=>{});
-          });
-        }
+      if (fbCount > _dbCache.length) {
+        lines.push(`<br>⚠️ <b style="color:#FBBF24">Firebase tem MAIS registros que o cache!</b>`);
+        lines.push(`→ Forçando sincronização...`);
+        const records = Object.values(data).sort((a,b) => b.id - a.id);
+        _dbCache = records;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+        refreshAllUI(records);
+        lines.push(`✅ <b style="color:#4ADE80">Sincronizado! ${records.length} registros carregados.</b>`);
+      } else if (fbCount === _dbCache.length) {
+        lines.push(`<br>✅ <b style="color:#4ADE80">Cache e Firebase sincronizados.</b>`);
+      } else if (fbCount < _dbCache.length && fbCount > 0) {
+        lines.push(`<br>⚠️ <b style="color:#FBBF24">Cache tem mais dados que Firebase. Enviando...</b>`);
+        _dbCache.forEach(r => {
+          db.ref('produtividade/records/r_' + r.id).set(r).catch(()=>{});
+        });
+      }
 
-        el.innerHTML = lines.join('<br>');
-      }).catch(err => {
-        lines.push(`<br>❌ <b style="color:#F87171">Erro Firebase: ${err.message}</b>`);
-        el.innerHTML = lines.join('<br>');
-      });
+      el.innerHTML = lines.join('<br>');
+    }).catch(err => {
+      lines.push(`<br>❌ <b style="color:#F87171">Erro Firebase: ${err.message}</b>`);
+      el.innerHTML = lines.join('<br>');
+    });
   }
 
   function forceSyncNow() {
     const el = document.getElementById('fbDebugContent');
     if (el) el.innerHTML = '⏳ Buscando dados do Firebase...';
-    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records.json')
-      .then(r => r.json())
-      .then(data => {
-        const records = data && typeof data === 'object' ? Object.values(data).filter(Boolean).sort((a,b) => b.id - a.id) : [];
-        if (records.length > 0) {
-          _dbCache = records;
-          try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
-          refreshAllUI(records);
-          if (el) el.innerHTML = `✅ <b style="color:#4ADE80">${records.length} registros carregados do Firebase!</b>`;
-        } else {
-          if (el) el.innerHTML = `⚠️ <b style="color:#FBBF24">Firebase vazio. Use "Enviar dados locais" se tiver registros.</b>`;
-        }
-      }).catch(e => {
-        if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro: ${e.message}</b>`;
-      });
+    db.ref('produtividade/records').once('value').then(snap => {
+      const data = snap.val();
+      const records = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+      if (records.length > 0) {
+        _dbCache = records;
+        try { localStorage.setItem(DB_KEY, JSON.stringify(records)); } catch(e) {}
+        refreshAllUI(records);
+        if (el) el.innerHTML = `✅ <b style="color:#4ADE80">${records.length} registros carregados do Firebase!</b>`;
+      } else {
+        if (el) el.innerHTML = `⚠️ <b style="color:#FBBF24">Firebase vazio. Use "Enviar dados locais" se tiver registros.</b>`;
+      }
+    }).catch(e => {
+      if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro: ${e.message}</b>`;
+    });
   }
 
   function pushLocalToFirebase() {
@@ -10373,11 +8728,7 @@ entryLines.join('\n\n') + '\n' +
     if (el) el.innerHTML = `⏳ Enviando ${local.length} registros ao Firebase...`;
     let done = 0;
     local.forEach(r => {
-      fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/records/r_${r.id}.json`, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(r)
-      })
+      db.ref('produtividade/records/r_' + r.id).set(r)
         .then(() => {
           done++;
           if (done === local.length) {
@@ -10390,6 +8741,20 @@ entryLines.join('\n\n') + '\n' +
           if (el) el.innerHTML = `❌ <b style="color:#F87171">Erro ao enviar: ${e.message}</b>`;
         });
     });
+  }
+
+  function doLogin() {
+    const user = document.getElementById('loginUser')?.value.trim().toLowerCase();
+    const pass = document.getElementById('loginPass')?.value.trim().toLowerCase();
+    const err  = document.getElementById('loginErr');
+    if (user === 'enel' && pass === 'brasil') {
+      document.getElementById('loginScreen').style.display = 'none';
+      localStorage.setItem('enel_auth', '1');
+    } else {
+      if (err) err.style.display = 'block';
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginPass').focus();
+    }
   }
 
   function resetForm() {
