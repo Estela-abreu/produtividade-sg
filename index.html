@@ -5939,6 +5939,11 @@ if (!loggedInUser) {
     if (!entrada) return null;
 
     const toMins = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+    const minsToTime = m => {
+      const hh = Math.floor(m/60), mm = m%60;
+      return hh.toString().padStart(2,'0') + ':' + mm.toString().padStart(2,'0');
+    };
+
     const startMin = toMins(entrada);
     const endMin   = saida ? toMins(saida) : startMin + (r.totalMin || 480);
     const totalSpan = endMin - startMin;
@@ -5953,11 +5958,16 @@ if (!loggedInUser) {
 
     // ── HEADER ──
     const header = document.createElement('div');
-    header.style.cssText = 'display:flex;gap:2rem;align-items:center;margin-bottom:2rem;flex-wrap:wrap;';
+    header.style.cssText = 'display:flex;gap:2rem;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;';
+
+    const titleLabel = document.createElement('div');
+    titleLabel.style.cssText = 'font-size:0.75rem;color:#6B7280;font-weight:700;display:flex;align-items:center;gap:0.5rem;';
+    titleLabel.innerHTML = `<span style="color:#9CA3AF;">⏱️</span> LINHA DO TEMPO DA JORNADA`;
+    header.appendChild(titleLabel);
 
     const title = document.createElement('div');
     title.style.cssText = 'background:#1E3A5F;color:white;padding:0.5rem 1rem;border-radius:6px;font-weight:800;font-size:0.75rem;white-space:nowrap;';
-    title.textContent = '🕐 LINHA DO TEMPO - ÍCONES COM DURAÇÃO';
+    title.textContent = '⏱️ LINHA DO TEMPO - ÍCONES COM DURAÇÃO';
     header.appendChild(title);
 
     const jornadaInfo = document.createElement('div');
@@ -5967,110 +5977,157 @@ if (!loggedInUser) {
     header.appendChild(jornadaInfo);
     wrap.appendChild(header);
 
-    // ── ÍCONES COM DURAÇÃO ──
-    const iconsRow = document.createElement('div');
-    iconsRow.style.cssText = 'position:relative;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:flex-end;padding:0 20px;';
+    // ── CONTAINER PRINCIPAL COM POSICIONAMENTO ──
+    const mainContainer = document.createElement('div');
+    mainContainer.style.cssText = 'position:relative;margin-bottom:2rem;';
 
-    // Ícone INÍCIO
-    const startIconDiv = document.createElement('div');
-    startIconDiv.style.cssText = 'text-align:center;flex:0 0 auto;';
-    startIconDiv.innerHTML = `
-      <div style="font-size:1.5rem;margin-bottom:0.3rem;">▶</div>
-      <div style="font-size:0.7rem;font-weight:700;color:#065F46;">${entrada}</div>
-      <div style="font-size:0.65rem;color:#6B7280;">Início</div>
+    // ── ÍCONES POSICIONADOS ──
+    const iconsContainer = document.createElement('div');
+    iconsContainer.style.cssText = 'position:relative;height:140px;margin-bottom:1rem;';
+
+    // Início (▶)
+    const startPct = 0;
+    const startIcon = document.createElement('div');
+    startIcon.style.cssText = `position:absolute;left:${startPct}%;transform:translateX(-50%);text-align:center;`;
+    startIcon.innerHTML = `
+      <div style="font-size:1.2rem;margin-bottom:0.2rem;">▶</div>
+      <div style="font-size:0.65rem;color:#065F46;font-weight:700;">${entrada}</div>
+      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.1rem;">Tempo de Plataforma</div>
     `;
-    iconsRow.appendChild(startIconDiv);
+    iconsContainer.appendChild(startIcon);
 
-    // Ícones dos eventos
-    r.entries.forEach(e => {
+    // Eventos posicionados
+    r.entries.forEach((e, idx) => {
       const cat = categorias[e.catKey] || {};
       const color = catColors[e.catKey] || '#888';
+      
+      // Calcular posição baseado no horário
+      const eventStart = toMins(e.hinicio || entrada);
+      const eventEnd = toMins(e.hfim || entrada);
+      const posMin = eventStart - startMin;
+      const posPct = (posMin / totalSpan) * 100;
+      
       const mins = e.mins || 0;
       const eventH = Math.floor(mins/60), eventM = mins%60;
 
-      const eventDiv = document.createElement('div');
-      eventDiv.style.cssText = 'text-align:center;flex:1;';
-      eventDiv.innerHTML = `
-        <div style="background:white;border:2px solid ${color};border-radius:50%;width:60px;height:60px;margin:0 auto 0.5rem;display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:${color};">${cat.icon||'•'}</div>
-        <div style="font-size:0.75rem;font-weight:700;color:${color};background:${color}11;padding:0.3rem 0.6rem;border-radius:4px;border:1px solid ${color};margin:0 auto 0.3rem;width:fit-content;">${pad(eventH)}h${pad(eventM)}</div>
-        <div style="font-size:0.7rem;color:#374151;font-weight:600;">${e.hinicio||'—'} - ${e.hfim||'—'}</div>
-        <div style="font-size:0.65rem;color:#6B7280;">${cat.nome||e.catKey}</div>
+      const eventIcon = document.createElement('div');
+      eventIcon.style.cssText = `position:absolute;left:${posPct}%;transform:translateX(-50%);text-align:center;`;
+      eventIcon.innerHTML = `
+        <div style="width:50px;height:50px;border:2px solid ${color};border-radius:50%;margin:0 auto 0.3rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:${color};background:white;">${cat.icon||'•'}</div>
+        <div style="font-size:0.7rem;font-weight:700;color:${color};background:${color}11;padding:0.2rem 0.5rem;border-radius:3px;border:1px solid ${color};width:fit-content;margin:0 auto 0.2rem;white-space:nowrap;">${pad(eventH)}h${pad(eventM)}</div>
+        <div style="font-size:0.65rem;color:#374151;font-weight:600;white-space:nowrap;">${e.hinicio||'—'} - ${e.hfim||'—'}</div>
+        <div style="font-size:0.6rem;color:#6B7280;">${cat.nome||e.catKey}</div>
       `;
-      iconsRow.appendChild(eventDiv);
+      iconsContainer.appendChild(eventIcon);
     });
 
-    // Ícone FIM
-    const endIconDiv = document.createElement('div');
-    endIconDiv.style.cssText = 'text-align:center;flex:0 0 auto;';
-    endIconDiv.innerHTML = `
-      <div style="font-size:1.5rem;margin-bottom:0.3rem;">■</div>
-      <div style="font-size:0.7rem;font-weight:700;color:#065F46;">${saida||'—'}</div>
-      <div style="font-size:0.65rem;color:#6B7280;">Fim</div>
+    // Fim (■)
+    const endPct = 100;
+    const endIcon = document.createElement('div');
+    endIcon.style.cssText = `position:absolute;left:${endPct}%;transform:translateX(-50%);text-align:center;`;
+    endIcon.innerHTML = `
+      <div style="font-size:1.2rem;margin-bottom:0.2rem;">■</div>
+      <div style="font-size:0.65rem;color:#065F46;font-weight:700;">${saida||'—'}</div>
+      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.1rem;">Retorno</div>
     `;
-    iconsRow.appendChild(endIconDiv);
-    wrap.appendChild(iconsRow);
+    iconsContainer.appendChild(endIcon);
 
-    // ── LINHA CONECTANDO ──
+    mainContainer.appendChild(iconsContainer);
+
+    // ── LINHA COM PONTOS ──
     const lineContainer = document.createElement('div');
-    lineContainer.style.cssText = 'position:relative;height:60px;margin:0 0 2rem 0;padding:0 20px;';
+    lineContainer.style.cssText = 'position:relative;height:60px;margin-bottom:1rem;';
+
+    // Linha tracejada
     const dashedLine = document.createElement('div');
-    dashedLine.style.cssText = 'position:absolute;top:0;left:0;right:0;height:3px;background:repeating-linear-gradient(90deg, #6B7280, #6B7280 6px, white 6px, white 12px);z-index:0;';
+    dashedLine.style.cssText = 'position:absolute;top:8px;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg, #6B7280, #6B7280 8px, white 8px, white 14px);z-index:0;';
     lineContainer.appendChild(dashedLine);
+
+    // Linha vermelha (rota/deslocamento)
+    const redPath = document.createElement('svg');
+    redPath.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;';
+    redPath.setAttribute('viewBox', '0 0 1000 60');
+    redPath.setAttribute('preserveAspectRatio', 'none');
+    
+    let pathData = 'M 0 20 ';
+    r.entries.forEach(e => {
+      if (e.catKey === 'deslocamento' || e.catKey === 'deslocamentos') {
+        const eventStart = toMins(e.hinicio || entrada);
+        const posMin = eventStart - startMin;
+        const posPct = (posMin / totalSpan) * 1000;
+        pathData += `Q ${posPct} 30 ${posPct} 40 `;
+      }
+    });
+    pathData += ' L 1000 20';
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('stroke', '#DC2626');
+    path.setAttribute('stroke-width', '3');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    redPath.appendChild(path);
+    lineContainer.appendChild(redPath);
 
     // Pontos na linha
     const pointsContainer = document.createElement('div');
-    pointsContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;display:flex;justify-content:space-between;align-items:flex-start;';
+    pointsContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;z-index:2;';
 
     // Ponto início
     const startPt = document.createElement('div');
-    startPt.style.cssText = 'width:12px;height:12px;background:#065F46;border-radius:50%;margin-top:0px;';
+    startPt.style.cssText = `position:absolute;left:0;top:5px;width:14px;height:14px;background:#065F46;border-radius:50%;transform:translateX(-50%);border:2px solid white;box-shadow:0 0 0 1px #065F46;`;
     pointsContainer.appendChild(startPt);
 
-    // Pontos intermediários
+    // Pontos dos eventos
     r.entries.forEach(e => {
-      const pt = document.createElement('div');
+      const eventStart = toMins(e.hinicio || entrada);
+      const posMin = eventStart - startMin;
+      const posPct = (posMin / totalSpan) * 100;
       const color = catColors[e.catKey] || '#888';
-      pt.style.cssText = `width:10px;height:10px;background:${color};border-radius:50%;margin-top:1px;`;
+
+      const pt = document.createElement('div');
+      pt.style.cssText = `position:absolute;left:${posPct}%;top:8px;width:10px;height:10px;background:${color};border-radius:50%;transform:translateX(-50%);border:2px solid white;box-shadow:0 0 0 1px ${color};`;
       pointsContainer.appendChild(pt);
     });
 
     // Ponto fim
     const endPt = document.createElement('div');
-    endPt.style.cssText = 'width:12px;height:12px;background:#065F46;border-radius:50%;margin-top:0px;';
+    endPt.style.cssText = `position:absolute;right:0;top:5px;width:14px;height:14px;background:#065F46;border-radius:50%;transform:translateX(50%);border:2px solid white;box-shadow:0 0 0 1px #065F46;`;
     pointsContainer.appendChild(endPt);
 
     lineContainer.appendChild(pointsContainer);
-    wrap.appendChild(lineContainer);
+    mainContainer.appendChild(lineContainer);
 
-    // ── ESCALA DE TEMPO (30min em 30min) ──
+    // ── ESCALA DE TEMPO ──
     const scaleContainer = document.createElement('div');
-    scaleContainer.style.cssText = 'position:relative;height:40px;margin-bottom:2rem;padding:0 20px;border-bottom:1px solid #E5E7EB;';
+    scaleContainer.style.cssText = 'position:relative;height:40px;margin-bottom:1.5rem;border-bottom:1px solid #E5E7EB;';
 
     const scaleLine = document.createElement('div');
     scaleLine.style.cssText = 'position:absolute;top:0;left:0;right:0;height:1px;background:#D1D5DB;';
     scaleContainer.appendChild(scaleLine);
 
-    const scalePoints = document.createElement('div');
-    scalePoints.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;display:flex;justify-content:space-between;align-items:flex-start;';
+    // Marcas de tempo cada 30min
+    const scaleMarks = document.createElement('div');
+    scaleMarks.style.cssText = 'position:absolute;top:0;left:0;right:0;height:100%;';
 
-    // Gerar marcas a cada 30min
-    const markCount = Math.ceil(totalSpan / 30) + 1;
-    for (let i = 0; i <= markCount; i++) {
+    for (let min = startMin; min <= endMin; min += 30) {
+      const posMin = min - startMin;
+      const posPct = (posMin / totalSpan) * 100;
       const mark = document.createElement('div');
-      const min = startMin + (i * 30);
-      const markH = Math.floor(min / 60);
-      const markM = min % 60;
-      const label = markH.toString().padStart(2,'0') + ':' + markM.toString().padStart(2,'0');
+      mark.style.cssText = `position:absolute;left:${posPct}%;top:0;transform:translateX(-50%);`;
       
-      mark.style.cssText = 'position:relative;flex:1;text-align:center;';
+      const markTime = minsToTime(min);
       mark.innerHTML = `
-        <div style="position:absolute;top:0;width:1px;height:6px;background:#D1D5DB;left:50%;transform:translateX(-50%);"></div>
-        <div style="font-size:0.7rem;color:#6B7280;margin-top:12px;font-weight:600;">${label}</div>
+        <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:1px;height:6px;background:#D1D5DB;"></div>
+        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:0.7rem;color:#6B7280;font-weight:600;white-space:nowrap;">${markTime}</div>
       `;
-      scalePoints.appendChild(mark);
+      scaleMarks.appendChild(mark);
     }
-    scaleContainer.appendChild(scalePoints);
-    wrap.appendChild(scaleContainer);
+    scaleContainer.appendChild(scaleMarks);
+    mainContainer.appendChild(scaleContainer);
+
+    wrap.appendChild(mainContainer);
 
     // ── LEGENDA ──
     const legend = document.createElement('div');
@@ -6084,7 +6141,7 @@ if (!loggedInUser) {
       const color = catColors[e.catKey] || '#888';
       
       const chip = document.createElement('div');
-      chip.style.cssText = `display:flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:#F9FAFB;border-radius:6px;font-size:0.8rem;font-weight:600;color:${color};`;
+      chip.style.cssText = `display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.8rem;background:#F9FAFB;border-radius:6px;font-size:0.75rem;font-weight:600;color:${color};border:1px solid ${color}33;`;
       chip.innerHTML = `<span style="font-size:1rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}`;
       legend.appendChild(chip);
     });
