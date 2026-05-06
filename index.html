@@ -8894,8 +8894,11 @@ entryLines.join('\n\n') + '\n' +
               <thead>
                 <tr style="background:#F8FAFF;">
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Categoria</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Hora Início</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Hora Fim</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo Realizado</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
                   <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
                     <select id="reu-status-filter-${r.id}"
                       onchange="filterReuniaoStatus('${r.id}')"
@@ -8925,16 +8928,29 @@ entryLines.join('\n\n') + '\n' +
         const mins = e.mins || 0;
         const h = Math.floor(mins/60), m = mins%60;
         const needsJust = entryNeedsJustificativa(e);
+        const justText = e.justificativa || '';
+        
+        // Número para incidências
+        const numDisplay = e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.65rem;font-weight:800;color:#92400E;">🔢 ${e.numinc}</div>` : '';
         
         const tr = document.createElement('tr');
         tr.className = `reu-row-${r.id} ${needsJust ? 'reu-fora' : 'reu-dentro'}`;
         tr.style.cssText = `background:${idx%2===0 ? 'white' : '#F9FAFB'};`;
         tr.innerHTML = `
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">
-            <span style="display:inline-flex;align-items:center;gap:0.4rem;"><span style="font-size:0.9rem;">${cat.icon||'•'}</span> ${cat.nome||e.catKey}</span>
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+              <span style="font-size:0.9rem;">${cat.icon||'•'}</span> 
+              <div>
+                <div style="font-weight:700;color:#374151;">${cat.nome||e.catKey}</div>
+                ${numDisplay}
+              </div>
+            </div>
           </td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#6B7280;">${e.descricao||'—'}</td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;font-weight:700;">${pad(h)}h${pad(m)}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#1E4DA1;font-weight:600;">${e.hinicio || '—'}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#1E4DA1;font-weight:600;">${e.hfim || '—'}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#6B7280;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;font-weight:700;color:#1E40AF;">${pad(h)}h${pad(m)}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:${needsJust ? '#DC2626' : '#065F46'};">${justText || (needsJust ? '<em style="color:#999;">Pendente de justificativa</em>' : '✓')}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;">${needsJust ? '⚠️ Fora' : '✅ Dentro'}</td>
         `;
         tableBody.appendChild(tr);
