@@ -5773,14 +5773,20 @@ if (!loggedInUser) {
     const autorStr = r.criadoPor ? ` · por ${r.criadoPor}` : '';
     set('rFooterDate', `Salvo em ${savedDate.toLocaleDateString('pt-BR')} às ${savedDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${autorStr}`);
 
-    // Build timeline
-    buildTimeline(r);
+    // Build timeline — HIDE if viewing from Database tab
+    const isFromDB = _dashSub === 'db';
+    const tlSection = document.getElementById('rTimelineSection');
+    if (tlSection) tlSection.style.display = isFromDB ? 'none' : 'block';
+    if (!isFromDB) buildTimeline(r);
 
-    // Build route map (incidências com coordenadas)
+    // Build route map (incidências com coordenadas) — HIDE if viewing from Database tab
     const mapSection = document.getElementById('rMapSection');
     if (mapSection) {
-      const hasMap = buildRouteMap(r, 'rMapContainer');
-      mapSection.style.display = hasMap ? 'block' : 'none';
+      mapSection.style.display = 'none';
+      if (!isFromDB) {
+        const hasMap = buildRouteMap(r, 'rMapContainer');
+        mapSection.style.display = hasMap ? 'block' : 'none';
+      }
     }
 
     const modal = document.getElementById('resumoModal');
@@ -8898,8 +8904,6 @@ entryLines.join('\n\n') + '\n' +
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Hora Fim</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Obs. Causa</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Origem/Destino</th>
-                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Endereço</th>
                   <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
                   <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
@@ -8934,27 +8938,29 @@ entryLines.join('\n\n') + '\n' +
         const justText = e.justificativa || '';
         
         // Número para incidências
-        const numDisplay = e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.65rem;font-weight:800;color:#92400E;">🔢 ${e.numinc}</div>` : '';
+        const numDisplay = e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.65rem;font-weight:800;color:#92400E;margin-top:0.2rem;">🔢 ${e.numinc}</div>` : '';
+        
+        // Origem/Destino (apenas para deslocamentos)
+        const origemDisplay = e.catKey === 'deslocamento' && e.origemNome ? `<div style="font-size:0.7rem;color:#1E3A5F;font-weight:600;margin-top:0.2rem;">📍 ${e.origemNome}</div>` : '';
+        
+        // Endereço
+        const enderecoDisplay = e.endereco ? `<div style="font-size:0.7rem;color:#4B5563;margin-top:0.2rem;"><a href="https://www.google.com/maps/search/${encodeURIComponent(e.endereco)}" target="_blank" style="color:#1E40AF;text-decoration:none;cursor:pointer;">🗺️ ${e.endereco}</a></div>` : '';
         
         // Obs. Causa (apenas para incidências)
         const obsCausaDisplay = e.catKey === 'incidencia' && e.obsCausa ? `<div style="font-size:0.7rem;color:#92400E;font-weight:600;">${e.obsCausa}</div>` : '<span style="color:#D1D5DB;">—</span>';
-        
-        // Origem/Destino (apenas para deslocamentos)
-        const origemDisplay = e.catKey === 'deslocamento' && e.origemNome ? `<div style="font-size:0.7rem;color:#1E3A5F;font-weight:600;">📍 ${e.origemNome}</div>` : '<span style="color:#D1D5DB;">—</span>';
-        
-        // Endereço
-        const enderecoDisplay = e.endereco ? `<div style="font-size:0.7rem;color:#4B5563;"><a href="https://www.google.com/maps/search/${encodeURIComponent(e.endereco)}" target="_blank" style="color:#1E40AF;text-decoration:none;cursor:pointer;">🗺️ ${e.endereco}</a></div>` : '<span style="color:#D1D5DB;">—</span>';
         
         const tr = document.createElement('tr');
         tr.className = `reu-row-${r.id} ${needsJust ? 'reu-fora' : 'reu-dentro'}`;
         tr.style.cssText = `background:${idx%2===0 ? 'white' : '#F9FAFB'};`;
         tr.innerHTML = `
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">
-            <div style="display:flex;align-items:center;gap:0.4rem;">
-              <span style="font-size:0.9rem;">${cat.icon||'•'}</span> 
-              <div>
+            <div style="display:flex;align-items:flex-start;gap:0.4rem;">
+              <span style="font-size:0.9rem;flex-shrink:0;">${cat.icon||'•'}</span> 
+              <div style="flex:1;">
                 <div style="font-weight:700;color:#374151;">${cat.nome||e.catKey}</div>
                 ${numDisplay}
+                ${origemDisplay}
+                ${enderecoDisplay}
               </div>
             </div>
           </td>
@@ -8962,8 +8968,6 @@ entryLines.join('\n\n') + '\n' +
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#1E4DA1;font-weight:600;">${e.hfim || '—'}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#6B7280;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${obsCausaDisplay}</td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${origemDisplay}</td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${enderecoDisplay}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;font-weight:700;color:#1E40AF;">${pad(h)}h${pad(m)}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:${needsJust ? '#DC2626' : '#065F46'};">${justText || (needsJust ? '<em style="color:#999;">Pendente</em>' : '✓')}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;">${needsJust ? '⚠️ Fora' : '✅ Dentro'}</td>
@@ -9851,12 +9855,15 @@ entryLines.join('\n\n') + '\n' +
     const records = loadDB();
     const acoes = loadAcoes();
     const now = Date.now();
-    let cards = [];
+    let recordsWithAcoes = [];
 
+    // Agrupar ações por ID do registro
     records.forEach(r => {
       const [ry,rm,rd] = (r.data||'').split('-');
       const dataBR = rd && rm && ry ? `${rd}/${rm}/${ry}` : r.data || '—';
       const dataTs = r.data ? new Date(r.data + 'T12:00:00').getTime() : 0;
+      
+      let acoesDoRegistro = [];
       (r.entries || []).forEach(e => {
         if (e.acaoNecessaria !== 'sim' || !e.acaoResponsavel) return;
         const key = getAcaoKey(r.id, e);
@@ -9864,16 +9871,24 @@ entryLines.join('\n\n') + '\n' +
         const isRealizada = saved.status === 'realizada';
         if (_acaoSubAtiva === 'pendente' && isRealizada) return;
         const diasPendente = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
-        cards.push({ r, e, key, saved, dataBR, isRealizada, diasPendente });
+        acoesDoRegistro.push({ e, key, saved, isRealizada, diasPendente });
       });
+
+      if (acoesDoRegistro.length > 0) {
+        recordsWithAcoes.push({ r, dataBR, acoesDoRegistro, dataTs });
+      }
     });
 
-    // Ordenar pendentes: maior tempo primeiro
-    if (_acaoSubAtiva === 'pendente') {
-      cards.sort((a,b) => b.diasPendente - a.diasPendente || b.e.mins - a.e.mins);
-    }
+    // Ordenar registros: pendentes primeiro (maior tempo), depois realizadas
+    recordsWithAcoes.sort((a, b) => {
+      const aPendentes = a.acoesDoRegistro.some(ac => !ac.isRealizada);
+      const bPendentes = b.acoesDoRegistro.some(ac => !ac.isRealizada);
+      if (aPendentes && !bPendentes) return -1;
+      if (!aPendentes && bPendentes) return 1;
+      return b.dataTs - a.dataTs;
+    });
 
-    if (!cards.length) {
+    if (!recordsWithAcoes.length) {
       listEl.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--gray-400);">
         <div style="font-size:2.5rem;margin-bottom:0.75rem;">✅</div>
         <div style="font-size:0.95rem;font-weight:600;">Nenhuma ação pendente! ✅</div>
@@ -9882,68 +9897,109 @@ entryLines.join('\n\n') + '\n' +
       return;
     }
 
-    listEl.innerHTML = cards.map(({ r, e, key, saved, dataBR, isRealizada, diasPendente }) => {
-      const catNome = categorias[e.catKey]?.nome || e.catKey;
-      const catIcon = categorias[e.catKey]?.icon || '';
-      const causaStr = e.causas?.length ? e.causas.join(', ') : e.obsCausa || '—';
-      const tempoStr = e.mins ? `${Math.floor(e.mins/60)}h ${String(e.mins%60).padStart(2,'0')}min` : '—';
-      const tempoPill = `<span style="font-size:0.72rem;font-weight:800;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:99px;border:1px solid #FCD34D;">⏱ ${tempoStr} fora</span>`;
-      const diasStr = isRealizada
-        ? (saved.dataAcao ? `✅ Realizada em ${saved.dataAcao.split('-').reverse().join('/')}` : '✅ Realizada')
-        : diasPendente === 0 ? '📅 Registrado hoje'
-        : diasPendente === 1 ? '⏳ Pendente há 1 dia'
-        : `⏳ Pendente há ${diasPendente} dias`;
-      const diasColor = isRealizada ? '#16A34A' : diasPendente >= 3 ? '#DC2626' : diasPendente >= 1 ? '#D97706' : '#6B7280';
+    listEl.innerHTML = recordsWithAcoes.map(({ r, dataBR, acoesDoRegistro }) => {
+      // Header do card com ID, equipe, data
+      const hasPendentes = acoesDoRegistro.some(ac => !ac.isRealizada);
+      const statusBg = hasPendentes ? '#FEF2F2' : '#F0FDF4';
+      const statusColor = hasPendentes ? '#DC2626' : '#16A34A';
+      const statusText = hasPendentes ? '🔴 Pendente' : '🟢 Realizada';
 
-      // Prazo de resposta — só para pendentes e não realizadas
-      const prazoInfo = (!isRealizada) ? calcPrazoAcao(r.data) : null;
-      const prazoBadge = prazoInfo ? `<span style="font-size:0.72rem;font-weight:800;background:${prazoInfo.bg};color:${prazoInfo.color};padding:3px 9px;border-radius:99px;border:1px solid ${prazoInfo.border};white-space:nowrap;">
-        ${prazoInfo.status==='vencido'?'🔴':prazoInfo.status==='atencao'?'🟡':'🟢'} ${prazoInfo.label}
-      </span>` : '';
-
-      if (isRealizada) {
-        return `<div style="background:white;border:1.5px solid #D1FAE5;border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
-            <span style="font-size:0.72rem;font-weight:800;background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:99px;border:1px solid #6EE7B7;white-space:nowrap;">🟢 Realizada</span>
-            <div>
-              <div style="font-weight:800;font-size:0.88rem;color:#1E3A5F;">${r.equipe} <span style="font-weight:500;color:var(--gray-400);">· ${dataBR} · T${r.turno}</span></div>
-              <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
+      // Listar ocorrências
+      const occurrencesHtml = acoesDoRegistro.map(({ e }) => {
+        const catIcon = categorias[e.catKey]?.icon || '';
+        const catNome = categorias[e.catKey]?.nome || e.catKey;
+        const needsJust = entryNeedsJustificativa(e);
+        const statusStr = needsJust ? '⚠️ Fora do tempo' : '✅ Dentro do tempo';
+        const statusCol = needsJust ? '#DC2626' : '#16A34A';
+        return `
+          <div style="background:#FAFBFC;border-left:3px solid ${statusCol};padding:0.6rem 0.9rem;border-radius:6px;margin-bottom:0.5rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+              <span style="font-weight:700;font-size:0.78rem;color:#1E3A5F;">${catIcon} ${catNome}</span>
+              <span style="font-size:0.7rem;color:${statusCol};font-weight:600;">${statusStr}</span>
             </div>
-            ${tempoPill}
           </div>
-          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-            <span style="font-size:0.75rem;color:#16A34A;font-weight:700;">${diasStr}</span>
-            <span style="font-size:0.75rem;color:var(--gray-500);">por ${saved.respExec||'—'}</span>
-            <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:5px 12px;border-radius:6px;border:1.5px solid #D1FAE5;background:white;color:#16A34A;cursor:pointer;">👁 Ver</button>
-          </div>
-        </div>`;
-      }
+        `;
+      }).join('');
 
-      // Nomes piscando — responsáveis pela ação
-      const respNomes = e.acaoRespAcao?.length ? e.acaoRespAcao : (e.acaoResponsavel ? [e.acaoResponsavel] : []);
-      const blinkingNames = respNomes.length
-        ? `<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.4rem;">
-            ${respNomes.map(n => `<span class="blink-resp" style="font-size:0.72rem;font-weight:800;color:#DC2626;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:99px;padding:2px 9px;">👤 ${n}</span>`).join('')}
-           </div>` : '';
-
-      return `<div style="background:white;border:1.5px solid #E5E7EB;border-left:4px solid ${prazoInfo?.status==='vencido'?'#DC2626':prazoInfo?.status==='atencao'?'#D97706':'#6B7280'};border-radius:12px;margin-bottom:0.75rem;padding:1rem 1.25rem;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;flex:1;">
-            <span style="font-size:0.72rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:99px;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Pendente</span>
-            <div>
-              <div style="font-weight:800;font-size:0.88rem;color:#1E3A5F;">${r.equipe} <span style="font-weight:500;color:var(--gray-400);">· ${dataBR} · T${r.turno}</span></div>
-              <div style="font-size:0.78rem;color:var(--gray-500);margin-top:1px;">${catIcon} ${catNome} · ${causaStr.substring(0,40)}${causaStr.length>40?'…':''}</div>
+      // Ações
+      const acoesHtml = acoesDoRegistro.map(({ e, key, saved, isRealizada, diasPendente }) => {
+        const catIcon = categorias[e.catKey]?.icon || '';
+        const catNome = categorias[e.catKey]?.nome || e.catKey;
+        const respNomes = e.acaoRespAcao?.length ? e.acaoRespAcao : (e.acaoResponsavel ? [e.acaoResponsavel] : []);
+        const dataAcao = saved.dataAcao ? saved.dataAcao.split('-').reverse().join('/') : '—';
+        
+        if (isRealizada) {
+          return `
+            <div style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:8px;padding:0.9rem;margin-bottom:0.6rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex:1;">
+                  <span style="font-size:0.7rem;font-weight:800;background:white;color:#16A34A;padding:2px 8px;border-radius:99px;border:1px solid #6EE7B7;">✅ Realizada</span>
+                  <span style="font-size:0.75rem;font-weight:600;color:#065F46;">${dataAcao}</span>
+                </div>
+                <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:5px;border:1px solid #6EE7B7;background:white;color:#16A34A;cursor:pointer;">👁 Ver</button>
+              </div>
+              <div style="font-size:0.75rem;color:#065F46;line-height:1.4;">
+                <div><strong>Responsável:</strong> ${saved.respExec || '—'}</div>
+                ${saved.descricao ? `<div><strong>Descrição:</strong> ${saved.descricao}</div>` : ''}
+                ${saved.imgFile ? `<div style="margin-top:0.4rem;"><strong>📎 Arquivo:</strong> ${saved.imgFile}</div>` : ''}
+              </div>
             </div>
-            ${tempoPill}
-            ${prazoBadge}
+          `;
+        } else {
+          const prazoInfo = calcPrazoAcao(r.data);
+          const diasStr = diasPendente === 0 ? '📅 Registrado hoje'
+            : diasPendente === 1 ? '⏳ Pendente há 1 dia'
+            : `⏳ Pendente há ${diasPendente} dias`;
+          const prazoBg = prazoInfo?.status==='vencido'?'#FEE2E2':prazoInfo?.status==='atencao'?'#FEF3C7':'#EFF6FF';
+          const prazoCol = prazoInfo?.status==='vencido'?'#DC2626':prazoInfo?.status==='atencao'?'#92400E':'#1E40AF';
+
+          const blinkingNames = respNomes.length
+            ? `<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.4rem;">
+                ${respNomes.map(n => `<span class="blink-resp" style="font-size:0.7rem;font-weight:800;color:#DC2626;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:99px;padding:2px 9px;">👤 ${n}</span>`).join('')}
+               </div>` : '';
+
+          return `
+            <div style="background:${prazoBg};border:1px solid ${prazoCol}33;border-left:4px solid ${prazoCol};border-radius:8px;padding:0.9rem;margin-bottom:0.6rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex:1;">
+                  <span style="font-size:0.7rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:99px;border:1px solid #FCA5A5;">🔴 Pendente</span>
+                  <span style="font-size:0.75rem;font-weight:600;color:${prazoCol};">${prazoInfo?.label || 'Prazo'}</span>
+                </div>
+                <button onclick="event.stopPropagation(); abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:800;padding:4px 12px;border-radius:6px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+              </div>
+              <div style="font-size:0.75rem;color:#4B5563;margin-bottom:0.4rem;">${diasStr}</div>
+              ${blinkingNames}
+            </div>
+          `;
+        }
+      }).join('');
+
+      return `
+        <div style="background:white;border:1.5px solid #E5E7EB;border-radius:12px;margin-bottom:1.2rem;overflow:hidden;">
+          <!-- Header -->
+          <div style="background:${statusBg};padding:1rem 1.25rem;border-bottom:1px solid #E5E7EB;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.6rem;">
+              <div>
+                <div style="font-weight:800;font-size:0.95rem;color:#1E3A5F;">📌 ID: <span style="color:#1E4DA1;font-family:monospace;">${r.registroId || r.id}</span></div>
+                <div style="font-size:0.78rem;color:#6B7280;margin-top:2px;">👷 ${r.equipe} · 📅 ${dataBR} · 🔄 T${r.turno}</div>
+              </div>
+              <span style="font-size:0.75rem;font-weight:800;background:white;color:${statusColor};padding:4px 12px;border-radius:99px;border:1.5px solid ${statusColor};">${statusText}</span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-            <span style="font-size:0.75rem;font-weight:700;color:${diasColor};">${diasStr}</span>
-            <button onclick="event.stopPropagation(); abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:6px 16px;border-radius:8px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+          
+          <!-- Ocorrências -->
+          <div style="padding:1rem 1.25rem;border-bottom:1px solid #E5E7EB;background:#FAFBFC;">
+            <div style="font-size:0.8rem;font-weight:700;color:#4B5563;margin-bottom:0.6rem;">📋 Ocorrências:</div>
+            ${occurrencesHtml}
+          </div>
+          
+          <!-- Ações -->
+          <div style="padding:1rem 1.25rem;">
+            <div style="font-size:0.8rem;font-weight:700;color:#4B5563;margin-bottom:0.6rem;">⚡ Ações:</div>
+            ${acoesHtml}
           </div>
         </div>
-        ${blinkingNames}
-      </div>`;
+      `;
     }).join('');
 
     updateTabBadgeAcao();
