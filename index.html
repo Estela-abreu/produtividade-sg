@@ -9633,8 +9633,8 @@ entryLines.join('\n\n') + '\n' +
       if (dataIni && r.data < dataIni) return;
       if (dataFim && r.data > dataFim) return;
 
-      r.entries.forEach(e => {
-        const key = `${r.id}_${e.hinicio||''}_${e.catKey}`;
+      r.entries.forEach((e, idx) => {
+        const key = getAcaoKey(r.id, e);
         const acao = acoes[key];
         
         if (!acao || !acao.status) return; // Só mostra respondidas
@@ -9644,52 +9644,47 @@ entryLines.join('\n\n') + '\n' +
         const cat = categorias[e.catKey] || {};
         const color = catColors[e.catKey] || '#888';
         const [ry,rm,rd] = (r.data||'').split('-');
-        const dataFormatada = rd && rm && ry ? `${rd}/${rm}/${ry}` : r.data || '—';
-        const statusBadge = acao.status === 'realizada' 
-          ? '✅ Realizada' 
-          : '❌ Não realizada';
-        const statusColor = acao.status === 'realizada' 
-          ? '#059669' 
-          : '#DC2626';
+        const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+        const diaSem = dias[new Date(r.data+'T12:00:00').getDay()];
+        const dataFormatada = rd && rm && ry ? `${diaSem}, ${rd}/${rm}/${ry}` : r.data || '—';
+        const th = Math.floor(e.mins/60), tm = e.mins%60;
+        const tempoStr = `${pad(th)}h ${pad(tm)}min`;
+        
+        // Imagem
+        const imagemHtml = acao.imgFile ? `
+          <div style="margin-top:0.5rem;border-top:1px solid #E5E7EB;padding-top:0.5rem;">
+            <img src="${acao.imgFile}" style="max-width:100%;max-height:150px;border-radius:6px;cursor:pointer;" onclick="window.open('${acao.imgFile}', '_blank');" title="Clique para ampliar">
+          </div>
+        ` : '';
 
         const card = document.createElement('div');
-        card.style.cssText = 'background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;margin-bottom:1rem;';
+        card.style.cssText = 'background:white;border:1px solid #E5E7EB;border-radius:12px;margin-bottom:1rem;padding:0.8rem 1rem;';
         card.innerHTML = `
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
-            <span style="background:${color}20;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">${cat.icon||'?'}</span>
-            <strong style="color:#1F2937;flex:1;">${cat.nome||e.catKey}</strong>
-            <span style="background:${statusColor};color:white;padding:0.3rem 0.75rem;border-radius:4px;font-size:0.75rem;font-weight:700;">${statusBadge}</span>
+          <!-- Header em uma linha -->
+          <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+            <span style="font-weight:800;font-size:0.9rem;color:#1E3A5F;white-space:nowrap;">📅 ${dataFormatada}</span>
+            <span style="font-weight:700;background:#1E4DA1;color:white;padding:2px 8px;border-radius:99px;font-size:0.7rem;white-space:nowrap;">ID-${r.registroId || r.id}</span>
+            
+            <span style="font-size:0.75rem;color:#6B7280;white-space:nowrap;">📋 Turno ${r.turno}</span>
+            <span style="font-size:0.75rem;color:#6B7280;white-space:nowrap;">👷 ${r.equipe}</span>
+            <span style="font-size:0.75rem;color:#6B7280;white-space:nowrap;">${cat.icon} ${cat.nome}</span>
+            <span style="font-size:0.75rem;color:#6B7280;white-space:nowrap;">👤 ${acao.respExec||'—'}</span>
+            <span style="font-size:0.75rem;font-weight:700;color:#16A34A;background:#D1FAE5;padding:1px 6px;border-radius:4px;white-space:nowrap;">⚡ ${acao.status === 'realizada' ? 'Realizada' : 'Respondida'}</span>
+            <span style="font-size:0.75rem;color:#1E40AF;font-weight:700;background:#EFF6FF;padding:1px 6px;border-radius:4px;white-space:nowrap;">⏱ ${tempoStr}</span>
+            <button onclick="abrirTratativa('${key}')" title="Ver detalhes" style="font-family:'Barlow',sans-serif;font-size:0.7rem;padding:3px 8px;border-radius:5px;border:1px solid #1E40AF;background:white;color:#1E40AF;cursor:pointer;white-space:nowrap;font-weight:700;">👁 Ver</button>
+            
+            ${acao.imgFile ? `<button onclick="downloadFile('${acao.imgFile}')" title="Download da imagem" style="font-family:'Barlow',sans-serif;font-size:0.7rem;padding:3px 8px;border-radius:5px;border:1px solid #16A34A;background:white;color:#16A34A;cursor:pointer;white-space:nowrap;font-weight:700;">⬇️ Img</button>` : ''}
           </div>
           
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;font-size:0.85rem;">
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">📅 Data</span>
-              <div style="color:#1F2937;font-weight:600;">${dataFormatada}</div>
-            </div>
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">👥 Equipe</span>
-              <div style="color:#1F2937;font-weight:600;">${r.equipe||'—'}</div>
-            </div>
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">👤 Responsável</span>
-              <div style="color:#1F2937;font-weight:600;">${acao.respExec||'—'}</div>
-            </div>
-            <div>
-              <span style="color:#6B7280;font-size:0.75rem;">🏷️ Tipo</span>
-              <div style="color:#1F2937;font-weight:600;">${acao.tipoAcao||'—'}</div>
-            </div>
+          <!-- Dados adicionais -->
+          <div style="margin-top:0.5rem;font-size:0.75rem;color:#6B7280;">
+            ${acao.tipoAcao ? `<span style="white-space:nowrap;">🏷️ ${acao.tipoAcao}</span> · ` : ''}
+            ${acao.dataAcao ? `<span style="white-space:nowrap;">📅 Executada: ${acao.dataAcao}</span>` : ''}
+            ${acao.descricao ? `<span style="white-space:nowrap;">📝 ${acao.descricao.substring(0,40)}${acao.descricao.length>40?'…':''}</span>` : ''}
           </div>
-
-          ${acao.descricao ? `
-          <div style="background:#F9FAFB;border-left:3px solid ${color};padding:0.75rem;border-radius:4px;margin-bottom:0.75rem;">
-            <div style="color:#6B7280;font-size:0.75rem;margin-bottom:0.3rem;">📝 Descrição da Ação</div>
-            <div style="color:#374151;font-size:0.85rem;">${acao.descricao}</div>
-          </div>
-          ` : ''}
-
-          ${acao.dataAcao ? `
-          <div style="color:#6B7280;font-size:0.8rem;">📅 Executada em: <strong style="color:#374151;">${acao.dataAcao}</strong></div>
-          ` : ''}
+          
+          <!-- Imagem se houver -->
+          ${imagemHtml}
         `;
         
         cards.push(card);
