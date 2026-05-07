@@ -6356,7 +6356,7 @@ if (!loggedInUser) {
       window.scrollTo({ top:0, behavior:'smooth' });
       return;
     }
-    if (tab === 'acao')      { renderAcaoTab();  window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'acao')      { if (_acaoSubAtiva === 'pendente') renderAcaoPendentes(); else renderAcoesRespondidas(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'dashboard') { updateConfigButtonVisibility(); switchDashSub(_dashSub); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -9559,7 +9559,7 @@ entryLines.join('\n\n') + '\n' +
       btnResp.style.borderBottomColor = 'transparent';
       btnResp.style.color = '#9CA3AF';
       _acaoSubAtiva = 'pendente';
-      renderAcaoTab();
+      renderAcaoPendentes();
     } else {
       btnPend.style.borderBottomColor = 'transparent';
       btnPend.style.color = '#9CA3AF';
@@ -9822,7 +9822,7 @@ entryLines.join('\n\n') + '\n' +
           try { localStorage.setItem(ACOES_KEY, JSON.stringify(merged)); } catch {}
           // Refresh ação tab if visible
           if (document.getElementById('tabAcao')?.style.display !== 'none') {
-            renderAcaoTab();
+            if (_acaoSubAtiva === 'pendente') renderAcaoPendentes(); else renderAcoesRespondidas();
           }
           updateTabBadgeAcao();
         })
@@ -9849,7 +9849,7 @@ entryLines.join('\n\n') + '\n' +
     return `${recordId}_${e.hinicio || ''}_${e.catKey}`;
   }
 
-  function renderAcaoTab() {
+  function renderAcaoPendentes() {
     const listEl = document.getElementById('acaoList');
     if (!listEl) return;
     const records = loadDB();
@@ -10265,7 +10265,7 @@ entryLines.join('\n\n') + '\n' +
       if (panel) panel.style.display = 'none';
       document.body.style.overflow = '';
       _tratativaKey = null;
-      renderAcaoTab();
+      if (_acaoSubAtiva === 'pendente') renderAcaoPendentes(); else renderAcoesRespondidas();
     } else {
       const dataPrevista = document.getElementById('trat-data-prev')?.value || '';
       const motivo = document.getElementById('trat-motivo')?.value || '';
@@ -10276,7 +10276,7 @@ entryLines.join('\n\n') + '\n' +
       if (panel) panel.style.display = 'none';
       document.body.style.overflow = '';
       _tratativaKey = null;
-      renderAcaoTab();
+      if (_acaoSubAtiva === 'pendente') renderAcaoPendentes(); else renderAcoesRespondidas();
     }
     updateTabBadgeAcao();
   }
@@ -10301,7 +10301,7 @@ entryLines.join('\n\n') + '\n' +
     const acoes = loadAcoes();
     acoes[key] = { ...acoes[key], descricao: desc, dataAcao, respExec, status: 'realizada' };
     persistAcoes(acoes);
-    renderAcaoTab();
+    if (_acaoSubAtiva === 'pendente') renderAcaoPendentes(); else renderAcoesRespondidas();
     updateTabBadgeAcao();
     showCopyToast('✅ Ação marcada como realizada!');
   }
