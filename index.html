@@ -9929,19 +9929,23 @@ entryLines.join('\n\n') + '\n' +
         const dataAcao = saved.dataAcao ? saved.dataAcao.split('-').reverse().join('/') : '—';
         
         if (isRealizada) {
+          const downloadBtn = saved.imgFile 
+            ? `<button onclick="downloadFile('${saved.imgFile}')" title="Download da imagem" style="font-family:'Barlow',sans-serif;font-size:0.85rem;padding:3px 8px;border-radius:5px;border:1px solid #6EE7B7;background:white;color:#16A34A;cursor:pointer;white-space:nowrap;">⬇️ Download</button>`
+            : '';
+          
           return `
-            <div style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:8px;padding:0.9rem;margin-bottom:0.6rem;">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem;">
-                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex:1;">
-                  <span style="font-size:0.7rem;font-weight:800;background:white;color:#16A34A;padding:2px 8px;border-radius:99px;border:1px solid #6EE7B7;">✅ Realizada</span>
-                  <span style="font-size:0.75rem;font-weight:600;color:#065F46;">${dataAcao}</span>
+            <div style="background:#D1FAE5;border:1px solid #6EE7B7;border-left:4px solid #16A34A;border-radius:8px;padding:0.9rem;margin-bottom:0.6rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;flex:1;">
+                  <span style="font-size:0.7rem;font-weight:800;background:white;color:#16A34A;padding:2px 8px;border-radius:99px;border:1px solid #6EE7B7;white-space:nowrap;">✅ Realizada</span>
+                  <span style="font-size:0.7rem;color:#065F46;font-weight:600;white-space:nowrap;">${dataAcao}</span>
+                  <span style="font-size:0.7rem;font-weight:700;color:#065F46;white-space:nowrap;">👤 ${saved.respExec || '—'}</span>
+                  ${saved.descricao ? `<span style="font-size:0.7rem;color:#065F46;white-space:nowrap;">📝 ${saved.descricao.substring(0,30)}${saved.descricao.length>30?'…':''}</span>` : ''}
                 </div>
-                <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:5px;border:1px solid #6EE7B7;background:white;color:#16A34A;cursor:pointer;">👁 Ver</button>
-              </div>
-              <div style="font-size:0.75rem;color:#065F46;line-height:1.4;">
-                <div><strong>Responsável:</strong> ${saved.respExec || '—'}</div>
-                ${saved.descricao ? `<div><strong>Descrição:</strong> ${saved.descricao}</div>` : ''}
-                ${saved.imgFile ? `<div style="margin-top:0.4rem;"><strong>📎 Arquivo:</strong> ${saved.imgFile}</div>` : ''}
+                <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+                  ${downloadBtn}
+                  <button onclick="abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:800;padding:4px 10px;border-radius:6px;border:none;background:#16A34A;color:white;cursor:pointer;white-space:nowrap;">👁 Ver</button>
+                </div>
               </div>
             </div>
           `;
@@ -9953,22 +9957,19 @@ entryLines.join('\n\n') + '\n' +
           const prazoBg = prazoInfo?.status==='vencido'?'#FEE2E2':prazoInfo?.status==='atencao'?'#FEF3C7':'#EFF6FF';
           const prazoCol = prazoInfo?.status==='vencido'?'#DC2626':prazoInfo?.status==='atencao'?'#92400E':'#1E40AF';
 
-          const blinkingNames = respNomes.length
-            ? `<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.4rem;">
-                ${respNomes.map(n => `<span class="blink-resp" style="font-size:0.7rem;font-weight:800;color:#DC2626;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:99px;padding:2px 9px;">👤 ${n}</span>`).join('')}
-               </div>` : '';
+          const respNomesStr = respNomes.length ? respNomes.join(', ') : '—';
 
           return `
             <div style="background:${prazoBg};border:1px solid ${prazoCol}33;border-left:4px solid ${prazoCol};border-radius:8px;padding:0.9rem;margin-bottom:0.6rem;">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem;">
-                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex:1;">
-                  <span style="font-size:0.7rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:99px;border:1px solid #FCA5A5;">🔴 Pendente</span>
-                  <span style="font-size:0.75rem;font-weight:600;color:${prazoCol};">${prazoInfo?.label || 'Prazo'}</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;flex:1;">
+                  <span style="font-size:0.7rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:99px;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Pendente</span>
+                  <span style="font-size:0.7rem;font-weight:700;color:${prazoCol};white-space:nowrap;">${prazoInfo?.label || '—'}</span>
+                  <span style="font-size:0.7rem;color:#4B5563;font-weight:600;white-space:nowrap;">${diasStr}</span>
+                  <span style="font-size:0.7rem;font-weight:700;color:#4B5563;white-space:nowrap;">👤 ${respNomesStr}</span>
                 </div>
-                <button onclick="event.stopPropagation(); abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:800;padding:4px 12px;border-radius:6px;border:none;background:#1E4DA1;color:white;cursor:pointer;">⚡ Resolver</button>
+                <button onclick="event.stopPropagation(); abrirTratativa('${key}')" style="font-family:'Barlow',sans-serif;font-size:0.75rem;font-weight:800;padding:4px 12px;border-radius:6px;border:none;background:#1E4DA1;color:white;cursor:pointer;white-space:nowrap;">⚡ Resolver</button>
               </div>
-              <div style="font-size:0.75rem;color:#4B5563;margin-bottom:0.4rem;">${diasStr}</div>
-              ${blinkingNames}
             </div>
           `;
         }
@@ -10008,6 +10009,17 @@ entryLines.join('\n\n') + '\n' +
   // ── Painel de Tratativa ──
   let _tratativaKey = null;
   let _tratativaCards = {};
+
+  function downloadFile(fileName) {
+    // Cria um link temporário para download
+    const link = document.createElement('a');
+    link.href = fileName; // Assume que é uma URL direta ou Data URI
+    link.download = fileName.split('/').pop() || 'download';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   function abrirTratativa(key) {
     console.log('abrirTratativa called with key:', key);
