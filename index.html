@@ -2700,18 +2700,6 @@ if (!loggedInUser) {
 
     <!-- Grid Ações por Equipe + Ranking Responsáveis -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
-      <!-- AÇÕES POR EQUIPE -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">👥</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">AÇÕES POR EQUIPE</div>
-            <div style="font-size:0.7rem;color:#9CA3AF;">Percentual de ações realizadas</div>
-          </div>
-        </div>
-        <div id="dash-chart-equipe" style="font-size:0.85rem;"></div>
-      </div>
-
       <!-- RANKING RESPONSÁVEIS -->
       <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
         <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
@@ -9084,8 +9072,6 @@ entryLines.join('\n\n') + '\n' +
       eqMap[i.equipe].total++;
       if (i.isRealizada) eqMap[i.equipe].realizadas++;
     });
-    barChart('dash-chart-equipe', Object.values(eqMap).sort((a,b)=>b.total-a.total),
-      d => d.realizadas/d.total >= 0.7 ? '#16A34A' : d.realizadas/d.total >= 0.4 ? '#D97706' : '#DC2626');
 
     // ── Por Responsável (apenas com ações necessárias) ──
     const respMap = {};
