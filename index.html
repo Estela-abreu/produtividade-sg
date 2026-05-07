@@ -6141,6 +6141,10 @@ if (!loggedInUser) {
     const summarySection = document.createElement('div');
     summarySection.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;';
 
+    // Calcular horas e minutos do total da jornada
+    const h = Math.floor(totalSpan/60);
+    const m = totalSpan%60;
+
     const items = [
       { icon: '⏱️', title: 'Total da Jornada', value: `${pad(h)}h${pad(m)}min`, bg: '#F0F4FF', border: '#1E40AF' },
       { icon: '📅', title: 'Tempo registrado', value: `${pad(Math.floor(totalRegistrado/60))}h${pad(totalRegistrado%60)}min`, bg: '#F0FFF4', border: '#065F46' },
