@@ -5969,27 +5969,6 @@ if (!loggedInUser) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'padding:0;background:white;';
 
-    // ── HEADER ──
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;gap:1.5rem;align-items:center;margin-bottom:2rem;flex-wrap:wrap;';
-
-    const titleLabel = document.createElement('div');
-    titleLabel.style.cssText = 'font-size:0.75rem;color:#1E3A5F;font-weight:800;display:flex;align-items:center;gap:0.5rem;';
-    titleLabel.innerHTML = `<span style="color:#6B7280;">⏱️</span> LINHA DO TEMPO DA JORNADA`;
-    header.appendChild(titleLabel);
-
-    const title = document.createElement('div');
-    title.style.cssText = 'background:#1E3A5F;color:white;padding:0.5rem 1rem;border-radius:6px;font-weight:800;font-size:0.75rem;white-space:nowrap;';
-    title.textContent = '⏱️ LINHA DO TEMPO';
-    header.appendChild(title);
-
-    const jornadaInfo = document.createElement('div');
-    jornadaInfo.style.cssText = 'font-size:0.85rem;color:#065F46;font-weight:700;background:#D1FAE5;padding:0.4rem 0.8rem;border-radius:6px;';
-    const h = Math.floor(totalSpan/60), m = totalSpan%60;
-    jornadaInfo.textContent = `Jornada: ${entrada} às ${saida||'—'} (${pad(h)}h${pad(m)}min)`;
-    header.appendChild(jornadaInfo);
-    wrap.appendChild(header);
-
     // ── ÍCONES POSICIONADOS (ALINHADOS COM BARRAS) ──
     const iconsContainer = document.createElement('div');
     iconsContainer.style.cssText = 'position:relative;height:140px;margin-bottom:1rem;padding:0 40px;';
