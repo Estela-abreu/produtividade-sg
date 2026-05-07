@@ -5969,16 +5969,7 @@ if (!loggedInUser) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'padding:0;background:white;';
 
-    // ── HEADER ──
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;gap:1.5rem;align-items:center;margin-bottom:2rem;flex-wrap:wrap;';
-
-    // Removidos os 3 elementos marcados:
-    // - titleLabel (⏰ LINHA DO TEMPO DA JORNADA)
-    // - title (🔷 LINHA DO TEMPO) 
-    // - jornadaInfo (Jornada: 07:00 às 18:00)
-    // Mantém o header vazio apenas como espaço
-    wrap.appendChild(header);
+    // ── HEADER - Completamente removido (titleLabel, title, jornadaInfo) ──
 
     // ── ÍCONES POSICIONADOS (ALINHADOS COM BARRAS) ──
     const iconsContainer = document.createElement('div');
