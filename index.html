@@ -5971,60 +5971,7 @@ if (!loggedInUser) {
 
     // ── HEADER - Completamente removido (titleLabel, title, jornadaInfo) ──
 
-    // ── ÍCONES POSICIONADOS (ALINHADOS COM BARRAS) ──
-    const iconsContainer = document.createElement('div');
-    iconsContainer.style.cssText = 'position:relative;height:140px;margin-bottom:1rem;padding:0 40px;';
-
-    // Início
-    const startIcon = document.createElement('div');
-    startIcon.style.cssText = `position:absolute;left:0;top:0;text-align:center;transform:translateX(-50%);`;
-    startIcon.innerHTML = `
-      <div style="font-size:1.4rem;margin-bottom:0.3rem;">▶</div>
-      <div style="font-size:0.7rem;color:#065F46;font-weight:800;">${entrada}</div>
-      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.2rem;">Início</div>
-    `;
-    iconsContainer.appendChild(startIcon);
-
-    // Eventos - CENTRALIZADOS NOS BLOCOS
-    r.entries.forEach(e => {
-      const cat = categorias[e.catKey] || {};
-      const color = catColors[e.catKey] || '#888';
-      const eventStart = toMins(e.hinicio || entrada);
-      const eventEnd = toMins(e.hfim || entrada);
-      const eventDuration = eventEnd - eventStart;
-      
-      // Calcular posição da barra (mesma lógica)
-      const barStartPos = ((eventStart - startMin) / totalSpan) * 100;
-      const barWidth = (eventDuration / totalSpan) * 100;
-      
-      // Ícone no CENTRO do bloco
-      const iconPos = barStartPos + (barWidth / 2);
-      
-      const mins = e.mins || 0;
-      const eventH = Math.floor(mins/60), eventM = mins%60;
-      const needsJust = entryNeedsJustificativa(e);
-
-      const eventIcon = document.createElement('div');
-      eventIcon.style.cssText = `position:absolute;left:${iconPos}%;top:0;text-align:center;transform:translateX(-50%);max-width:70px;`;
-      eventIcon.innerHTML = `
-        <div style="width:50px;height:50px;border:2.5px solid ${color};border-radius:50%;margin:0 auto 0.4rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:${color};background:white;font-weight:800;">${cat.icon||'•'}</div>
-        <div style="font-size:0.7rem;color:#374151;font-weight:700;white-space:nowrap;">${e.hinicio||'—'}</div>
-        <div style="font-size:0.65rem;color:#6B7280;margin-top:0.2rem;line-height:1.2;">${cat.nome||e.catKey}</div>
-        <div style="font-size:0.55rem;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;margin-top:0.3rem;">${needsJust ? '⚠️ Fora' : '✓ Dentro'}</div>
-      `;
-      iconsContainer.appendChild(eventIcon);
-    });
-
-    // Fim
-    const endIcon = document.createElement('div');
-    endIcon.style.cssText = `position:absolute;right:0;top:0;text-align:center;transform:translateX(50%);`;
-    endIcon.innerHTML = `
-      <div style="font-size:1.4rem;margin-bottom:0.3rem;">■</div>
-      <div style="font-size:0.7rem;color:#065F46;font-weight:800;">${saida||'—'}</div>
-      <div style="font-size:0.6rem;color:#6B7280;margin-top:0.2rem;">Fim</div>
-    `;
-    iconsContainer.appendChild(endIcon);
-    wrap.appendChild(iconsContainer);
+    // ── SEM ÍCONES - Apenas barras e horários ──
 
     // ── EVENTOS DA JORNADA (BARRAS) ──
     const eventsSection = document.createElement('div');
@@ -6176,6 +6123,10 @@ if (!loggedInUser) {
         @keyframes piscar {
           0%, 100% { border-color: #DC2626; }
           50% { border-color: transparent; }
+        }
+        @keyframes piscarResponsavel {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
         }
       `;
       document.head.appendChild(style);
@@ -9906,7 +9857,7 @@ entryLines.join('\n\n') + '\n' +
           return `
             <div style="display:inline-flex;align-items:center;gap:0.4rem;flex-wrap:wrap;background:#FEF2F2;border:1px solid #FECDD3;border-radius:8px;padding:0.5rem 0.8rem;">
               <span style="font-size:0.7rem;font-weight:800;background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;border:1px solid #FCA5A5;">🔴 Pendente</span>
-              <span style="font-size:0.7rem;color:#6B7280;">👤 ${respNomesStr}</span>
+              <span style="font-size:0.7rem;color:#6B7280;animation:piscarResponsavel 0.7s infinite;font-weight:700;">👤 ${respNomesStr}</span>
               <span style="font-size:0.7rem;color:#92400E;background:#FEF3C7;padding:1px 5px;border-radius:4px;font-weight:600;">🟡 ${tempoStr}</span>
               <span style="font-size:0.7rem;color:${prazoCol};background:white;padding:1px 5px;border-radius:4px;font-weight:600;border:1px solid ${prazoCol};">📅 ${prazoLabel}</span>
               <span style="font-size:0.7rem;color:#6B7280;">⏳ Pendente há ${diasStr}</span>
