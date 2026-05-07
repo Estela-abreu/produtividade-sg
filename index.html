@@ -2983,6 +2983,20 @@ if (!loggedInUser) {
     </div>
   </div>
 
+  <!-- Seção: Justificativas Padrão -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">📋 Justificativas Padrão</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Justificativas disponíveis para seleção na aba Registro (Tempo & Justificativas por Categoria).</div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgNewJustificativa" placeholder="Nova justificativa..." class="cfg-input" style="max-width:300px;"
+          onkeydown="if(event.key==='Enter')cfgAddJustificativa()">
+        <button class="cfg-btn-add" onclick="cfgAddJustificativa()">+ Adicionar</button>
+      </div>
+      <div id="cfgJustificativaList" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
   </div>
 
 </div><!-- /tabConfig -->
@@ -3329,6 +3343,65 @@ if (!loggedInUser) {
   const ACOES_KEY = 'enel_acoes';
   const FB_ACOES_PATH = 'produtividade/acoes';
 
+  // Lista de justificativas pré-definidas (dinâmica)
+  let JUSTIFICATIVAS_LISTA = (() => {
+    try {
+      const saved = localStorage.getItem('enel_justificativas');
+      return saved ? JSON.parse(saved) : [
+        'Evento Enel',
+        'Blitz de segurança',
+        'Atraso do colaborador',
+        'Falta',
+        'Demora na sincronização do E-order',
+        'Demora no despacho E-order',
+        'Erro de Login E-order',
+        'Check List',
+        'Abriu Turno Errado',
+        'Falta de Incidência',
+        'Atuação na Tronco/Fusível',
+        'Carro quebrado',
+        'Extensão de turno anterior',
+        'DDS'
+      ];
+    } catch {
+      return [
+        'Evento Enel',
+        'Blitz de segurança',
+        'Atraso do colaborador',
+        'Falta',
+        'Demora na sincronização do E-order',
+        'Demora no despacho E-order',
+        'Erro de Login E-order',
+        'Check List',
+        'Abriu Turno Errado',
+        'Falta de Incidência',
+        'Atuação na Tronco/Fusível',
+        'Carro quebrado',
+        'Extensão de turno anterior',
+        'DDS'
+      ];
+    }
+  })();
+
+  // Helper para formatar justificativa
+  function formatarJustificativa(just, htmlFormat = false) {
+    if (!just) return '—';
+    if (typeof just === 'string') return just;
+    if (typeof just === 'object') {
+      const sel = just.selecionada || '';
+      const txt = just.texto || '';
+      if (!sel && !txt) return '—';
+      if (htmlFormat) {
+        if (sel && txt) return `${sel}<br><span style="font-size:0.7rem;color:#9CA3AF;font-style:italic;">${txt}</span>`;
+        return sel || txt;
+      } else {
+        if (sel && txt) return `${sel}\n${txt}`;
+        return sel || txt;
+      }
+    }
+    return '—';
+  }
+
   function addEntry(catKey) {
     const wrap = document.getElementById('justWrap');
     const cardJust = document.getElementById('cardJust');
@@ -3616,9 +3689,28 @@ if (!loggedInUser) {
         <input type="hidden" id="txt-${id}" value="">
         <!-- Campo justificativa — aparece dinamicamente quando fora do tempo -->
         <div id="just-field-${id}" style="display:none;margin-top:0.65rem;padding:0.65rem 0.85rem;background:#FEF2F2;border-radius:8px;border:1.5px solid #FCA5A5;">
-          <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.4rem;">⚠️ FORA DO TEMPO — Justificativa obrigatória</div>
-          <textarea id="just-text-${id}" rows="2" placeholder="Descreva o motivo da ocorrência fora do tempo..."
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;resize:vertical;outline:none;background:white;"></textarea>
+          <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.5rem;">⚠️ FORA DO TEMPO — Justificativa</div>
+          
+          <!-- Dropdown de justificativas -->
+          <div style="margin-bottom:0.6rem;">
+            <label style="font-size:0.7rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.3rem;">Selecionar motivo (opcional):</label>
+            <select id="just-select-${id}"
+              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;background:white;color:#374151;outline:none;">
+              <option value="">— Nenhum —</option>
+              ${JUSTIFICATIVAS_LISTA.map(j => `<option value="${j}">${j}</option>`).join('')}
+            </select>
+          </div>
+          
+          <!-- Campo de texto complementar -->
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.3rem;">Complemento (opcional):</label>
+            <textarea id="just-text-${id}" rows="2" placeholder="Descreva mais detalhes da ocorrência (se necessário)..."
+              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;resize:vertical;outline:none;background:white;"></textarea>
+          </div>
+          
+          <!-- Campos ocultos para armazenar -->
+          <input type="hidden" id="just-selected-${id}" value="">
+          
           <!-- Módulo de Ação -->
           <div style="margin-top:0.65rem;padding-top:0.65rem;border-top:1px solid #FCA5A5;">
             <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.5rem;">⚡ É necessário uma ação?</div>
@@ -4700,7 +4792,7 @@ if (!loggedInUser) {
             </div>` : ''}
             ${e.justificativa ? `<div class="r-entry-field-block" style="background:#FEF2F2;border:1px solid #FCA5A5;">
               <div class="r-entry-field-label" style="color:#991B1B;">⚠️ Justificativa</div>
-              <div class="r-entry-just">${e.justificativa}</div>
+              <div class="r-entry-just">${formatarJustificativa(e.justificativa)}</div>
             </div>` : ''}
             ${e.endereco ? `<div class="r-entry-field-block" style="background:#EFF6FF;border:1px solid #BFDBFE;">
               <div class="r-entry-field-label" style="color:#1E4DA1;">📍 Localização</div>
@@ -5077,7 +5169,12 @@ if (!loggedInUser) {
       const obsCausa = catKey === 'incidencia'
         ? (document.getElementById('obs-causa-' + id)?.value.trim() || '')
         : undefined;
-      const justificativa = (document.getElementById('just-text-' + id)?.value.trim() || '') || undefined;
+      const justificativaSelected = (document.getElementById('just-select-' + id)?.value || '').trim() || '';
+      const justificativaTexto = (document.getElementById('just-text-' + id)?.value.trim() || '') || '';
+      const justificativa = justificativaSelected || justificativaTexto ? {
+        selecionada: justificativaSelected,
+        texto: justificativaTexto
+      } : undefined;
       const acaoNecessaria = document.querySelector(`input[name="acao-sim-nao-${id}"]:checked`)?.value || '';
       const acaoResponsavel = acaoNecessaria === 'sim' ? (document.getElementById('acao-resp-' + id)?.value || '') : '';
       const acaoDescricao = acaoNecessaria === 'sim' ? (document.getElementById('acao-desc-' + id)?.value || '') : '';
@@ -5592,7 +5689,7 @@ if (!loggedInUser) {
         const supBlock = (e.justificativa ? `
           <div class="r-entry-field-block" style="background:#FEF2F2;border:1px solid #FCA5A5;">
             <div class="r-entry-field-label" style="color:#991B1B;">⚠️ Justificativa</div>
-            <div class="r-entry-just">${e.justificativa}</div>
+            <div class="r-entry-just">${formatarJustificativa(e.justificativa)}</div>
           </div>` : '') + (isRevisado && supAns ? `
           ${supAns.justSel ? '' : ''}<div class="r-entry-field-block" style="background:#EEF6FF;border:1px solid #BFDBFE;">
             <div class="r-entry-field-label" style="color:#1E4DA1;">✅ Justificativa supervisor</div>
@@ -7543,6 +7640,7 @@ entryLines.join('\n\n') + '\n' +
     renderCfgRespAcao();
     renderCfgRespOc();
     renderCfgTiposAcao();
+    renderCfgJustificativas();
     // Gestão de usuários — recarrega do Firebase antes de renderizar
     fetchUsersFromFirebase().then(fbUsers => {
       if (fbUsers.length > 0) {
@@ -7857,6 +7955,77 @@ entryLines.join('\n\n') + '\n' +
     saveTiposAcao(tipos);
     renderCfgTiposAcao();
     showCopyToast('🗑 Tipo de ação removido.');
+  }
+
+  // ── Justificativas ──
+  function getJustificativas() {
+    try {
+      const saved = localStorage.getItem('enel_justificativas');
+      return saved ? JSON.parse(saved) : JUSTIFICATIVAS_LISTA;
+    } catch {
+      return JUSTIFICATIVAS_LISTA;
+    }
+  }
+
+  function saveJustificativas(lista) {
+    try { localStorage.setItem('enel_justificativas', JSON.stringify(lista)); } catch {}
+    // Atualizar lista global
+    JUSTIFICATIVAS_LISTA.splice(0, JUSTIFICATIVAS_LISTA.length, ...lista);
+  }
+
+  function renderCfgJustificativas() {
+    const listEl = document.getElementById('cfgJustificativaList');
+    if (!listEl) return;
+    const just = getJustificativas();
+    listEl.innerHTML = just.map((j, idx) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0.85rem;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;margin-bottom:0.5rem;font-size:0.85rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;flex:1;">
+          <span style="width:24px;height:24px;border-radius:50%;background:#7C3AED;color:white;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;">${idx+1}</span>
+          <span style="color:var(--gray-800);font-weight:600;flex:1;">${j}</span>
+        </div>
+        <div style="display:flex;gap:0.4rem;">
+          <button onclick="cfgEditJustificativa(${idx})"
+            style="background:none;border:none;color:#1E4DA1;cursor:pointer;font-size:0.9rem;padding:4px 8px;border-radius:4px;transition:background 0.2s;display:flex;align-items:center;gap:0.3rem;">✏️ Editar</button>
+          <button onclick="cfgRemoveJustificativa(${idx})"
+            style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:0.9rem;padding:4px 8px;border-radius:4px;transition:background 0.2s;display:flex;align-items:center;gap:0.3rem;">🗑 Excluir</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function cfgAddJustificativa() {
+    const inp = document.getElementById('cfgNewJustificativa');
+    const val = inp.value.trim();
+    if (!val) return;
+    const just = getJustificativas();
+    if (!just.includes(val)) { just.push(val); saveJustificativas(just); }
+    inp.value = '';
+    renderCfgJustificativas();
+    showCopyToast('✅ Justificativa adicionada!');
+  }
+
+  function cfgEditJustificativa(idx) {
+    const just = getJustificativas();
+    const atual = just[idx];
+    const novaJust = prompt('Editar justificativa:', atual);
+    if (novaJust !== null) {
+      const trimmed = novaJust.trim();
+      if (!trimmed) { showCopyToast('❌ Justificativa não pode estar vazia.'); return; }
+      if (trimmed !== atual && just.includes(trimmed)) { showCopyToast('❌ Esta justificativa já existe.'); return; }
+      just[idx] = trimmed;
+      saveJustificativas(just);
+      renderCfgJustificativas();
+      showCopyToast('✏️ Justificativa atualizada!');
+    }
+  }
+
+  function cfgRemoveJustificativa(idx) {
+    if (!confirm('Tem certeza que deseja remover esta justificativa?')) return;
+    const just = getJustificativas();
+    just.splice(idx, 1);
+    saveJustificativas(just);
+    renderCfgJustificativas();
+    showCopyToast('🗑 Justificativa removida.');
   }
 
   // ── Senha ──
@@ -8847,7 +9016,7 @@ entryLines.join('\n\n') + '\n' +
         const mins = e.mins || 0;
         const h = Math.floor(mins/60), m = mins%60;
         const needsJust = entryNeedsJustificativa(e);
-        const justText = e.justificativa || '';
+        const justText = formatarJustificativa(e.justificativa);
         
         // Número para incidências
         const numDisplay = e.catKey === 'incidencia' && e.numinc ? `<div style="font-size:0.65rem;font-weight:800;color:#92400E;margin-top:0.2rem;">🔢 ${e.numinc}</div>` : '';
@@ -8881,7 +9050,7 @@ entryLines.join('\n\n') + '\n' +
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#6B7280;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${obsCausaDisplay}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;font-weight:700;color:#1E40AF;">${pad(h)}h${pad(m)}</td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:${needsJust ? '#DC2626' : '#065F46'};">${justText || (needsJust ? '<em style="color:#999;">Pendente</em>' : '✓')}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:${needsJust ? '#DC2626' : '#065F46'};white-space:pre-wrap;word-break:break-word;">${justText || (needsJust ? '<em style="color:#999;">Pendente</em>' : '✓')}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;">${needsJust ? '⚠️ Fora' : '✅ Dentro'}</td>
         `;
         tableBody.appendChild(tr);
@@ -9193,7 +9362,19 @@ entryLines.join('\n\n') + '\n' +
             : i.foraDoTempo
               ? `<span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">⚠️ Fora do Tempo</span>`
               : `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ Dentro do Tempo</span>`;
-        const just = i.e.justificativa || '—';
+        const just = (() => {
+          const j = i.e.justificativa;
+          if (!j) return '—';
+          if (typeof j === 'string') return j; // Compatibilidade com dados antigos
+          if (typeof j === 'object') {
+            const sel = j.selecionada || '';
+            const txt = j.texto || '';
+            if (!sel && !txt) return '—';
+            if (sel && txt) return `${sel}<br><span style="font-size:0.7rem;color:#9CA3AF;font-style:italic;">${txt}</span>`;
+            return sel || txt;
+          }
+          return '—';
+        })();
         const obsAcao = i.saved.descricao || '—';
         const comentarios = i.r.comentariosReg || '—';
         const tipoAcao = i.saved.tipoAcao || '—';
@@ -9263,6 +9444,19 @@ entryLines.join('\n\n') + '\n' +
           const diasPend = dataTs ? Math.floor((now - dataTs) / 86400000) : 0;
 
           const [y,m,d] = r.data.split('-');
+          const justExcel = (() => {
+            const j = e.justificativa;
+            if (!j) return '';
+            if (typeof j === 'string') return j;
+            if (typeof j === 'object') {
+              const sel = j.selecionada || '';
+              const txt = j.texto || '';
+              if (!sel && !txt) return '';
+              if (sel && txt) return `${sel}\n${txt}`;
+              return sel || txt;
+            }
+            return '';
+          })();
           const row = [
             `${d}/${m}/${y}`,
             r.equipe || '',
@@ -9272,7 +9466,7 @@ entryLines.join('\n\n') + '\n' +
             causaStr,
             tempoStr,
             e.acaoResponsavel || '',
-            e.justificativa   || '',
+            justExcel || '',
             saved.respExec    || '',
             saved.descricao   || '',
             isRealizada ? 'Realizada' : 'Pendente',
