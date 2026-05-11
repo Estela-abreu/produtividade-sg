@@ -3383,23 +3383,51 @@ if (!loggedInUser) {
     }
   })();
 
-  // Helper para formatar justificativa
+  // Helper para formatar justificativa (permissivo)
   function formatarJustificativa(just, htmlFormat = false) {
-    if (!just) return '—';
-    if (typeof just === 'string') return just;
-    if (typeof just === 'object') {
-      const sel = just.selecionada || '';
-      const txt = just.texto || '';
-      if (!sel && !txt) return '—';
-      if (htmlFormat) {
-        if (sel && txt) return `${sel}<br><span style="font-size:0.7rem;color:#9CA3AF;font-style:italic;">${txt}</span>`;
-        return sel || txt;
-      } else {
-        if (sel && txt) return `${sel}\n${txt}`;
-        return sel || txt;
+    try {
+      // Caso vazio ou null
+      if (just === null || just === undefined || just === '') return '—';
+      
+      // Caso string
+      if (typeof just === 'string') {
+        const cleaned = String(just).trim();
+        return cleaned && cleaned !== '' ? cleaned : '—';
       }
+      
+      // Caso objeto - tenta extrair dados
+      if (typeof just === 'object') {
+        let sel = '';
+        let txt = '';
+        
+        // Tenta extrair propriedades
+        if (just.selecionada) sel = String(just.selecionada).trim();
+        if (just.texto) txt = String(just.texto).trim();
+        
+        // Se não tem nada nas propriedades esperadas, tenta toString()
+        if (!sel && !txt) {
+          const strVal = String(just).trim();
+          if (strVal && strVal !== '[object Object]') return strVal;
+          return '—';
+        }
+        
+        // Formata saída
+        if (htmlFormat) {
+          if (sel && txt) return `${sel}<br><span style="font-size:0.7rem;color:#9CA3AF;font-style:italic;">${txt}</span>`;
+          return sel || txt || '—';
+        } else {
+          if (sel && txt) return `${sel}\n${txt}`;
+          return sel || txt || '—';
+        }
+      }
+      
+      // Tudo mais - tenta converter para string
+      const strVal = String(just).trim();
+      return strVal && strVal !== '[object Object]' ? strVal : '—';
+    } catch (e) {
+      console.error('Erro em formatarJustificativa:', e, just);
+      return '—';
     }
-    return '—';
   }
 
   function addEntry(catKey) {
@@ -8241,7 +8269,7 @@ entryLines.join('\n\n') + '\n' +
           `}
           <div style="grid-column:1/-1;">
             <label class="edit-field-label">⚠️ Justificativa</label>
-            <textarea class="edit-field-input" id="edit_just_${idx}" rows="2" style="resize:vertical;${e.justificativa ? 'background:#FEF2F2;border-color:#FCA5A5;' : ''}">${e.justificativa||''}</textarea>
+            <textarea class="edit-field-input" id="edit_just_${idx}" rows="2" style="resize:vertical;${e.justificativa ? 'background:#FEF2F2;border-color:#FCA5A5;' : ''}">${formatarJustificativa(e.justificativa, false)}</textarea>
           </div>
           <div style="grid-column:1/-1;border-top:1px solid #E5E7EB;padding-top:0.75rem;margin-top:0.75rem;">
             <label class="edit-field-label" style="color:#DC2626;font-weight:700;">⚡ Ação Necessária?</label>
@@ -9362,19 +9390,7 @@ entryLines.join('\n\n') + '\n' +
             : i.foraDoTempo
               ? `<span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">⚠️ Fora do Tempo</span>`
               : `<span style="background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ Dentro do Tempo</span>`;
-        const just = (() => {
-          const j = i.e.justificativa;
-          if (!j) return '—';
-          if (typeof j === 'string') return j; // Compatibilidade com dados antigos
-          if (typeof j === 'object') {
-            const sel = j.selecionada || '';
-            const txt = j.texto || '';
-            if (!sel && !txt) return '—';
-            if (sel && txt) return `${sel}<br><span style="font-size:0.7rem;color:#9CA3AF;font-style:italic;">${txt}</span>`;
-            return sel || txt;
-          }
-          return '—';
-        })();
+        const just = formatarJustificativa(i.e.justificativa, true);
         const obsAcao = i.saved.descricao || '—';
         const comentarios = i.r.comentariosReg || '—';
         const tipoAcao = i.saved.tipoAcao || '—';
@@ -10114,7 +10130,7 @@ entryLines.join('\n\n') + '\n' +
           })() : ''}
           ${foundE.justificativa ? `<div style="grid-column:1/-1;background:#FEF9EC;border:1px solid #FCD34D;border-radius:8px;padding:0.6rem 0.85rem;">
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#92400E;">⚠️ Justificativa do registro</div>
-            <div style="font-size:0.82rem;color:#374151;margin-top:2px;">${foundE.justificativa}</div>
+            <div style="font-size:0.82rem;color:#374151;margin-top:2px;white-space:pre-wrap;">${formatarJustificativa(foundE.justificativa, true)}</div>
           </div>` : ''}
         </div>
       </div>
