@@ -2662,29 +2662,22 @@ if (!loggedInUser) {
     <!-- Alertas -->
     <div id="dash-alertas" style="margin-bottom:1.25rem;"></div>
 
-    <!-- Reincidência Geral (sozinha) -->
-    <div style="margin-bottom:1.5rem;">
-      <!-- REINCIDÊNCIA GERAL -->
-      <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">📋</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA GERAL</div>
-          </div>
-        </div>
-        <div id="dash-reincidencia" style="font-size:0.85rem;"></div>
-      </div>
-    </div>
-
     <!-- Grid: Reincidência por Categoria + Ranking de Responsáveis -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
-      <!-- REINCIDÊNCIA POR CATEGORIA -->
+      <!-- RANKING TOP 5 EQUIPES -->
       <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-          <span style="font-size:1.2rem;">📁</span>
-          <div>
-            <div style="font-size:0.85rem;font-weight:800;color:#374151;">REINCIDÊNCIA POR CATEGORIA</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="font-size:1.2rem;">🏆</span>
+            <div>
+              <div style="font-size:0.85rem;font-weight:800;color:#374151;">TOP 5 – REINCIDÊNCIA POR EQUIPE</div>
+              <div style="font-size:0.7rem;color:#9CA3AF;">Por total de ocorrências (≥2 por categoria)</div>
+            </div>
           </div>
+          <button id="btn-ver-todas-equipes" onclick="toggleVerTodasEquipes()"
+            style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;color:#374151;cursor:pointer;">
+            Ver todas
+          </button>
         </div>
         <div id="dash-reincidencia-cat" style="font-size:0.85rem;"></div>
       </div>
@@ -3320,6 +3313,7 @@ if (!loggedInUser) {
     intervalo:     { nome: 'Intervalo',             icon: '☕', color: '#6B21A8', bg: '#F5EFFF' },
     ocioso:        { nome: 'Tempo Ocioso',          icon: '⏸️', color: '#9F1239', bg: '#FFEFF3' },
     incidencia:    { nome: 'Incidência',            icon: '⚡', color: '#D97706', bg: '#FFFBEB' },
+    retorno_base:  { nome: 'Retorno à Base',         icon: '🏁', color: '#9F1239', bg: '#FFF1F2' },
   };
 
   let entryCounter = 0; // global unique ID for each entry
@@ -3470,7 +3464,7 @@ if (!loggedInUser) {
             onblur="this.style.borderColor='#FCD34D';this.style.background='#FFFBEB'">
         </div>
         <div class="field" style="padding:0 0 0.65rem;">
-          <label class="inc-label" style="display:block;margin-bottom:0.5rem;">🔖 Esta ocorrência é ORDEM 2?</label>
+          <label class="inc-label" style="display:block;margin-bottom:0.5rem;">🔖 Ordem 2?</label>
           <div style="display:flex;gap:0.75rem;align-items:center;">
             <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;user-select:none;">
               <span class="ordem2-box" id="ordem2-box-sim-${id}" onclick="selectOrdem2('${id}','sim')"
@@ -3486,7 +3480,44 @@ if (!loggedInUser) {
             </label>
           </div>
           <input type="hidden" id="ordem2-${id}" value="nao">
+          <!-- Etapa 2 – atuação da equipe (aparece só se Sim) -->
+          <div id="ordem2-resp-wrap-${id}" style="display:none;margin-top:0.75rem;padding:0.75rem;background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:var(--radius-sm);">
+            <label class="inc-label" style="display:block;margin-bottom:0.6rem;color:#991B1B;">👥 Responsabilidade da equipe</label>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;">
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;" onclick="selectOrdem2Resp('${id}','abriu')">
+                <span class="ordem2-box" id="ordem2-resp-box-abriu-${id}"
+                  style="width:20px;height:20px;border:2px solid var(--gray-300);border-radius:4px;background:white;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;"></span>
+                <span style="font-size:0.88rem;font-weight:600;color:#7F1D1D;">Abriu</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;" onclick="selectOrdem2Resp('${id}','finalizou')">
+                <span class="ordem2-box" id="ordem2-resp-box-finalizou-${id}"
+                  style="width:20px;height:20px;border:2px solid var(--gray-300);border-radius:4px;background:white;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;"></span>
+                <span style="font-size:0.88rem;font-weight:600;color:#7F1D1D;">Finalizou</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;" onclick="selectOrdem2Resp('${id}','abriu_finalizou')">
+                <span class="ordem2-box" id="ordem2-resp-box-abriu_finalizou-${id}"
+                  style="width:20px;height:20px;border:2px solid var(--gray-300);border-radius:4px;background:white;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;"></span>
+                <span style="font-size:0.88rem;font-weight:600;color:#7F1D1D;">Abriu e Finalizou</span>
+              </label>
+            </div>
+            <input type="hidden" id="ordem2-resp-${id}" value="">
+          </div>
         </div>
+        <div class="field" style="padding:0 0 0.65rem;">
+          <label class="inc-label" style="display:block;margin-bottom:0.5rem;">✅ Atividade realizada?</label>
+          <div style="display:flex;gap:0.75rem;align-items:center;">
+            <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;user-select:none;" onclick="selectAtvRealizada('${id}','sim')">
+              <span class="ordem2-box" id="atv-box-sim-${id}"
+                style="width:20px;height:20px;border:2px solid var(--gray-300);border-radius:4px;background:white;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;"></span>
+              <span style="font-size:0.88rem;font-weight:700;color:var(--gray-700);">Sim</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;user-select:none;" onclick="selectAtvRealizada('${id}','nao')">
+              <span class="ordem2-box" id="atv-box-nao-${id}"
+                style="width:20px;height:20px;border:2px solid var(--gray-300);border-radius:4px;background:white;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;"></span>
+              <span style="font-size:0.88rem;font-weight:700;color:var(--gray-700);">Não</span>
+            </label>
+          </div>
+          <input type="hidden" id="atv-realizada-${id}" value="">
         </div>
         <div class="field" style="padding:0 0 0.5rem;">
           <label class="inc-label" style="display:block;margin-bottom:0.4rem;">⚡ Causa(s) da incidência</label>
@@ -3567,11 +3598,31 @@ if (!loggedInUser) {
                 style="font-family:'Barlow',sans-serif;font-size:1rem;font-weight:700;border:1.5px solid #FDA4AF;border-radius:6px;padding:5px 10px;background:white;outline:none;color:#9F1239;"
                 oninput="calcLogoff('${id}')">
             </div>
-            <div id="logoff-result-${id}" style="display:none;padding:4px 12px;background:#FEE2E2;border-radius:99px;border:1px solid #FCA5A5;">
-              <span style="font-size:0.78rem;font-weight:800;color:#991B1B;">⏱ Retorno: <span id="logoff-min-${id}">—</span></span>
+            <div id="logoff-result-${id}" style="display:none;">
+              <div id="logoff-status-badge-${id}" style="display:inline-flex;align-items:center;gap:0.4rem;padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:800;">
+                <span id="logoff-min-${id}">—</span>
+              </div>
             </div>
           </div>
           <div id="logoff-base-${id}" style="margin-top:0.4rem;font-size:0.7rem;color:#9F1239;font-weight:600;"></div>
+          <!-- Justificativa de logoff — aparece só quando Fora do padrão -->
+          <div id="logoff-just-block-${id}" style="display:none;margin-top:0.65rem;padding:0.65rem 0.85rem;background:#FEF2F2;border-radius:8px;border:1.5px solid #FCA5A5;">
+            <div style="font-size:0.72rem;font-weight:800;color:#991B1B;margin-bottom:0.5rem;">⚠️ FORA DO PADRÃO — Justificativa obrigatória</div>
+            <div style="margin-bottom:0.5rem;">
+              <label style="font-size:0.7rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.3rem;">Selecionar motivo:</label>
+              <select id="logoff-just-select-${id}"
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;background:white;color:#374151;outline:none;">
+                <option value="">— Selecione —</option>
+                ${JUSTIFICATIVAS_LISTA.map(j => `<option value="${j}">${j}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.7rem;font-weight:700;color:#6B7280;display:block;margin-bottom:0.3rem;">Complemento (opcional):</label>
+              <textarea id="logoff-just-text-${id}" rows="2"
+                placeholder="Descreva o motivo do desvio no tempo de retorno..."
+                style="width:100%;font-family:'Barlow',sans-serif;font-size:0.85rem;border:1.5px solid #FCA5A5;border-radius:6px;padding:0.45rem 0.65rem;resize:vertical;outline:none;background:white;"></textarea>
+            </div>
+          </div>
         </div>
         <input type="hidden" id="h-${id}" value="0">
         <input type="hidden" id="m-${id}" value="0">
@@ -3962,8 +4013,9 @@ if (!loggedInUser) {
 
   function selectOrdem2(id, val) {
     document.getElementById('ordem2-' + id).value = val;
-    const simBox = document.getElementById('ordem2-box-sim-' + id);
-    const naoBox = document.getElementById('ordem2-box-nao-' + id);
+    const simBox  = document.getElementById('ordem2-box-sim-' + id);
+    const naoBox  = document.getElementById('ordem2-box-nao-' + id);
+    const respWrap = document.getElementById('ordem2-resp-wrap-' + id);
     if (val === 'sim') {
       simBox.style.border = '2px solid #DC2626';
       simBox.style.background = '#DC2626';
@@ -3971,6 +4023,7 @@ if (!loggedInUser) {
       naoBox.style.border = '2px solid var(--gray-300)';
       naoBox.style.background = 'white';
       naoBox.innerHTML = '';
+      if (respWrap) respWrap.style.display = 'block';
     } else {
       naoBox.style.border = '2px solid #374151';
       naoBox.style.background = '#374151';
@@ -3978,7 +4031,54 @@ if (!loggedInUser) {
       simBox.style.border = '2px solid var(--gray-300)';
       simBox.style.background = 'white';
       simBox.innerHTML = '';
+      if (respWrap) {
+        respWrap.style.display = 'none';
+        // Limpa a seleção ao voltar para Não
+        const radios = respWrap.querySelectorAll('input[type="radio"]');
+        radios.forEach(r => r.checked = false);
+        // Limpa visual das boxes e o hidden input
+        ['abriu','finalizou','abriu_finalizou'].forEach(opt => {
+          const box = document.getElementById('ordem2-resp-box-' + opt + '-' + id);
+          if (box) { box.style.border = '2px solid var(--gray-300)'; box.style.background = 'white'; box.innerHTML = ''; }
+        });
+        const hidden = document.getElementById('ordem2-resp-' + id);
+        if (hidden) hidden.value = '';
+      }
     }
+  }
+
+  function selectAtvRealizada(id, val) {
+    const checkSvg = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6 5,9 10,3"/></svg>';
+    const xSvg    = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>';
+    const simBox = document.getElementById('atv-box-sim-' + id);
+    const naoBox = document.getElementById('atv-box-nao-' + id);
+    if (!simBox || !naoBox) return;
+    if (val === 'sim') {
+      simBox.style.border = '2px solid #059669'; simBox.style.background = '#059669'; simBox.innerHTML = checkSvg;
+      naoBox.style.border = '2px solid var(--gray-300)'; naoBox.style.background = 'white'; naoBox.innerHTML = '';
+    } else {
+      naoBox.style.border = '2px solid #DC2626'; naoBox.style.background = '#DC2626'; naoBox.innerHTML = xSvg;
+      simBox.style.border = '2px solid var(--gray-300)'; simBox.style.background = 'white'; simBox.innerHTML = '';
+    }
+    const hidden = document.getElementById('atv-realizada-' + id);
+    if (hidden) hidden.value = val;
+  }
+
+  function selectEditAtvRealizada(idx, val) {
+    const checkSvg = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6 5,9 10,3"/></svg>';
+    const xSvg    = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>';
+    const simBox = document.getElementById('edit_atv_box_sim_' + idx);
+    const naoBox = document.getElementById('edit_atv_box_nao_' + idx);
+    if (!simBox || !naoBox) return;
+    if (val === 'sim') {
+      simBox.style.border = '2px solid #059669'; simBox.style.background = '#059669'; simBox.innerHTML = checkSvg;
+      naoBox.style.border = '2px solid #D1D5DB'; naoBox.style.background = 'white'; naoBox.innerHTML = '';
+    } else {
+      naoBox.style.border = '2px solid #DC2626'; naoBox.style.background = '#DC2626'; naoBox.innerHTML = xSvg;
+      simBox.style.border = '2px solid #D1D5DB'; simBox.style.background = 'white'; simBox.innerHTML = '';
+    }
+    const hidden = document.getElementById('edit_atv_realizada_' + idx);
+    if (hidden) hidden.value = val;
   }
 
   // Default limits — overridden by admin config
@@ -4278,24 +4378,50 @@ if (!loggedInUser) {
     return sel?.value ? ORIGENS[sel.value] : null;
   }
 
+  const LOGOFF_MIN_MIN = 10; // abaixo → fora do padrão
+  const LOGOFF_MAX_MIN = 40; // acima  → fora do padrão
+
   function calcLogoff(id) {
-    const logoffEl = document.getElementById('logoff-' + id);
-    const hfimEl   = document.getElementById('hfim-'   + id);
-    const resultEl = document.getElementById('logoff-result-' + id);
-    const minEl    = document.getElementById('logoff-min-'    + id);
+    const logoffEl  = document.getElementById('logoff-'             + id);
+    const hfimEl    = document.getElementById('hfim-'               + id);
+    const resultEl  = document.getElementById('logoff-result-'      + id);
+    const minEl     = document.getElementById('logoff-min-'         + id);
+    const badgeEl   = document.getElementById('logoff-status-badge-'+ id);
+    const justBlock = document.getElementById('logoff-just-block-'  + id);
     if (!logoffEl || !hfimEl) return;
 
     const logoff = logoffEl.value;
     const hfim   = hfimEl.value;
-    if (!logoff || !hfim) { if (resultEl) resultEl.style.display = 'none'; return; }
+    if (!logoff || !hfim) {
+      if (resultEl)  resultEl.style.display  = 'none';
+      if (justBlock) justBlock.style.display = 'none';
+      return;
+    }
 
     const [lh, lm] = logoff.split(':').map(Number);
     const [fh, fm] = hfim.split(':').map(Number);
     let diff = (lh * 60 + lm) - (fh * 60 + fm);
     if (diff < 0) diff += 24 * 60;
 
-    if (resultEl) resultEl.style.display = 'flex';
-    if (minEl) minEl.textContent = diff + ' min';
+    const dentro = diff >= LOGOFF_MIN_MIN && diff <= LOGOFF_MAX_MIN;
+
+    // Mostra o resultado
+    if (resultEl) resultEl.style.display = 'block';
+    if (minEl)    minEl.textContent = `⏱ ${diff} min`;
+
+    if (badgeEl) {
+      if (dentro) {
+        badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:0.4rem;padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:800;background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;';
+        badgeEl.innerHTML = `<span style="font-size:0.9rem;">✅</span> <span id="logoff-min-${id}">${diff} min — Dentro do padrão</span>`;
+      } else {
+        badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:0.4rem;padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:800;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;';
+        const motivo = diff < LOGOFF_MIN_MIN ? `muito rápido (< ${LOGOFF_MIN_MIN} min)` : `muito longo (> ${LOGOFF_MAX_MIN} min)`;
+        badgeEl.innerHTML = `<span style="font-size:0.9rem;">⚠️</span> <span id="logoff-min-${id}">${diff} min — Fora do padrão (${motivo})</span>`;
+      }
+    }
+
+    // Exibe/oculta bloco de justificativa
+    if (justBlock) justBlock.style.display = dentro ? 'none' : 'block';
   }
 
   // ── Origem do Deslocamento ──
@@ -4798,10 +4924,25 @@ if (!loggedInUser) {
             </div>
           </div>
           <div class="r-entry-fields" style="grid-template-columns:1fr;">
-            ${e.catKey === 'incidencia' && e.logoff ? `<div class="r-entry-field-block" style="background:#FFF1F2;border:1px solid #FDA4AF;">
-              <div class="r-entry-field-label" style="color:#9F1239;">🏁 Log off – Retorno à Base</div>
-              <div class="r-entry-just" style="font-weight:700;color:#9F1239;">⏰ ${e.logoff} · ⏱ Tempo de retorno: <strong>${e.logoffMin || 0} min</strong></div>
-            </div>` : ''}
+            ${e.catKey === 'incidencia' && e.logoff && !r.entries.some(x => x.catKey === 'retorno_base') ? (() => {
+              const dentro = e.logoffMin >= LOGOFF_MIN_MIN && e.logoffMin <= LOGOFF_MAX_MIN;
+              const statusTxt  = dentro ? '✅ Dentro do padrão' : '⚠️ Fora do padrão';
+              const statusClr  = dentro ? '#065F46' : '#991B1B';
+              const statusBg   = dentro ? '#D1FAE5' : '#FEE2E2';
+              const justBlock  = !dentro && e.logoffJust?.selecionada
+                ? `<div style="font-size:0.78rem;color:#7F1D1D;margin-top:0.3rem;">📝 ${e.logoffJust.selecionada}${e.logoffJust.texto ? ' — ' + e.logoffJust.texto : ''}</div>`
+                : (!dentro && e.logoffJust?.texto
+                  ? `<div style="font-size:0.78rem;color:#7F1D1D;margin-top:0.3rem;">📝 ${e.logoffJust.texto}</div>`
+                  : '');
+              return `<div class="r-entry-field-block" style="background:#FFF1F2;border:1px solid #FDA4AF;">
+                <div class="r-entry-field-label" style="color:#9F1239;">🏁 Log off – Retorno à Base</div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                  <div style="font-weight:700;color:#9F1239;">⏰ ${e.logoff} · ⏱ <strong>${e.logoffMin || 0} min</strong></div>
+                  <span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:800;background:${statusBg};color:${statusClr};align-self:flex-start;">${statusTxt}</span>
+                  ${justBlock}
+                </div>
+              </div>`;
+            })() : ''}
             ${e.catKey === 'deslocamento' && e.origemNome ? `<div class="r-entry-field-block" style="background:#EFF6FF;border:1px solid #BFDBFE;">
               <div class="r-entry-field-label" style="color:#1E4DA1;">📍 Origem</div>
               <div class="r-entry-just" style="font-weight:700;color:#1E3A5F;">${e.origemNome}</div>
@@ -4869,6 +5010,7 @@ if (!loggedInUser) {
     intervalo:    '#6B21A8',
     ocioso:       '#9F1239',
     incidencia:   '#D97706',
+    retorno_base: '#9F1239',
   };
 
   // ══════════════════════════════════════════
@@ -5185,6 +5327,12 @@ if (!loggedInUser) {
       const causas = causasHidden?.value ? JSON.parse(causasHidden.value) : [];
       const ordem2Raw = document.getElementById('ordem2-' + id);
       const ordem2 = catKey === 'incidencia' ? (ordem2Raw?.value === 'sim') : undefined;
+      const ordem2Resp = (catKey === 'incidencia' && ordem2)
+        ? (document.getElementById('ordem2-resp-' + id)?.value || '')
+        : undefined;
+      const atvRealizada = catKey === 'incidencia'
+        ? (document.getElementById('atv-realizada-' + id)?.value || '')
+        : undefined;
       const deslocStatus = catKey === 'deslocamento'
         ? (document.getElementById('desloc-status-val-' + id)?.value || (mins <= DESLOC_LIMITE_MIN ? 'dentro' : 'fora'))
         : undefined;
@@ -5233,9 +5381,30 @@ if (!loggedInUser) {
         let d = (lh*60+lm) - (fh*60+fm);
         return d < 0 ? d + 1440 : d;
       })() : undefined;
+      // Justificativa do Log Off (fora do padrão)
+      const logoffJustSel = catKey === 'incidencia' ? (document.getElementById('logoff-just-select-' + id)?.value || '') : undefined;
+      const logoffJustTxt = catKey === 'incidencia' ? (document.getElementById('logoff-just-text-'   + id)?.value?.trim() || '') : undefined;
+      const logoffJust    = catKey === 'incidencia' && (logoffJustSel || logoffJustTxt)
+        ? { selecionada: logoffJustSel, texto: logoffJustTxt }
+        : undefined;
       totalMin += mins;
-      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, acaoNecessaria, acaoResponsavel, acaoDescricao, acaoData, acaoTipo, acaoStatus, acaoRespAcao });
+      entries.push({ catKey, h, mn, mins, obs: txt, hinicio, hfim, numinc, causas, ordem2, ordem2Resp, atvRealizada, deslocStatus, ociososStatus, plataformaStatus, obsCausa, justificativa, lat, lon, endereco, origemNome, origemLat, origemLon, logoff, logoffMin, logoffJust, acaoNecessaria, acaoResponsavel, acaoDescricao, acaoData, acaoTipo, acaoStatus, acaoRespAcao });
     });
+
+    // Adicionar entrada sintética de Retorno à Base (Log Off) como categoria
+    const incWithLogoff = entries.find(e => e.catKey === 'incidencia' && e.logoff);
+    if (incWithLogoff) {
+      const logoffMins = incWithLogoff.logoffMin || 0;
+      entries.push({
+        catKey:       'retorno_base',
+        hinicio:      incWithLogoff.hfim,
+        hfim:         incWithLogoff.logoff,
+        mins:         logoffMins,
+        h:            Math.floor(logoffMins / 60),
+        mn:           logoffMins % 60,
+        justificativa: incWithLogoff.logoffJust || undefined,
+      });
+    }
 
     const jornadaEntrada = document.getElementById('jornadaEntrada')?.value || '';
     const jornadaSaida   = document.getElementById('jornadaSaida')?.value || '';
@@ -5359,6 +5528,25 @@ if (!loggedInUser) {
     }
 
     const form = collectFormData();
+
+    // Validação: Ordem 2 Sim sem atuação escolhida
+    for (const e of form.entries) {
+      if (e.catKey === 'incidencia' && e.ordem2 && !e.ordem2Resp) {
+        alert('⚠️ Preencha a atuação da equipe para a incidência marcada como Ordem 2 antes de salvar.');
+        return;
+      }
+    }
+
+    // Validação: Log Off fora do padrão sem justificativa
+    for (const e of form.entries) {
+      if (e.catKey === 'incidencia' && e.logoff && e.logoffMin != null) {
+        const dentro = e.logoffMin >= LOGOFF_MIN_MIN && e.logoffMin <= LOGOFF_MAX_MIN;
+        if (!dentro && !e.logoffJust?.selecionada && !e.logoffJust?.texto) {
+          alert('⚠️ O tempo de retorno à base está fora do padrão. Selecione uma justificativa antes de salvar.');
+          return;
+        }
+      }
+    }
 
     // Generate sequential human-readable ID (SG-XXXX)
     const allRecords = _dbCache || loadDB();
@@ -5781,7 +5969,7 @@ if (!loggedInUser) {
                 ${e.catKey==='incidencia' ? `
                 <div style="display:flex;align-items:center;gap:0.65rem;">
                   <div class="r-entry-just" style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:0.08em;">${e.numinc || '—'}</div>
-                  ${e.ordem2 ? '<span style="font-size:0.72rem;font-weight:800;background:#DC2626;color:white;padding:2px 9px;border-radius:99px;white-space:nowrap;">🔖 ORDEM 2</span>' : ''}
+                  ${e.ordem2 ? `<span style="font-size:0.72rem;font-weight:800;background:#DC2626;color:white;padding:2px 9px;border-radius:99px;white-space:nowrap;">🔖 ORDEM 2${e.ordem2Resp ? ' · ' + (e.ordem2Resp === 'abriu' ? 'Abriu' : e.ordem2Resp === 'finalizou' ? 'Finalizou' : 'Abriu e Finalizou') : ''}</span>` : ''}
                 </div>
                 <div class="r-entry-field-label" style="color:#92400E;margin-top:0.35rem;">🕐 Período da incidência</div>` : ''}
                 <div class="r-entry-just">${e.hinicio || '—'} → ${e.hfim || '—'}</div>
@@ -5793,7 +5981,43 @@ if (!loggedInUser) {
               ${e.catKey==='incidencia' && e.obsCausa ? `<div class="r-entry-field-block" style="grid-column:1/-1;background:#FFFBEB;border:1px solid #FCD34D;">
                 <div class="r-entry-field-label" style="color:#92400E;">📝 Observação da causa</div>
                 <div class="r-entry-just">${e.obsCausa}</div>
-              </div>` : ''}` : ''}
+              </div>` : ''}
+              ${e.catKey==='incidencia' ? (() => {
+                const respMap = { abriu: 'Equipe abriu a OS', finalizou: 'Equipe finalizou a OS', abriu_finalizou: 'Equipe abriu e finalizou' };
+                if (e.ordem2) {
+                  const respLabel = respMap[e.ordem2Resp] || '';
+                  return `<div class="r-entry-field-block" style="grid-column:1/-1;background:#FEF2F2;border:1px solid #FCA5A5;">
+                    <div class="r-entry-field-label" style="color:#991B1B;">🔖 Ordem 2</div>
+                    <div style="display:flex;flex-direction:column;gap:0.3rem;">
+                      <span style="font-size:0.82rem;font-weight:800;color:#DC2626;">🔴 Sim</span>
+                      ${respLabel ? `<span style="font-size:0.82rem;font-weight:600;color:#7F1D1D;">Atuação: ${respLabel}</span>` : ''}
+                    </div>
+                  </div>`;
+                } else {
+                  return `<div class="r-entry-field-block" style="grid-column:1/-1;background:#F9FAFB;border:1px solid #E5E7EB;">
+                    <div class="r-entry-field-label" style="color:#6B7280;">🔖 Ordem 2</div>
+                    <span style="font-size:0.82rem;font-weight:600;color:#9CA3AF;">Não</span>
+                  </div>`;
+                }
+              })() : ''}
+              ${e.catKey==='incidencia' ? (() => {
+                if (e.atvRealizada === 'sim') {
+                  return `<div class="r-entry-field-block" style="grid-column:1/-1;background:#ECFDF5;border:1px solid #6EE7B7;">
+                    <div class="r-entry-field-label" style="color:#065F46;">✅ Atividade realizada</div>
+                    <span style="font-size:0.82rem;font-weight:800;color:#059669;">Sim</span>
+                  </div>`;
+                } else if (e.atvRealizada === 'nao') {
+                  return `<div class="r-entry-field-block" style="grid-column:1/-1;background:#FEF2F2;border:1px solid #FCA5A5;">
+                    <div class="r-entry-field-label" style="color:#991B1B;">✅ Atividade realizada</div>
+                    <span style="font-size:0.82rem;font-weight:800;color:#DC2626;">Não</span>
+                  </div>`;
+                } else {
+                  return `<div class="r-entry-field-block" style="grid-column:1/-1;background:#F9FAFB;border:1px solid #E5E7EB;">
+                    <div class="r-entry-field-label" style="color:#6B7280;">✅ Atividade realizada</div>
+                    <span style="font-size:0.82rem;color:#9CA3AF;">—</span>
+                  </div>`;
+                }
+              })() : ''}` : ''}
               ${e.obs ? `<div class="r-entry-field-block"><div class="r-entry-field-label">📋 Observação</div><div class="r-entry-just">${e.obs}</div></div>` : ""}
             </div>
             <div class="r-entry-fields">${supBlock}</div>
@@ -6418,6 +6642,10 @@ if (!loggedInUser) {
           numinc:  document.getElementById('numinc-'  + id)?.value || '',
           causas:  document.getElementById('causas-'  + id)?.value || '',
           ordem2:  document.getElementById('ordem2-'  + id)?.value || 'nao',
+          ordem2resp: document.getElementById('ordem2-resp-' + id)?.value || '',
+          atvRealizada: document.getElementById('atv-realizada-' + id)?.value || '',
+          logoffJustSel: document.getElementById('logoff-just-select-' + id)?.value || '',
+          logoffJustTxt: document.getElementById('logoff-just-text-'   + id)?.value || '',
         };
         entries.push(entry);
       });
@@ -6479,7 +6707,19 @@ if (!loggedInUser) {
           if (e.hinicio) { const el = document.getElementById('hinicio-' + newId); if(el) el.value = e.hinicio; }
           if (e.hfim)    { const el = document.getElementById('hfim-'    + newId); if(el) el.value = e.hfim; }
           if (e.numinc)  { const el = document.getElementById('numinc-'  + newId); if(el) el.value = e.numinc; }
-          if (e.ordem2 === 'sim') selectOrdem2(newId, 'sim');
+          if (e.ordem2 === 'sim') {
+            selectOrdem2(newId, 'sim');
+            if (e.ordem2resp) selectOrdem2Resp(newId, e.ordem2resp);
+          }
+          if (e.atvRealizada) selectAtvRealizada(newId, e.atvRealizada);
+          if (e.logoffJustSel) {
+            const sel = document.getElementById('logoff-just-select-' + newId);
+            if (sel) sel.value = e.logoffJustSel;
+          }
+          if (e.logoffJustTxt) {
+            const txt = document.getElementById('logoff-just-text-' + newId);
+            if (txt) txt.value = e.logoffJustTxt;
+          }
           if (e.mins)    { const el = document.getElementById('mins-'    + newId); if(el) { el.value = e.mins; updateMinutes(newId); } }
           if (['incidencia'].includes(e.cat))               calcIncidencia(newId);
           if (['deslocamento'].includes(e.cat))             calcDeslocamento(newId);
@@ -6539,6 +6779,9 @@ if (!loggedInUser) {
       if (e.plataformaStatus === 'fora')   return true;
       if (e.plataformaStatus === 'dentro') return false;
       return e.mins > PLATAFORMA_LIMITE_MIN;
+    }
+    if (e.catKey === 'retorno_base') {
+      return e.mins < LOGOFF_MIN_MIN || e.mins > LOGOFF_MAX_MIN;
     }
     if (e.catKey === 'incidencia') {
       const limite = getIncidenciaLimite(e.causas);
@@ -6659,7 +6902,7 @@ if (!loggedInUser) {
               </div>
               ${e.catKey === 'incidencia' && e.numinc ? `<div>
                 <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;color:#92400E;letter-spacing:0.05em;margin-bottom:2px;">Nº Incidência</div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:800;color:#78350F;letter-spacing:0.06em;">${e.numinc} ${e.ordem2 ? '<span style="font-size:0.65rem;background:#DC2626;color:white;padding:1px 6px;border-radius:99px;vertical-align:middle;">ORDEM 2</span>' : ''}</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:800;color:#78350F;letter-spacing:0.06em;">${e.numinc} ${e.ordem2 ? `<span style="font-size:0.65rem;background:#DC2626;color:white;padding:1px 6px;border-radius:99px;vertical-align:middle;">ORDEM 2${e.ordem2Resp ? ' · ' + (e.ordem2Resp === 'abriu' ? 'Abriu' : e.ordem2Resp === 'finalizou' ? 'Finalizou' : 'Abriu e Fin.') : ''}</span>` : ''}</div>
               </div>` : ''}
               ${e.causas && e.causas.length ? `<div style="flex-basis:100%;">
                 <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.05em;margin-bottom:4px;">Causa(s)</div>
@@ -7369,7 +7612,10 @@ if (!loggedInUser) {
       if (e.catKey === 'incidencia') {
         line = '⚡ Incidência Nº' + num + ': ' + tempoStr;
         if (e.numinc) line += '\n   📌 Nº ' + e.numinc;
-        if (e.ordem2) line += '\n   🔖 ORDEM 2: SIM';
+        if (e.ordem2) {
+          const respLabel = e.ordem2Resp === 'abriu' ? 'Abriu' : e.ordem2Resp === 'finalizou' ? 'Finalizou' : e.ordem2Resp === 'abriu_finalizou' ? 'Abriu e Finalizou' : '';
+          line += '\n   🔖 ORDEM 2: SIM' + (respLabel ? ' (' + respLabel + ')' : '');
+        }
         if (e.hinicio && e.hfim) line += '\n   🕐 ' + e.hinicio + ' → ' + e.hfim;
         if (e.causas && e.causas.length) line += '\n   📋 Causa: ' + e.causas.join(', ');
         if (e.obs) line += '\n   💬 Observação: ' + e.obs;
@@ -8189,9 +8435,9 @@ entryLines.join('\n\n') + '\n' +
       const causasVal = e.causas ? e.causas.join(', ') : '';
       const hasTime = ['deslocamento','plataforma','ocioso','reparo','intervalo','incidencia'].includes(e.catKey);
       const needsLimit = entryNeedsJustificativa(e);
-      const limitBadge = (e.catKey === 'deslocamento' || e.catKey === 'ocioso' || e.catKey === 'plataforma' || e.catKey === 'incidencia')
+      const limitBadge = (e.catKey === 'deslocamento' || e.catKey === 'ocioso' || e.catKey === 'plataforma' || e.catKey === 'incidencia' || e.catKey === 'retorno_base')
         ? `<span style="font-size:0.65rem;font-weight:800;padding:2px 8px;border-radius:99px;${needsLimit ? 'background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;' : 'background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;'}">
-            ${needsLimit ? '⚠️ Fora do tempo' : '✅ Dentro do tempo'}</span>` : '';
+            ${needsLimit ? '⚠️ Fora do padrão' : '✅ Dentro do padrão'}</span>` : '';
       
       // ── CARREGAR DADOS DE AÇÃO ──
       const acoes = loadAcoes();
@@ -8221,7 +8467,19 @@ entryLines.join('\n\n') + '\n' +
           </div>
         </div>
         <div class="edit-entry-fields">
-          ${e.catKey === 'incidencia' ? `
+          ${e.catKey === 'retorno_base' ? `
+            <div style="grid-column:1/-1;padding:0.75rem;background:#FFF1F2;border:1.5px solid #FDA4AF;border-radius:8px;">
+              <div style="font-size:0.72rem;font-weight:800;color:#9F1239;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;">🏁 Retorno à Base (calculado automaticamente)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.83rem;color:#7F1D1D;font-weight:600;">
+                <div>🕐 Início: <strong>${e.hinicio || '—'}</strong></div>
+                <div>🕐 Fim: <strong>${e.hfim || '—'}</strong></div>
+                <div>⏱ Tempo: <strong>${e.mins || 0} min</strong></div>
+                <div>${needsLimit ? '⚠️ Fora do padrão' : '✅ Dentro do padrão'}</div>
+              </div>
+              ${e.justificativa ? `<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:#FEE2E2;border-radius:6px;font-size:0.78rem;color:#7F1D1D;">📝 Justificativa: ${e.justificativa.selecionada || ''}${e.justificativa.texto ? ' — ' + e.justificativa.texto : ''}</div>` : ''}
+              <div style="margin-top:0.5rem;font-size:0.68rem;color:#9CA3AF;">Para editar o retorno à base, atualize o Log Off na aba de Registro.</div>
+            </div>
+          ` : e.catKey === 'incidencia' ? `
             <div>
               <label class="edit-field-label">🔢 Número da incidência</label>
               <input class="edit-field-input" id="edit_numinc_${idx}" value="${e.numinc||''}">
@@ -8243,6 +8501,49 @@ entryLines.join('\n\n') + '\n' +
             <div>
               <label class="edit-field-label">📝 Obs. da causa (opcional)</label>
               <input class="edit-field-input" id="edit_obscausa_${idx}" value="${e.obsCausa||''}">
+            </div>
+            <div style="grid-column:1/-1;">
+              <label class="edit-field-label">🔖 Ordem 2?</label>
+              <div style="display:flex;gap:0.75rem;margin-bottom:${e.ordem2 ? '0.5rem' : '0'};">
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                  <input type="radio" name="edit_ordem2_${idx}" value="sim" ${e.ordem2 ? 'checked' : ''} style="cursor:pointer;accent-color:#DC2626;" onchange="toggleEditOrdem2Resp(${idx}, this.value)">
+                  Sim
+                </label>
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                  <input type="radio" name="edit_ordem2_${idx}" value="nao" ${!e.ordem2 ? 'checked' : ''} style="cursor:pointer;" onchange="toggleEditOrdem2Resp(${idx}, this.value)">
+                  Não
+                </label>
+              </div>
+              <div id="edit_ordem2_resp_wrap_${idx}" style="display:${e.ordem2 ? 'block' : 'none'};padding:0.65rem;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;">
+                <label class="edit-field-label" style="color:#991B1B;margin-bottom:0.45rem;display:block;">👥 Responsabilidade</label>
+                <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                  ${['abriu','finalizou','abriu_finalizou'].map(opt => {
+                    const label = opt === 'abriu' ? 'Abriu' : opt === 'finalizou' ? 'Finalizou' : 'Abriu e Finalizou';
+                    const active = e.ordem2Resp === opt;
+                    const checkSvg = active ? '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6 5,9 10,3"/></svg>' : '';
+                    const boxStyle = active ? 'border:2px solid #DC2626;background:#DC2626;' : 'border:2px solid #D1D5DB;background:white;';
+                    return `<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;" onclick="selectEditOrdem2Resp(${idx},'${opt}')">
+                      <span id="edit_o2r_box_${opt}_${idx}" style="width:20px;height:20px;${boxStyle}border-radius:4px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;">${checkSvg}</span>
+                      <span style="font-size:0.85rem;font-weight:600;color:#7F1D1D;">${label}</span>
+                    </label>`;
+                  }).join('')}
+                </div>
+                <input type="hidden" id="edit_ordem2_resp_val_${idx}" value="${e.ordem2Resp||''}">
+              </div>
+            </div>
+            <div style="grid-column:1/-1;">
+              <label class="edit-field-label">✅ Atividade realizada?</label>
+              <div style="display:flex;gap:0.75rem;align-items:center;">
+                <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;user-select:none;" onclick="selectEditAtvRealizada(${idx},'sim')">
+                  <span id="edit_atv_box_sim_${idx}" style="width:20px;height:20px;border:2px solid ${e.atvRealizada==='sim'?'#059669':'#D1D5DB'};border-radius:4px;background:${e.atvRealizada==='sim'?'#059669':'white'};display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;">${e.atvRealizada==='sim'?'<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6 5,9 10,3"/></svg>':''}</span>
+                  <span style="font-size:0.88rem;font-weight:700;color:#374151;">Sim</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;user-select:none;" onclick="selectEditAtvRealizada(${idx},'nao')">
+                  <span id="edit_atv_box_nao_${idx}" style="width:20px;height:20px;border:2px solid ${e.atvRealizada==='nao'?'#DC2626':'#D1D5DB'};border-radius:4px;background:${e.atvRealizada==='nao'?'#DC2626':'white'};display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;">${e.atvRealizada==='nao'?'<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>':''}</span>
+                  <span style="font-size:0.88rem;font-weight:700;color:#374151;">Não</span>
+                </label>
+              </div>
+              <input type="hidden" id="edit_atv_realizada_${idx}" value="${e.atvRealizada||''}">
             </div>
           ` : hasTime ? `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
@@ -8399,6 +8700,58 @@ entryLines.join('\n\n') + '\n' +
     });
   }
 
+  function selectOrdem2Resp(id, val) {
+    const opts = ['abriu', 'finalizou', 'abriu_finalizou'];
+    const checkSvg = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6 5,9 10,3"/></svg>';
+    opts.forEach(opt => {
+      const box = document.getElementById('ordem2-resp-box-' + opt + '-' + id);
+      if (!box) return;
+      if (opt === val) {
+        box.style.border = '2px solid #DC2626';
+        box.style.background = '#DC2626';
+        box.innerHTML = checkSvg;
+      } else {
+        box.style.border = '2px solid var(--gray-300)';
+        box.style.background = 'white';
+        box.innerHTML = '';
+      }
+    });
+    const hidden = document.getElementById('ordem2-resp-' + id);
+    if (hidden) hidden.value = val;
+  }
+
+  function selectEditOrdem2Resp(idx, val) {
+    const opts = ['abriu', 'finalizou', 'abriu_finalizou'];
+    const checkSvg = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6 5,9 10,3"/></svg>';
+    opts.forEach(opt => {
+      const box = document.getElementById('edit_o2r_box_' + opt + '_' + idx);
+      if (!box) return;
+      if (opt === val) {
+        box.style.border = '2px solid #DC2626'; box.style.background = '#DC2626'; box.innerHTML = checkSvg;
+      } else {
+        box.style.border = '2px solid #D1D5DB'; box.style.background = 'white'; box.innerHTML = '';
+      }
+    });
+    const hidden = document.getElementById('edit_ordem2_resp_val_' + idx);
+    if (hidden) hidden.value = val;
+  }
+
+  function toggleEditOrdem2Resp(idx, val) {
+    const wrap = document.getElementById('edit_ordem2_resp_wrap_' + idx);
+    if (!wrap) return;
+    if (val === 'sim') {
+      wrap.style.display = 'block';
+    } else {
+      wrap.style.display = 'none';
+      ['abriu','finalizou','abriu_finalizou'].forEach(opt => {
+        const box = document.getElementById('edit_o2r_box_' + opt + '_' + idx);
+        if (box) { box.style.border = '2px solid #D1D5DB'; box.style.background = 'white'; box.innerHTML = ''; }
+      });
+      const hidden = document.getElementById('edit_ordem2_resp_val_' + idx);
+      if (hidden) hidden.value = '';
+    }
+  }
+
   function saveEditRecord() {
     const id = _editingRecordId;
     const records = loadDB();
@@ -8415,6 +8768,8 @@ entryLines.join('\n\n') + '\n' +
 
     // Update each entry
     r.entries.forEach((e, idx) => {
+      // retorno_base is derived from incidência logoff — read-only in edit modal
+      if (e.catKey === 'retorno_base') return;
       if (e.catKey === 'incidencia') {
         e.numinc  = (document.getElementById('edit_numinc_'  + idx)?.value || '').trim();
         e.hinicio = document.getElementById('edit_hinicio_' + idx)?.value || '';
@@ -8431,6 +8786,11 @@ entryLines.join('\n\n') + '\n' +
         e.obsCausa = (document.getElementById('edit_obscausa_' + idx)?.value || '').trim() || e.obsCausa;
         // Salvar justificativa
         e.justificativa = (document.getElementById('edit_just_' + idx)?.value || '').trim() || '';
+        // Salvar Ordem 2 e atuação
+        const editOrdem2Val = document.querySelector(`input[name="edit_ordem2_${idx}"]:checked`)?.value || 'nao';
+        e.ordem2 = editOrdem2Val === 'sim';
+        e.ordem2Resp = e.ordem2 ? (document.getElementById('edit_ordem2_resp_val_' + idx)?.value || '') : '';
+        e.atvRealizada = document.getElementById('edit_atv_realizada_' + idx)?.value || '';
       } else {
         // For time-based entries: prefer hinicio/hfim if available, else use mins input
         const hini = document.getElementById('edit_hinicio_' + idx)?.value || '';
@@ -9013,6 +9373,8 @@ entryLines.join('\n\n') + '\n' +
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Hora Fim</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Causa</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Obs. Causa</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">🔖 Ordem 2</th>
+                  <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">✅ Ativ. Realizada</th>
                   <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Tempo</th>
                   <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">Justificativa</th>
                   <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.72rem;font-weight:800;color:#374151;border-bottom:2px solid #E0E7FF;">
@@ -9058,6 +9420,24 @@ entryLines.join('\n\n') + '\n' +
         // Obs. Causa (apenas para incidências)
         const obsCausaDisplay = e.catKey === 'incidencia' && e.obsCausa ? `<div style="font-size:0.7rem;color:#92400E;font-weight:600;">${e.obsCausa}</div>` : '<span style="color:#D1D5DB;">—</span>';
         
+        // Ordem 2
+        const o2RespLabel = e.ordem2Resp === 'abriu' ? 'Equipe abriu a OS'
+          : e.ordem2Resp === 'finalizou' ? 'Equipe finalizou a OS'
+          : e.ordem2Resp === 'abriu_finalizou' ? 'Equipe abriu e finalizou'
+          : '';
+        const ordem2Display = e.catKey !== 'incidencia'
+          ? '<span style="color:#D1D5DB;">—</span>'
+          : e.ordem2
+            ? `<span style="font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;white-space:nowrap;">🔴 Sim</span>${o2RespLabel ? `<div style="font-size:0.68rem;color:#7F1D1D;font-weight:600;margin-top:0.25rem;">${o2RespLabel}</div>` : ''}`
+            : '<span style="font-size:0.72rem;color:#6B7280;font-weight:600;">Não</span>';
+        const atvRealizadaDisplay = e.catKey !== 'incidencia'
+          ? '<span style="color:#D1D5DB;">—</span>'
+          : e.atvRealizada === 'sim'
+            ? '<span style="font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;white-space:nowrap;">✅ Sim</span>'
+            : e.atvRealizada === 'nao'
+              ? '<span style="font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;white-space:nowrap;">❌ Não</span>'
+              : '<span style="color:#D1D5DB;font-size:0.72rem;">—</span>';
+        
         const tr = document.createElement('tr');
         tr.className = `reu-row-${r.id} ${needsJust ? 'reu-fora' : 'reu-dentro'}`;
         tr.style.cssText = `background:${idx%2===0 ? 'white' : '#F9FAFB'};`;
@@ -9077,6 +9457,8 @@ entryLines.join('\n\n') + '\n' +
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#1E4DA1;font-weight:600;">${e.hfim || '—'}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:#6B7280;">${e.causas?.length ? e.causas.join(', ') : e.obs || '—'}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${obsCausaDisplay}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${ordem2Display}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;">${atvRealizadaDisplay}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;font-weight:700;color:#1E40AF;">${pad(h)}h${pad(m)}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;color:${needsJust ? '#DC2626' : '#065F46'};white-space:pre-wrap;word-break:break-word;">${justText || (needsJust ? '<em style="color:#999;">Pendente</em>' : '✓')}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.75rem;border-bottom:1px solid #E5E7EB;text-align:center;color:${needsJust ? '#DC2626' : '#10B981'};font-weight:700;">${needsJust ? '⚠️ Fora' : '✅ Dentro'}</td>
@@ -9121,6 +9503,68 @@ entryLines.join('\n\n') + '\n' +
     ['dash-f-equipe','dash-f-turno','dash-f-resp-oc','dash-f-resp-ac','dash-f-status','dash-f-data-ini','dash-f-data-fim','dash-busca']
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     renderDashboard();
+  }
+
+  function renderEquipeRanking(el, ranking, showAll) {
+    const list = showAll ? ranking : ranking.slice(0, 5);
+    if (!list.length) {
+      el.innerHTML = '<div style="color:#9CA3AF;font-size:0.82rem;padding:0.5rem 0;">Nenhuma equipe com reincidência ≥ 2 no período.</div>';
+      return;
+    }
+    const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+    const maxTotal = list[0].total;
+
+    el.innerHTML = list.map((item, idx) => {
+      // Barra total (fundo)
+      const totalPct = Math.round(item.total / maxTotal * 100);
+
+      // Linhas por categoria
+      const maxCat = item.reincCats[0]?.[1] || 1;
+      const catRows = item.reincCats.map(([ck, cnt]) => {
+        const cat = categorias[ck];
+        const color = catColors[ck] || '#888';
+        const pct = Math.round(cnt / maxCat * 100);
+        return `
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem;">
+            <span style="font-size:0.72rem;min-width:120px;color:#6B7280;display:flex;align-items:center;gap:0.25rem;flex-shrink:0;">
+              <span>${cat?.icon || '•'}</span>
+              <span>${cat?.nome || ck}</span>
+            </span>
+            <div style="flex:1;height:8px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:99px;transition:width 0.4s;"></div>
+            </div>
+            <span style="font-size:0.72rem;font-weight:800;color:${color};min-width:38px;text-align:right;">${cnt} IDs</span>
+          </div>`;
+      }).join('');
+
+      return `
+        <div style="padding:0.65rem 0;border-bottom:1px solid #F3F4F6;">
+          <!-- Cabeçalho da equipe -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;">
+            <div style="display:flex;align-items:center;gap:0.45rem;">
+              <span style="font-size:1rem;">${medals[idx] || `${idx+1}.`}</span>
+              <span style="font-size:0.85rem;font-weight:800;color:#1E3A5F;">${item.equipe}</span>
+            </div>
+            <span style="font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;">${item.total} IDs</span>
+          </div>
+          <!-- Barra total -->
+          <div style="height:4px;background:#F3F4F6;border-radius:99px;margin-bottom:0.4rem;">
+            <div style="height:100%;width:${totalPct}%;background:linear-gradient(90deg,#DC2626,#F87171);border-radius:99px;transition:width 0.4s;"></div>
+          </div>
+          <!-- Detalhamento por categoria -->
+          ${catRows}
+        </div>`;
+    }).join('');
+  }
+
+  function toggleVerTodasEquipes() {
+    window._equipeRankingShowAll = !window._equipeRankingShowAll;
+    const el = document.getElementById('dash-reincidencia-cat');
+    const btn = document.getElementById('btn-ver-todas-equipes');
+    if (el && window._equipeRankingFull) {
+      renderEquipeRanking(el, window._equipeRankingFull, window._equipeRankingShowAll);
+    }
+    if (btn) btn.textContent = window._equipeRankingShowAll ? 'Ver Top 5' : 'Ver todas';
   }
 
   function renderDashboard() {
@@ -9283,72 +9727,40 @@ entryLines.join('\n\n') + '\n' +
       </div>`;
     }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
 
-    // ── Reincidência (por ID único) ──
-    const reincMap = {};
+    // ── Top 5 Reincidência por Equipe ──
+    // Regra: contar IDs DISTINTOS onde a categoria aparece (por equipe)
+    // Reincidência = mesma categoria em ≥ 2 IDs diferentes
+    const equipeReincMap = {};
     filtered.forEach(i => {
-      const k = i.equipe;
-      if (!reincMap[k]) reincMap[k] = { ids: new Set(), cats: {} };
-      reincMap[k].ids.add(i.r.id); // Adiciona ID único
-      
-      // Contar categoria por ID único
-      const catKey = `${i.catNome}_${i.r.id}`;
-      if (!reincMap[k].cats[catKey]) {
-        reincMap[k].cats[i.catNome] = (reincMap[k].cats[i.catNome]||0)+1;
-      }
+      if (!equipeReincMap[i.equipe]) equipeReincMap[i.equipe] = {};
+      const ck = i.e.catKey;
+      if (!equipeReincMap[i.equipe][ck]) equipeReincMap[i.equipe][ck] = new Set();
+      equipeReincMap[i.equipe][ck].add(i.r.id); // adiciona o ID do registro (não o count)
     });
-    const rEl = document.getElementById('dash-reincidencia');
-    if (rEl) {
-      const rows = Object.entries(reincMap).map(([eq,data]) => {
-        // Usar IDs únicos para contar reincidência
-        const uniqueIds = data.ids.size;
-        // Categoria com mais ocorrências nesta equipe
-        const top = Object.entries(data.cats).sort((a,b)=>b[1]-a[1])[0];
-        return { eq, cat: top?.[0]||'—', cnt: uniqueIds, totalOcorrencias: top?.[1]||0 };
-      }).sort((a,b)=>b.cnt-a.cnt).slice(0,6);
-      rEl.innerHTML = rows.map(r => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid #F3F4F6;">
-          <div>
-            <div style="font-size:0.82rem;font-weight:700;color:#374151;">${r.eq}</div>
-          </div>
-          <span style="font-size:0.78rem;font-weight:800;color:${r.cnt>=3?'#DC2626':r.cnt>=2?'#D97706':'#6B7280'};">${r.cnt} IDs</span>
-        </div>`).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
+
+    // Para cada equipe: filtrar só cats com IDs distintos ≥ 2, somar total
+    const equipeRanking = Object.entries(equipeReincMap).map(([equipe, catSets]) => {
+      const reincCats = Object.entries(catSets)
+        .map(([ck, idSet]) => [ck, idSet.size])   // converte Set → contagem de IDs únicos
+        .filter(([, cnt]) => cnt >= 2)             // só reincidência real (≥ 2 IDs distintos)
+        .sort((a, b) => b[1] - a[1]);
+      const total = reincCats.reduce((s, [, c]) => s + c, 0);
+      return { equipe, total, reincCats };
+    }).filter(r => r.total > 0).sort((a, b) => b.total - a.total);
+
+    // Salva ranking completo para o botão "Ver todas"
+    window._equipeRankingFull = equipeRanking;
+    window._equipeRankingShowAll = window._equipeRankingShowAll || false;
+
+    const catReincEl = document.getElementById('dash-reincidencia-cat');
+    if (catReincEl) renderEquipeRanking(catReincEl, equipeRanking, window._equipeRankingShowAll);
+
+    const btnVerTodas = document.getElementById('btn-ver-todas-equipes');
+    if (btnVerTodas) {
+      btnVerTodas.style.display = equipeRanking.length > 5 ? 'inline-block' : 'none';
+      btnVerTodas.textContent = window._equipeRankingShowAll ? 'Ver Top 5' : 'Ver todas';
     }
 
-    // ── Reincidência por Categoria ──
-    const catReincMap = {};
-    filtered.forEach(i => {
-      const catKey = `${i.catNome}_${i.r.id}`;
-      if (!catReincMap[i.catNome]) catReincMap[i.catNome] = new Set();
-      catReincMap[i.catNome].add(catKey);
-    });
-    const catReincEl = document.getElementById('dash-reincidencia-cat');
-    if (catReincEl) {
-      const catRows = Object.entries(catReincMap)
-        .map(([cat, set]) => ({ cat, cnt: set.size }))
-        .sort((a,b) => b.cnt - a.cnt)
-        .slice(0, 8);
-      const maxCat = catRows[0]?.cnt || 1;
-      catReincEl.innerHTML = catRows.map((r, idx) => {
-        const cat = categorias[Object.keys(categorias).find(k => categorias[k].nome === r.cat)]?.icon || '📌';
-        const color = catColors[Object.keys(catColors).find(k => categorias[k]?.nome === r.cat)] || '#888';
-        return `
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
-            <span style="font-size:0.7rem;font-weight:800;color:#9CA3AF;width:18px;text-align:center;">${idx+1}</span>
-            <div style="flex:1;">
-              <div style="display:flex;justify-content:space-between;margin-bottom:2px;align-items:center;">
-                <span style="font-size:0.78rem;font-weight:600;color:#374151;display:flex;align-items:center;gap:0.3rem;">
-                  <span style="font-size:0.9rem;">${cat}</span> ${r.cat}
-                </span>
-                <span style="font-size:0.72rem;color:#6B7280;font-weight:600;">${r.cnt}</span>
-              </div>
-              <div style="height:6px;background:#F3F4F6;border-radius:99px;">
-                <div style="height:100%;width:${Math.round(r.cnt/maxCat*100)}%;background:${color};border-radius:99px;"></div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('') || '<div style="color:#9CA3AF;font-size:0.82rem;">Sem dados</div>';
-    }
 
     // ── Tabela detalhada ──
     const table = document.getElementById('dash-tabela');
@@ -9363,6 +9775,8 @@ entryLines.join('\n\n') + '\n' +
         <th style="${thStyle}">Categoria</th>
         <th style="${thStyle}">Período</th>
         <th style="${thStyle}">Tempo Fora</th>
+        <th style="${thStyle}">Ordem 2</th>
+        <th style="${thStyle}">Ativ. Realizada</th>
         <th style="${thStyle}">Resp. Ocorrência</th>
         <th style="${thStyle}">Comentários Geral</th>
         <th style="${thStyle}">Justificativa</th>
@@ -9394,6 +9808,22 @@ entryLines.join('\n\n') + '\n' +
         const obsAcao = i.saved.descricao || '—';
         const comentarios = i.r.comentariosReg || '—';
         const tipoAcao = i.saved.tipoAcao || '—';
+
+        // Ordem 2
+        const o2RespMap = { abriu: 'Equipe abriu a OS', finalizou: 'Equipe finalizou a OS', abriu_finalizou: 'Equipe abriu e finalizou' };
+        const o2Cell = i.e.catKey !== 'incidencia' ? '—'
+          : i.e.ordem2
+            ? `<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">🔴 Sim</span>${i.e.ordem2Resp ? `<div style="font-size:0.68rem;color:#7F1D1D;margin-top:0.2rem;">${o2RespMap[i.e.ordem2Resp]||''}</div>` : ''}`
+            : '<span style="color:#9CA3AF;font-size:0.75rem;">Não</span>';
+
+        // Atividade Realizada
+        const atvCell = i.e.catKey !== 'incidencia' ? '—'
+          : i.e.atvRealizada === 'sim'
+            ? '<span style="background:#D1FAE5;color:#065F46;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">✅ Sim</span>'
+            : i.e.atvRealizada === 'nao'
+              ? '<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:99px;font-size:0.7rem;font-weight:700;">❌ Não</span>'
+              : '<span style="color:#D1D5DB;font-size:0.75rem;">—</span>';
+
         return `<tr>
           <td style="${tdStyle};font-weight:700;color:#1E3A5F;">${i.r.registroId || '—'}</td>
           <td style="${tdStyle}">${dataBR}</td>
@@ -9402,6 +9832,8 @@ entryLines.join('\n\n') + '\n' +
           <td style="${tdStyle}">${i.catNome}</td>
           <td style="${tdStyle};color:#1E4DA1;font-weight:600;">🕐 ${periodo}</td>
           <td style="${tdStyle};font-weight:700;color:#DC2626;">${i.tempoStr}</td>
+          <td style="${tdStyle}">${o2Cell}</td>
+          <td style="${tdStyle}">${atvCell}</td>
           <td style="${tdStyle}">${i.respOc}</td>
           <td style="${tdStyle};max-width:180px;color:#6B7280;font-size:0.75rem;">${comentarios}</td>
           <td style="${tdStyle};max-width:200px;color:#7C3AED;">${just}</td>
@@ -9432,8 +9864,9 @@ entryLines.join('\n\n') + '\n' +
       const fDataFim = document.getElementById('dash-f-data-fim')?.value || '';
       const fBusca   = (document.getElementById('dash-busca')?.value     || '').trim().toUpperCase();
 
-      const rows = [['Data','Equipe','Turno','Categoria','Período','Causa','Tempo Fora','Resp. Ocorrência',
-        'Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação']];
+      const rows = [['Data','Equipe','Turno','Categoria','Período','Causa','Tempo Fora',
+        'Ordem 2','Atividade Realizada',
+        'Resp. Ocorrência','Justificativa','Resp. Ação','Obs. da Ação','Status','Data Ação']];
 
       records.forEach(r => {
         if (fEquipe && !r.equipe?.toUpperCase().includes(fEquipe)) return;
@@ -9473,6 +9906,13 @@ entryLines.join('\n\n') + '\n' +
             }
             return '';
           })();
+          const o2ExcelMap = { abriu: 'Equipe abriu a OS', finalizou: 'Equipe finalizou a OS', abriu_finalizou: 'Equipe abriu e finalizou' };
+          const o2Excel = e.catKey === 'incidencia'
+            ? (e.ordem2 ? `Sim - ${o2ExcelMap[e.ordem2Resp] || ''}` : 'Não')
+            : '';
+          const atvExcel = e.catKey === 'incidencia'
+            ? (e.atvRealizada === 'sim' ? 'Sim' : e.atvRealizada === 'nao' ? 'Não' : '—')
+            : '';
           const row = [
             `${d}/${m}/${y}`,
             r.equipe || '',
@@ -9481,6 +9921,8 @@ entryLines.join('\n\n') + '\n' +
             periodo,
             causaStr,
             tempoStr,
+            o2Excel,
+            atvExcel,
             e.acaoResponsavel || '',
             justExcel || '',
             saved.respExec    || '',
