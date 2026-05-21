@@ -2307,6 +2307,13 @@ if (!loggedInUser) {
         </select>
       </div>
       <div>
+        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Período</label>
+        <select id="bop-f-periodo" onchange="renderBaseOperacional()"
+          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div>
         <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Sup. Status</label>
         <select id="bop-f-sup-status" onchange="renderBaseOperacional()"
           style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
@@ -2316,7 +2323,7 @@ if (!loggedInUser) {
           <option value="resolvido">Resolvido</option>
         </select>
       </div>
-      <button onclick="document.getElementById('bop-f-equipe').value='';document.getElementById('bop-f-acao').value='';document.getElementById('bop-f-status').value='';document.getElementById('bop-f-sup-status').value='';renderBaseOperacional();"
+      <button onclick="document.getElementById('bop-f-equipe').value='';document.getElementById('bop-f-acao').value='';document.getElementById('bop-f-status').value='';document.getElementById('bop-f-periodo').value='';document.getElementById('bop-f-sup-status').value='';renderBaseOperacional();"
         style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:6px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;">
         ✕ Limpar
       </button>
@@ -6864,6 +6871,7 @@ if (!loggedInUser) {
       const incidencia = (row['Incidência']   || '').trim();
       const status     = (row['Status Desloc']|| '').trim(); // renomear internamente
       const tempo      = (row['Tempo Etapa']  || '').toString().trim();
+      const periodo    = (row['Período']      || '').trim(); // ✅ NOVO: capturar Período
 
       if (!equipe) return; // linha sem equipe → ignorar
 
@@ -6871,7 +6879,7 @@ if (!loggedInUser) {
       const chaveKey    = bopChaveToKey(chaveDesvio);
 
       resultado.push({ equipe, incidencia, status, acao, tempoEtapa: tempo,
-        dataHoraCaptura: agora, chaveDesvio, chaveKey });
+        periodo, dataHoraCaptura: agora, chaveDesvio, chaveKey });
     });
     return resultado;
   }
@@ -6942,6 +6950,16 @@ if (!loggedInUser) {
   // Importa para Firebase: atualiza desvio mas PRESERVA anotações de supervisão
   async function importDesviosFirebase(desvios) {
     for (const d of desvios) {
+      // ✅ VALIDAÇÃO: Ignorar linhas sem incidência válida
+      if (!d.incidencia || 
+          d.incidencia === '' || 
+          d.incidencia === null || 
+          d.incidencia === '(Empty)' ||
+          String(d.incidencia).trim() === '') {
+        console.log('[IMPORTAÇÃO] Ignorando linha sem incidência:', d);
+        continue;
+      }
+      
       // 1. Buscar anotação existente (para não perder)
       const supResp = await fetch(`${FB_BASEOP_SUPERVISAO}/${d.chaveKey}.json`);
       const supExist = supResp.ok ? await supResp.json() : null;
@@ -6956,6 +6974,7 @@ if (!loggedInUser) {
           status:          d.status,
           acao:            d.acao,
           tempoEtapa:      d.tempoEtapa,
+          periodo:         d.periodo || '', // ✅ NOVO: salvar período
           dataHoraCaptura: d.dataHoraCaptura,
           chaveDesvio:     d.chaveDesvio,
         })
@@ -7007,12 +7026,15 @@ if (!loggedInUser) {
   function populateBopFilters() {
     const acoes   = new Set();
     const statuses = new Set();
+    const periodos = new Set();
     Object.values(_bopDesvios).forEach(d => {
       if (d?.acao)   acoes.add(d.acao);
       if (d?.status) statuses.add(d.status);
+      if (d?.periodo) periodos.add(d.periodo);
     });
     const acaoSel = document.getElementById('bop-f-acao');
     const stSel   = document.getElementById('bop-f-status');
+    const perSel  = document.getElementById('bop-f-periodo');
     if (acaoSel) {
       const cur = acaoSel.value;
       acaoSel.innerHTML = '<option value="">Todas</option>' +
@@ -7022,6 +7044,11 @@ if (!loggedInUser) {
       const cur = stSel.value;
       stSel.innerHTML = '<option value="">Todos</option>' +
         [...statuses].sort().map(s => `<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+    }
+    if (perSel) {
+      const cur = perSel.value;
+      perSel.innerHTML = '<option value="">Todos</option>' +
+        [...periodos].sort().map(p => `<option value="${p}"${p===cur?' selected':''}>${p}</option>`).join('');
     }
   }
 
@@ -7219,6 +7246,7 @@ if (!loggedInUser) {
     const fEquipe    = (document.getElementById('bop-f-equipe')?.value     || '').trim().toUpperCase();
     const fAcao      =  document.getElementById('bop-f-acao')?.value       || '';
     const fStatus    =  document.getElementById('bop-f-status')?.value     || '';
+    const fPeriodo   =  document.getElementById('bop-f-periodo')?.value    || '';
     const fSupStatus =  document.getElementById('bop-f-sup-status')?.value || '';
 
     const container = document.getElementById('baseop-table-container');
@@ -7231,6 +7259,7 @@ if (!loggedInUser) {
     if (fEquipe)    rows = rows.filter(({ d }) => d.equipe?.toUpperCase().includes(fEquipe));
     if (fAcao)      rows = rows.filter(({ d }) => d.acao === fAcao);
     if (fStatus)    rows = rows.filter(({ d }) => d.status === fStatus);
+    if (fPeriodo)   rows = rows.filter(({ d }) => d.periodo === fPeriodo);
     if (fSupStatus) {
       rows = rows.filter(({ sup }) => {
         const currentStatus = sup.statusAcao || 'pendente';
@@ -7263,6 +7292,7 @@ if (!loggedInUser) {
         <thead>
           <tr style="background:#F9FAFB;">
             <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;">Equipe</th>
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;">Período</th>
             <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Incidência</th>
             <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Status</th>
             <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Ação</th>
@@ -7280,6 +7310,7 @@ if (!loggedInUser) {
             return `
               <tr style="background:${idx%2===0?'white':'#FAFAFA'};border-bottom:1px solid #F3F4F6;" id="bop-row-${key}">
                 <td style="padding:0.6rem 0.85rem;font-size:0.82rem;font-weight:800;color:#1E3A5F;">${d.equipe || '—'}</td>
+                <td style="padding:0.6rem 0.85rem;font-size:0.78rem;color:#6B7280;font-weight:700;white-space:nowrap;">${d.periodo || '—'}</td>
                 <td style="padding:0.6rem 0.85rem;font-size:0.78rem;color:#6B7280;font-family:'Barlow Condensed',sans-serif;font-weight:700;">${d.incidencia || '—'}</td>
                 <td style="padding:0.6rem 0.85rem;font-size:0.78rem;color:#374151;">${d.status || '—'}</td>
                 <td style="padding:0.6rem 0.85rem;">${acaoBadge(d.acao || '—')}</td>
@@ -7302,7 +7333,7 @@ if (!loggedInUser) {
                 </td>
               </tr>
               <tr id="bop-annot-${key}" style="display:none;">
-                <td colspan="8" style="padding:0;background:#F8FAFF;border-bottom:2px solid #DBEAFE;">
+                <td colspan="9" style="padding:0;background:#F8FAFF;border-bottom:2px solid #DBEAFE;">
                   ${buildBopAnnotationPanel(key, sup)}
                 </td>
               </tr>`;
@@ -7377,6 +7408,7 @@ if (!loggedInUser) {
     // ── Dados do desvio: grid ──
     var dadosGrid = [
       ['Incidência', desvio ? desvio.incidencia||'—' : '—'],
+      ['Período',    desvio ? desvio.periodo||'—'     : '—'],
       ['Status',     desvio ? desvio.status||'—'     : '—'],
       ['Tempo etapa',(desvio ? desvio.tempoEtapa||'—' : '—')+' min'],
       ['Captura',    capturaStr]
@@ -12467,6 +12499,7 @@ entryLines.join('\n\n') + '\n' +
         
         dados.push({
           equipe: dev.equipe || '',
+          periodo: dev.periodo || '',
           incidencia: dev.incidencia || '',
           status: dev.status || '',
           acao: dev.acao || '',
@@ -12503,6 +12536,7 @@ entryLines.join('\n\n') + '\n' +
   <thead>
     <tr>
       <th>Equipe</th>
+      <th>Período</th>
       <th>Incidência</th>
       <th>Status</th>
       <th>Ação</th>
@@ -12521,6 +12555,7 @@ entryLines.join('\n\n') + '\n' +
       dados.forEach(row => {
         html += `<tr>
       <td>${row.equipe}</td>
+      <td>${row.periodo}</td>
       <td>${row.incidencia}</td>
       <td>${row.status}</td>
       <td>${row.acao}</td>
