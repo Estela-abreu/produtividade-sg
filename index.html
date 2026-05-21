@@ -61,6 +61,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <style>
   :root {
     --green: #00843D;
@@ -175,6 +176,21 @@
   .sidebar-item.config-item { color: #C4B5FD; }
   .sidebar-item.config-item.active { background: rgba(124,58,237,0.18); color: #C4B5FD; border-left-color: #7C3AED; }
   .sidebar-item.config-item:hover { background: rgba(124,58,237,0.1); color: #DDD6FE; }
+
+  /* ── CONTROLE DE ACESSO POR PERFIL ─────────────────────────── */
+  /* Por padrão, tudo oculto até o role ser definido */
+  #tabBtnForm, #tabBtnNotify, #tabBtnAcao,
+  #tabBtnDashboard, #tabBtnConfig { display: none !important; }
+
+  /* Admin: restaura tudo */
+  html[data-role="admin"] #tabBtnForm,
+  html[data-role="admin"] #tabBtnNotify,
+  html[data-role="admin"] #tabBtnAcao,
+  html[data-role="admin"] #tabBtnDashboard,
+  html[data-role="admin"] #tabBtnConfig { display: flex !important; }
+
+  /* Usuário: oculta área de importação */
+  html[data-role="user"] #baseop-import-area { display: none !important; }
   .nav-icon { width:18px;height:18px;flex-shrink:0;opacity:0.7;transition:opacity 0.18s; }
   .sidebar-item:hover .nav-icon { opacity: 1; }
 
@@ -201,6 +217,7 @@
   /* ── Main content area ── */
   .main-content {
     margin-left: 220px;
+    padding-top: 56px; /* altura do topbar fixo */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -1553,48 +1570,22 @@ function nomeUsuario() { const u = getCurrentUserImmediate(); return u ? u.nome 
 // ── CONTROLE DE ACESSO POR PERFIL ──────────────────────────────────
 function applyAccessControl() {
   const admin = isAdmin();
-  
-  // Abas restritas apenas para admin
-  const adminOnlyTabs = ['form', 'notify', 'config'];
-  const adminOnlyButtons = ['tabBtnForm', 'tabBtnNotify', 'tabBtnConfig'];
-  
-  // Ocultar/mostrar abas
-  adminOnlyTabs.forEach(tab => {
-    const el = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
-    if (el) el.style.display = admin ? 'block' : 'none';
-  });
-  
-  // Ocultar/mostrar botões da sidebar
-  adminOnlyButtons.forEach(btn => {
-    const el = document.getElementById(btn);
-    if (el) el.style.display = admin ? 'block' : 'none';
-  });
-  
-  // Se usuário comum tentar acessar aba restrita, redireciona
-  const currentTab = document.querySelector('[id^="tab"]:not([style*="display: none"])');
-  if (!admin && currentTab && adminOnlyTabs.includes(currentTab.id.replace('tab', '').toLowerCase())) {
-    switchTab('inicio'); // Redireciona para início
+
+  // Aplica role no elemento raiz — CSS cuida do resto com !important
+  document.documentElement.dataset.role = admin ? 'admin' : 'user';
+
+  // Se não for admin e estiver em aba restrita → Tempo Real
+  const restricted = ['form','notify','acao','dashboard','config'];
+  const cur = typeof _currentTab !== 'undefined' ? _currentTab : '';
+  if (!admin && restricted.includes(cur)) {
+    switchTab('temporeal');
   }
-  
-  console.log(`[ACCESS] Acesso ${admin ? '👑 ADMIN' : '👤 USUÁRIO'} aplicado`);
+
+  console.log('[ACCESS]', admin ? '👑 ADMIN' : '👤 USUÁRIO — restrito a Tempo Real');
 }
 
-// Interceptar switchTab para validar acesso
-const originalSwitchTab = switchTab;
-function switchTab(tab) {
-  const admin = isAdmin();
-  const adminOnlyTabs = ['form', 'notify', 'config'];
-  
-  // Se não é admin e tenta acessar aba restrita, bloqueia
-  if (!admin && adminOnlyTabs.includes(tab)) {
-    console.warn(`[SEGURANÇA] Acesso negado: usuário tentou acessar aba '${tab}'`);
-    showCopyToast('❌ Acesso negado. Esta aba é restrita ao administrador.');
-    return;
-  }
-  
-  // Se passou na validação, executa switchTab original
-  originalSwitchTab(tab);
-}
+// Aplicar imediatamente (antes do DOM estar completo — CSS cuida do resto)
+applyAccessControl();
 
 // ── Cache local de usuários ─────────────────────────────────────
 function getUsersLocal() {
@@ -2133,6 +2124,10 @@ if (!loggedInUser) {
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Início
     </button>
+    <button class="sidebar-item" id="tabBtnTempoReal" onclick="switchTab('temporeal')" style="color:rgba(59,130,246,0.8);">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Tempo Real
+    </button>
     <button class="sidebar-item" id="tabBtnForm" onclick="switchTab('form')">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Registro
@@ -2256,6 +2251,95 @@ if (!loggedInUser) {
     </div>
   </div>
 </div><!-- /tabInicio -->
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<!--   TAB: TEMPO REAL (monitoramento operacional em tempo real)   -->
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="tabTempoReal" style="display:none;padding:1.5rem;">
+
+  <!-- Cabeçalho + stats -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+    <div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.04em;">📡 Tempo Real</div>
+      <div style="font-size:0.78rem;color:#6B7280;margin-top:2px;">Monitoramento operacional em tempo real · Desvios, justificativas e ações de supervisão</div>
+    </div>
+    <div id="baseop-stats" style="display:flex;gap:0.75rem;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- 📊 PAINEL ANALÍTICO COM CARDS -->
+  <div id="baseop-analytics" style="margin-bottom:1.5rem;"></div>
+
+  <!-- Área de importação CSV -->
+    <div id="baseop-import-area"
+      style="border:2px dashed #BFDBFE;border-radius:12px;padding:2rem;text-align:center;background:#F8FAFF;margin-bottom:1.5rem;transition:border-color 0.2s;"
+      ondragover="event.preventDefault();this.style.borderColor='#3B82F6';"
+      ondragleave="this.style.borderColor='#BFDBFE';"
+      ondrop="handleCSVDrop(event)">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">📥</div>
+      <div style="font-size:0.9rem;font-weight:700;color:#1E3A5F;margin-bottom:0.25rem;">Importar base operacional (CSV/Excel)</div>
+      <div style="font-size:0.75rem;color:#6B7280;margin-bottom:1rem;">Arraste o arquivo aqui ou clique para selecionar · Codificação UTF-16 suportada</div>
+      <input type="file" id="baseop-file-input" accept=".csv,.tsv,.txt" style="display:none;" onchange="handleCSVFile(event)">
+      <button onclick="document.getElementById('baseop-file-input').click()"
+        style="font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:0.6rem 1.4rem;border-radius:8px;border:none;background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;cursor:pointer;box-shadow:0 3px 10px rgba(30,77,161,0.3);">
+        📂 Selecionar Arquivo
+      </button>
+      <div id="baseop-import-status" style="margin-top:0.75rem;font-size:0.78rem;"></div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.85rem;margin-bottom:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Equipe</label>
+        <input id="bop-f-equipe" placeholder="Filtrar equipe..." oninput="renderBaseOperacional()"
+          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;width:150px;">
+      </div>
+      <div>
+        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Ação</label>
+        <select id="bop-f-acao" onchange="renderBaseOperacional()"
+          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Status</label>
+        <select id="bop-f-status" onchange="renderBaseOperacional()"
+          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Sup. Status</label>
+        <select id="bop-f-sup-status" onchange="renderBaseOperacional()"
+          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
+          <option value="">Todos</option>
+          <option value="pendente">Pendente</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="resolvido">Resolvido</option>
+        </select>
+      </div>
+      <button onclick="document.getElementById('bop-f-equipe').value='';document.getElementById('bop-f-acao').value='';document.getElementById('bop-f-status').value='';document.getElementById('bop-f-sup-status').value='';renderBaseOperacional();"
+        style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:6px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;">
+        ✕ Limpar
+      </button>
+      <button onclick="abrirExportModal()"
+        style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:6px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,#059669,#10B981);color:white;cursor:pointer;box-shadow:0 2px 8px rgba(16,185,129,0.25);margin-left:auto;">
+        📊 Exportar Tratativas
+      </button>
+    </div>
+
+    <!-- Tabela de desvios -->
+    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+      <div id="baseop-table-container">
+        <div style="padding:3rem;text-align:center;color:#9CA3AF;">
+          <div style="font-size:1.5rem;margin-bottom:0.5rem;">📭</div>
+          <div style="font-size:0.85rem;">Nenhum desvio carregado. Importe um arquivo CSV para começar.</div>
+        </div>
+      </div>
+    </div>
+
+
+</div><!-- /tabTempoReal -->
+
 
 <div id="tabForm" style="display:none;">
 <!-- ── Main ── -->
@@ -2602,11 +2686,6 @@ if (!loggedInUser) {
       <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16v2H4zm0 4h16v10H4zm0 12h16v2H4z"/><line x1="9" y1="8" x2="9" y2="14"/><line x1="15" y1="8" x2="15" y2="14"/></svg>
       Visão Detalhada
     </button>
-    <button id="dashSubBtnBaseOp" onclick="switchDashSub('baseop')"
-      style="font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:800;padding:0.75rem 1.5rem;border:none;border-bottom:3px solid transparent;background:transparent;color:#9CA3AF;cursor:pointer;margin-bottom:-2px;display:flex;align-items:center;gap:0.4rem;">
-      <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-      Base Operacional
-    </button>
   </div>
 
   <!-- Conteúdo sub-aba Dashboard -->
@@ -2821,83 +2900,6 @@ if (!loggedInUser) {
 
   <!-- ============================================================ -->
   <!-- Sub-aba: Base Operacional (CSV Import)                       -->
-  <!-- ============================================================ -->
-  <div id="dashSubBaseOp" style="display:none;padding:1.5rem;">
-
-    <!-- Cabeçalho + stats -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.04em;">📋 Base Operacional</div>
-        <div style="font-size:0.78rem;color:#6B7280;margin-top:2px;">Desvios identificados na importação · Rastreamento, justificativas e ações de supervisão</div>
-      </div>
-      <div id="baseop-stats" style="display:flex;gap:0.75rem;flex-wrap:wrap;"></div>
-    </div>
-
-    <!-- Área de importação CSV -->
-    <div id="baseop-import-area"
-      style="border:2px dashed #BFDBFE;border-radius:12px;padding:2rem;text-align:center;background:#F8FAFF;margin-bottom:1.5rem;transition:border-color 0.2s;"
-      ondragover="event.preventDefault();this.style.borderColor='#3B82F6';"
-      ondragleave="this.style.borderColor='#BFDBFE';"
-      ondrop="handleCSVDrop(event)">
-      <div style="font-size:2rem;margin-bottom:0.5rem;">📥</div>
-      <div style="font-size:0.9rem;font-weight:700;color:#1E3A5F;margin-bottom:0.25rem;">Importar base operacional (CSV/Excel)</div>
-      <div style="font-size:0.75rem;color:#6B7280;margin-bottom:1rem;">Arraste o arquivo aqui ou clique para selecionar · Codificação UTF-16 suportada</div>
-      <input type="file" id="baseop-file-input" accept=".csv,.tsv,.txt" style="display:none;" onchange="handleCSVFile(event)">
-      <button onclick="document.getElementById('baseop-file-input').click()"
-        style="font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:0.6rem 1.4rem;border-radius:8px;border:none;background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;cursor:pointer;box-shadow:0 3px 10px rgba(30,77,161,0.3);">
-        📂 Selecionar Arquivo
-      </button>
-      <div id="baseop-import-status" style="margin-top:0.75rem;font-size:0.78rem;"></div>
-    </div>
-
-    <!-- Filtros -->
-    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;padding:0.85rem;margin-bottom:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;">
-      <div>
-        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Equipe</label>
-        <input id="bop-f-equipe" placeholder="Filtrar equipe..." oninput="renderBaseOperacional()"
-          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;width:150px;">
-      </div>
-      <div>
-        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Ação</label>
-        <select id="bop-f-acao" onchange="renderBaseOperacional()"
-          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
-          <option value="">Todas</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Status</label>
-        <select id="bop-f-status" onchange="renderBaseOperacional()"
-          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
-          <option value="">Todos</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;text-transform:uppercase;">Sup. Status</label>
-        <select id="bop-f-sup-status" onchange="renderBaseOperacional()"
-          style="font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #E5E7EB;border-radius:6px;padding:5px 10px;outline:none;">
-          <option value="">Todos</option>
-          <option value="pendente">Pendente</option>
-          <option value="em_andamento">Em andamento</option>
-          <option value="resolvido">Resolvido</option>
-        </select>
-      </div>
-      <button onclick="document.getElementById('bop-f-equipe').value='';document.getElementById('bop-f-acao').value='';document.getElementById('bop-f-status').value='';document.getElementById('bop-f-sup-status').value='';renderBaseOperacional();"
-        style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:6px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;">
-        ✕ Limpar
-      </button>
-    </div>
-
-    <!-- Tabela de desvios -->
-    <div style="background:white;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
-      <div id="baseop-table-container">
-        <div style="padding:3rem;text-align:center;color:#9CA3AF;">
-          <div style="font-size:1.5rem;margin-bottom:0.5rem;">📭</div>
-          <div style="font-size:0.85rem;">Nenhum desvio carregado. Importe um arquivo CSV para começar.</div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /dashSubBaseOp -->
 
 </div><!-- /tabDashboard -->
 
@@ -3017,6 +3019,20 @@ if (!loggedInUser) {
         <button class="cfg-btn-add" onclick="cfgAddRespOc()">+ Adicionar</button>
       </div>
       <div id="cfgRespOcList" class="cfg-tag-list"></div>
+    </div>
+  </div>
+
+  <!-- Seção: Setores (para Base Operacional) -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">🏢 Setores</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">Setores disponíveis no campo "Qual setor?" do formulário de análise de supervisão da Base Operacional.</div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgSetorInput" placeholder="Ex: COD, Planejamento, Trânsito..." class="cfg-input" style="max-width:220px;" oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')cfgAddSetor()">
+        <button class="cfg-btn-add" onclick="cfgAddSetor()">+ Adicionar</button>
+      </div>
+      <div id="cfgSetorList" class="cfg-tag-list"></div>
     </div>
   </div>
 
@@ -3426,6 +3442,7 @@ if (!loggedInUser) {
   const CFG_SUPERVISORES_KEY = 'enel_cfg_supervisores';
   const CFG_RESP_ACAO_KEY = 'enel_cfg_resp_acao';
   const CFG_RESP_OC_KEY = 'enel_cfg_resp_oc';
+  const CFG_SETORES_KEY = 'enel_cfg_setores';
   const CFG_TIPOS_ACAO_KEY = 'enel_cfg_tipos_acao';
   const DRAFT_KEY = 'enel_form_draft';
   const ACOES_KEY = 'enel_acoes';
@@ -4769,6 +4786,7 @@ if (!loggedInUser) {
     if (!getCfg(CFG_EQUIPES_KEY, null))   saveEquipes([...EQUIPES_DEFAULT]);
     if (!getCfg(CFG_RESP_ACAO_KEY, null)) saveRespAcao([...RESP_ACAO_DEFAULT]);
     if (!getCfg(CFG_RESP_OC_KEY,  null)) saveRespOc([...RESP_OC_DEFAULT]);
+    if (!getCfg(CFG_SETORES_KEY,  null)) saveSetores([...SETORES_DEFAULT]);
   }
 
   function getObsPlaceholder() { return getCfg(CFG_OBS_KEY, 'Descreva detalhes desta ocorrência...'); }
@@ -6743,6 +6761,7 @@ if (!loggedInUser) {
 
   const TAB_TITLES = {
     inicio:      'Início',
+    temporeal:   'Tempo Real',
     form:        'Registro',
     notify:      'Notificar Supervisor',
     reuniao:     'Painel de Reunião',
@@ -6760,16 +6779,14 @@ if (!loggedInUser) {
     const subDash  = document.getElementById('dashSubDashboard');
     const subDB    = document.getElementById('dashSubDB');
     const subReu   = document.getElementById('dashSubReuniao');
-    const subBaseOp= document.getElementById('dashSubBaseOp');
     const btnD     = document.getElementById('dashSubBtnDashboard');
     const btnDB    = document.getElementById('dashSubBtnDB');
     const btnReu   = document.getElementById('dashSubBtnReuniao');
-    const btnBOP   = document.getElementById('dashSubBtnBaseOp');
     
     // Hide all sub-tabs
-    [subDash, subDB, subReu, subBaseOp].forEach(el => { if (el) el.style.display = 'none'; });
+    [subDash, subDB, subReu].forEach(el => { if (el) el.style.display = 'none'; });
     // Reset all button styles
-    [btnD, btnDB, btnReu, btnBOP].forEach(btn => {
+    [btnD, btnDB, btnReu].forEach(btn => {
       if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#9CA3AF'; }
     });
     
@@ -6806,13 +6823,6 @@ if (!loggedInUser) {
         btnReu.style.color = '#065F46';
       }
       renderReuniao();
-    } else if (sub === 'baseop') {
-      if (subBaseOp) subBaseOp.style.display = 'block';
-      if (btnBOP) {
-        btnBOP.style.borderBottomColor = '#065F46';
-        btnBOP.style.color = '#065F46';
-      }
-      loadBaseOperacional();
     }
     
     window.scrollTo({ top:0, behavior:'smooth' });
@@ -6845,8 +6855,11 @@ if (!loggedInUser) {
     const resultado = [];
     rows.forEach(row => {
       const acao = (row['Ação'] || '').toString().trim();
-      // Ignorar vazio, traço, nan
-      if (!acao || ['-', 'nan', 'NaN', 'null', ''].includes(acao)) return;
+      // Excluir: vazio, traço, nan, null, Cad. Veículo (qualquer variação)
+      const excluidos = ['-', 'nan', 'NaN', 'null', ''];
+      const acaoLower = acao.toLowerCase();
+      const isCadVeiculo = acaoLower.includes('cad') && (acaoLower.includes('veículo') || acaoLower.includes('veiculo'));
+      if (!acao || excluidos.includes(acao) || isCadVeiculo) return;
 
       const equipe     = (row['Equipe']       || '').trim();
       const incidencia = (row['Incidência']   || '').trim();
@@ -6962,12 +6975,30 @@ if (!loggedInUser) {
 
   // Carrega todos os desvios e anotações do Firebase
   async function loadBaseOperacional() {
+    // Controle de acesso: esconder import para não-admin
+    const importArea = document.getElementById('baseop-import-area');
+    if (importArea) importArea.style.display = isAdmin() ? 'block' : 'none';
+
     const [desResp, supResp] = await Promise.all([
       fetch(`${FB_BASEOP_DESVIOS}.json`),
       fetch(`${FB_BASEOP_SUPERVISAO}.json`)
     ]);
     _bopDesvios = (desResp.ok ? await desResp.json() : null) || {};
     _bopSup     = (supResp.ok ? await supResp.json() : null) || {};
+    
+    // 🔐 VALIDAÇÃO DE PERSISTÊNCIA: garantir que status 'resolvido' nunca é perdido
+    // Se existe supervisão com statusAcao='resolvido', o registro DEVE manter esse status
+    // mesmo que a chave seja re-importada ou o tempo mude
+    const resolvidos = Object.keys(_bopSup).filter(key => _bopSup[key]?.statusAcao === 'resolvido');
+    if (resolvidos.length > 0) {
+      console.log(`[PERSISTÊNCIA ✅] ${resolvidos.length} registro(s) mantendo status "Resolvido":`);
+      resolvidos.forEach(key => {
+        const sup = _bopSup[key];
+        const dev = _bopDesvios[key];
+        console.log(`  └─ ${dev?.equipe || '?'} | ${dev?.incidencia || '?'} - Por: ${sup?.updatedBy || 'desconhecido'}`);
+      });
+    }
+    
     populateBopFilters();
     renderBaseOperacional();
     updateBopStats();
@@ -7013,6 +7044,175 @@ if (!loggedInUser) {
         <div style="font-size:1.4rem;font-weight:900;color:${color};">${v}</div>
         <div style="font-size:0.62rem;color:#6B7280;font-weight:600;">${lbl}</div>
       </div>`).join('');
+    
+    // 📊 Atualizar painel analítico
+    updateAnalyticsDashboard();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 📊 FUNÇÕES PARA PAINEL ANALÍTICO
+  // ═══════════════════════════════════════════════════════
+
+  // Função auxiliar: converter "164 min" para número
+  function parseTempoEtapa(tempoStr) {
+    if (!tempoStr) return NaN;
+    const num = parseInt(tempoStr.toString().replace(/\D/g, ''));
+    return isNaN(num) ? NaN : num;
+  }
+
+  // 1️⃣ Supervisor que mais reporta (contar resolvidos por supervisor)
+  function getSupervisorMaisReporta() {
+    const supervisores = {};
+    Object.values(_bopSup).forEach(sup => {
+      if (sup?.statusAcao === 'resolvido' && sup?.responsavel) {
+        supervisores[sup.responsavel] = (supervisores[sup.responsavel] || 0) + 1;
+      }
+    });
+    
+    if (Object.keys(supervisores).length === 0) return null;
+    
+    const sorted = Object.entries(supervisores)
+      .sort((a, b) => b[1] - a[1]);
+    
+    const [nome, count] = sorted[0];
+    const total = Object.values(_bopSup).filter(s => s?.statusAcao === 'resolvido').length;
+    
+    return { nome, count, percentual: ((count / total) * 100).toFixed(1) };
+  }
+
+  // 2️⃣ Equipe com maior média de Desloc. >50
+  function getEquipeMaiorMediaDesloc() {
+    const equipas = {};
+    
+    Object.entries(_bopDesvios).forEach(([key, dev]) => {
+      if (dev?.acao === 'Desloc. >50') {
+        const tempo = parseTempoEtapa(dev.tempoEtapa);
+        if (!isNaN(tempo) && tempo > 0) {
+          if (!equipas[dev.equipe]) {
+            equipas[dev.equipe] = { tempos: [], count: 0 };
+          }
+          equipas[dev.equipe].tempos.push(tempo);
+          equipas[dev.equipe].count++;
+        }
+      }
+    });
+    
+    if (Object.keys(equipas).length === 0) return null;
+    
+    const medias = Object.entries(equipas)
+      .map(([equipe, data]) => ({
+        equipe,
+        media: data.tempos.reduce((a, b) => a + b, 0) / data.tempos.length,
+        count: data.count
+      }))
+      .sort((a, b) => b.media - a.media);
+    
+    if (medias.length === 0) return null;
+    
+    const top = medias[0];
+    return { equipe: top.equipe, media: top.media.toFixed(0), count: top.count };
+  }
+
+  // 3️⃣ Equipe com maior média de Reparo >60
+  function getEquipeMaiorMediaReparo() {
+    const equipas = {};
+    
+    Object.entries(_bopDesvios).forEach(([key, dev]) => {
+      if (dev?.acao === 'Reparo >60') {
+        const tempo = parseTempoEtapa(dev.tempoEtapa);
+        if (!isNaN(tempo) && tempo > 0) {
+          if (!equipas[dev.equipe]) {
+            equipas[dev.equipe] = { tempos: [], count: 0 };
+          }
+          equipas[dev.equipe].tempos.push(tempo);
+          equipas[dev.equipe].count++;
+        }
+      }
+    });
+    
+    if (Object.keys(equipas).length === 0) return null;
+    
+    const medias = Object.entries(equipas)
+      .map(([equipe, data]) => ({
+        equipe,
+        media: data.tempos.reduce((a, b) => a + b, 0) / data.tempos.length,
+        count: data.count
+      }))
+      .sort((a, b) => b.media - a.media);
+    
+    if (medias.length === 0) return null;
+    
+    const top = medias[0];
+    return { equipe: top.equipe, media: top.media.toFixed(0), count: top.count };
+  }
+
+  // Renderizar painel analítico com os 3 cards
+  function updateAnalyticsDashboard() {
+    const containerEl = document.getElementById('baseop-analytics');
+    if (!containerEl) return;
+    
+    const supervisor = getSupervisorMaisReporta();
+    const desloc = getEquipeMaiorMediaDesloc();
+    const reparo = getEquipeMaiorMediaReparo();
+    
+    // Card 1: Supervisor
+    const card1 = supervisor ? `
+      <div style="flex:1;min-width:250px;background:linear-gradient(135deg,#7C3AED,#A78BFA);border-radius:12px;padding:1.25rem;color:white;box-shadow:0 4px 16px rgba(124,58,237,0.2);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-10px;right:-10px;font-size:3rem;opacity:0.1;">👤</div>
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;opacity:0.9;margin-bottom:0.75rem;">👤 Supervisor que Mais Reporta</div>
+        <div style="font-size:1.8rem;font-weight:900;margin-bottom:0.25rem;">${supervisor.nome}</div>
+        <div style="font-size:0.9rem;opacity:0.95;margin-bottom:0.5rem;"><span style="font-weight:700;">${supervisor.count}</span> resolvidos</div>
+        <div style="font-size:0.8rem;opacity:0.85;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.2);">${supervisor.percentual}% do total</div>
+        <div style="position:absolute;top:0.75rem;right:0.75rem;background:rgba(255,255,255,0.2);padding:0.35rem 0.75rem;border-radius:99px;font-size:0.7rem;font-weight:800;">🏆 1º</div>
+      </div>
+    ` : `
+      <div style="flex:1;min-width:250px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);border-radius:12px;padding:1.25rem;color:#6B7280;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">👤 Supervisor que Mais Reporta</div>
+        <div style="font-size:1rem;opacity:0.7;">Sem dados disponíveis</div>
+      </div>
+    `;
+    
+    // Card 2: Desloc >50
+    const card2 = desloc ? `
+      <div style="flex:1;min-width:250px;background:linear-gradient(135deg,#F59E0B,#FBBF24);border-radius:12px;padding:1.25rem;color:white;box-shadow:0 4px 16px rgba(245,158,11,0.2);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-10px;right:-10px;font-size:3rem;opacity:0.1;">⚡</div>
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;opacity:0.9;margin-bottom:0.75rem;">⚡ Maior Média – Desloc. >50</div>
+        <div style="font-size:1.8rem;font-weight:900;margin-bottom:0.25rem;">${desloc.equipe}</div>
+        <div style="font-size:0.9rem;opacity:0.95;margin-bottom:0.5rem;"><span style="font-weight:700;">${desloc.media}</span> min (média)</div>
+        <div style="font-size:0.8rem;opacity:0.85;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.2);">${desloc.count} registros</div>
+        <div style="position:absolute;top:0.75rem;right:0.75rem;background:rgba(255,255,255,0.2);padding:0.35rem 0.75rem;border-radius:99px;font-size:0.7rem;font-weight:800;">🏆 1º</div>
+      </div>
+    ` : `
+      <div style="flex:1;min-width:250px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);border-radius:12px;padding:1.25rem;color:#6B7280;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">⚡ Maior Média – Desloc. >50</div>
+        <div style="font-size:1rem;opacity:0.7;">Sem dados disponíveis</div>
+      </div>
+    `;
+    
+    // Card 3: Reparo >60
+    const card3 = reparo ? `
+      <div style="flex:1;min-width:250px;background:linear-gradient(135deg,#EF4444,#F87171);border-radius:12px;padding:1.25rem;color:white;box-shadow:0 4px 16px rgba(239,68,68,0.2);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-10px;right:-10px;font-size:3rem;opacity:0.1;">🔧</div>
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;opacity:0.9;margin-bottom:0.75rem;">🔧 Maior Média – Reparo >60</div>
+        <div style="font-size:1.8rem;font-weight:900;margin-bottom:0.25rem;">${reparo.equipe}</div>
+        <div style="font-size:0.9rem;opacity:0.95;margin-bottom:0.5rem;"><span style="font-weight:700;">${reparo.media}</span> min (média)</div>
+        <div style="font-size:0.8rem;opacity:0.85;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.2);">${reparo.count} registros</div>
+        <div style="position:absolute;top:0.75rem;right:0.75rem;background:rgba(255,255,255,0.2);padding:0.35rem 0.75rem;border-radius:99px;font-size:0.7rem;font-weight:800;">🏆 1º</div>
+      </div>
+    ` : `
+      <div style="flex:1;min-width:250px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);border-radius:12px;padding:1.25rem;color:#6B7280;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">🔧 Maior Média – Reparo >60</div>
+        <div style="font-size:1rem;opacity:0.7;">Sem dados disponíveis</div>
+      </div>
+    `;
+    
+    containerEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-bottom:1.5rem;">
+        ${card1}
+        ${card2}
+        ${card3}
+      </div>
+    `;
   }
 
   // Renderiza tabela de desvios com filtros
@@ -7032,7 +7232,12 @@ if (!loggedInUser) {
     if (fEquipe)    rows = rows.filter(({ d }) => d.equipe?.toUpperCase().includes(fEquipe));
     if (fAcao)      rows = rows.filter(({ d }) => d.acao === fAcao);
     if (fStatus)    rows = rows.filter(({ d }) => d.status === fStatus);
-    if (fSupStatus) rows = rows.filter(({ sup }) => (sup.statusAcao || 'pendente') === fSupStatus);
+    if (fSupStatus) {
+      rows = rows.filter(({ sup }) => {
+        const currentStatus = sup.statusAcao || 'pendente';
+        return currentStatus === fSupStatus;
+      });
+    }
 
     rows.sort((a, b) => (b.d.dataHoraCaptura || '').localeCompare(a.d.dataHoraCaptura || ''));
 
@@ -7083,11 +7288,18 @@ if (!loggedInUser) {
                 <td style="padding:0.6rem 0.85rem;font-size:0.72rem;color:#9CA3AF;">${captura}</td>
                 <td style="padding:0.6rem 0.85rem;text-align:center;">${supBadge(sup)}</td>
                 <td style="padding:0.6rem 0.85rem;text-align:center;">
-                  <button onclick="toggleBopAnnotation('${key}')"
-                    style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;"
-                    title="Adicionar/editar anotação de supervisão">
-                    ✏️
-                  </button>
+                  <div style="display:flex;gap:0.35rem;justify-content:center;">
+                    <button onclick="toggleBopAnnotation('${key}')"
+                      style="font-family:'Barlow',sans-serif;font-size:0.8rem;font-weight:700;padding:7px 16px;border-radius:6px;border:none;background:#059669;cursor:pointer;color:white;box-shadow:0 2px 6px rgba(5,150,105,0.25);"
+                      title="Resolver desvio">
+                      ✓ Resolver
+                    </button>
+                    ${isAdmin() ? `<button onclick="confirmDeleteBopDesvio('${key}')"
+                      style="font-family:'Barlow',sans-serif;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:6px;border:1.5px solid #FCA5A5;background:#FEF2F2;cursor:pointer;color:#DC2626;"
+                      title="Excluir registro (admin)">
+                      🗑️
+                    </button>` : ''}
+                  </div>
                 </td>
               </tr>
               <tr id="bop-annot-${key}" style="display:none;">
@@ -7101,109 +7313,548 @@ if (!loggedInUser) {
   }
 
   // Constrói painel de anotação de supervisão
-  function buildBopAnnotationPanel(key, sup) {
-    const statusOpts = ['pendente','em_andamento','resolvido']
-      .map(s => `<option value="${s}"${(sup.statusAcao||'pendente')===s?' selected':''}>${{pendente:'⏳ Pendente',em_andamento:'🔄 Em andamento',resolvido:'✅ Resolvido'}[s]}</option>`)
-      .join('');
-    return `
-      <div style="padding:1rem 1.5rem 1rem;">
-        <div style="font-size:0.72rem;font-weight:800;color:#1E4DA1;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;">📝 Anotação de Supervisão</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
-          <div>
-            <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Responsável</label>
-            <input id="bop-resp-${key}" value="${sup.responsavel||''}" placeholder="Nome do responsável"
-              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:5px 10px;outline:none;box-sizing:border-box;">
-          </div>
-          <div>
-            <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Status da Ação</label>
-            <select id="bop-status-${key}"
-              style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:5px 10px;outline:none;">
-              ${statusOpts}
-            </select>
-          </div>
-        </div>
-        <div style="margin-bottom:0.75rem;">
-          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Comentário / Observação</label>
-          <textarea id="bop-comment-${key}" rows="2" placeholder="Descreva o contexto, histórico ou observações sobre este desvio..."
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:6px 10px;outline:none;resize:vertical;box-sizing:border-box;">${sup.comentario||''}</textarea>
-        </div>
-        <div style="margin-bottom:0.75rem;">
-          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Justificativa</label>
-          <textarea id="bop-just-${key}" rows="2" placeholder="Justificativa operacional para o desvio..."
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:6px 10px;outline:none;resize:vertical;box-sizing:border-box;">${sup.justificativa||''}</textarea>
-        </div>
-        <div style="margin-bottom:0.75rem;">
-          <label style="font-size:0.65rem;font-weight:700;color:#6B7280;display:block;margin-bottom:3px;">Ação tomada pela supervisão</label>
-          <textarea id="bop-acaotomada-${key}" rows="2" placeholder="Descreva a ação adotada para corrigir ou monitorar este desvio..."
-            style="width:100%;font-family:'Barlow',sans-serif;font-size:0.82rem;border:1.5px solid #BFDBFE;border-radius:6px;padding:6px 10px;outline:none;resize:vertical;box-sizing:border-box;">${sup.acaoTomada||''}</textarea>
-        </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <button onclick="saveBopAnnotation('${key}')"
-            style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:800;padding:0.5rem 1.25rem;border-radius:8px;border:none;background:linear-gradient(135deg,#1E3A5F,#1E4DA1);color:white;cursor:pointer;box-shadow:0 3px 8px rgba(30,77,161,0.3);">
-            💾 Salvar anotação
-          </button>
-          <button onclick="toggleBopAnnotation('${key}')"
-            style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:0.5rem 1rem;border-radius:8px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#6B7280;">
-            Fechar
-          </button>
-          <span id="bop-save-status-${key}" style="font-size:0.75rem;color:#059669;margin-left:0.5rem;"></span>
-          ${sup.updatedAt ? `<span style="font-size:0.68rem;color:#9CA3AF;margin-left:auto;">Última atualização: ${new Date(sup.updatedAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</span>` : ''}
-        </div>
-      </div>`;
+  // Constrói painel de análise de supervisão — workflow estruturado
+
+  // ── buildBopAnnotationPanel: sem template literals aninhados ──
+  function buildBopAnnotationPanel(key, sup, desvio) {
+    const clas      = sup.classificacao  || '';
+    const cabeTrat  = sup.cabeTratativa  || '';
+    const tratOpts  = ['Aplicado feedback','Orientação à equipe','Realinhamento de processo',
+      'Alinhamento operacional','Necessário treinamento','Não se aplica']
+      .map(function(o){ return '<option value="'+o+'"'+(sup.tratativaAplicada===o?' selected':'')+'>'+o+'</option>'; }).join('');
+    const respOpts  = getRespAcao()
+      .map(function(n){ return '<option value="'+n+'"'+(sup.responsavel===n?' selected':'')+'>'+n+'</option>'; }).join('');
+    const setorOpts = getSetores()
+      .map(function(s){ return '<option value="'+s+'"'+(sup.setor===s?' selected':'')+'>'+s+'</option>'; }).join('');
+
+    // ── Datas formatadas ──
+    const capturaStr = desvio && desvio.dataHoraCaptura
+      ? new Date(desvio.dataHoraCaptura).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      : '—';
+
+    // ── Checkmark badges dos cards ──
+    const checkProc = clas==='procedente'
+      ? '<div style="width:20px;height:20px;background:#059669;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>'
+      : '';
+    const checkImp = clas==='improcedente'
+      ? '<div style="width:20px;height:20px;background:#DC2626;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>'
+      : '';
+
+    // ── Bloco de evidência ──
+    var evidHtml;
+    if (sup.evidenciaBase64) {
+      var b64   = sup.evidenciaBase64;
+      var eNome = sup.evidenciaNome || 'evidencia.jpg';
+      var eType = sup.evidenciaType || 'image/jpeg';
+      evidHtml =
+        '<div style="position:relative;background:#F3F4F6;">' +
+          '<img src="'+b64+'" style="width:100%;height:auto;max-height:240px;object-fit:cover;display:block;">' +
+          '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.6),transparent);display:flex;align-items:flex-end;padding:0.75rem;">' +
+            '<div style="color:white;font-size:0.72rem;font-weight:700;word-break:break-all;">'+eNome+'</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:0.65rem;display:flex;flex-direction:column;gap:0.45rem;">' +
+          '<button onclick="bopOpenPreview(\''+key+'\')" style="font-family:\'Barlow\',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;display:flex;align-items:center;gap:0.4rem;justify-content:center;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Visualizar' +
+          '</button>' +
+          '<button onclick="document.getElementById(\'bop-foto-input-'+key+'\').click()" style="font-family:\'Barlow\',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;display:flex;align-items:center;gap:0.4rem;justify-content:center;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Trocar arquivo' +
+          '</button>' +
+          '<button onclick="bopRemoveEvidencia(\''+key+'\')" style="font-family:\'Barlow\',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #FCA5A5;background:#FEF2F2;cursor:pointer;color:#DC2626;display:flex;align-items:center;gap:0.4rem;justify-content:center;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Remover arquivo' +
+          '</button>' +
+        '</div>';
+    } else {
+      evidHtml =
+        '<div onclick="document.getElementById(\'bop-foto-input-'+key+'\').click()" ' +
+          'ondragover="event.preventDefault();" ondrop="bopHandleFotoDrop(\''+key+'\',event)" ' +
+          'style="padding:2.5rem 1.5rem;text-align:center;cursor:pointer;">' +
+          '<div style="font-size:2.5rem;margin-bottom:0.5rem;opacity:0.5;">📷</div>' +
+          '<div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.25rem;">Arraste ou clique para anexar</div>' +
+          '<div style="font-size:0.72rem;color:#9CA3AF;">JPG, PNG, PDF</div>' +
+        '</div>';
+    }
+
+    // ── Dados do desvio: grid ──
+    var dadosGrid = [
+      ['Incidência', desvio ? desvio.incidencia||'—' : '—'],
+      ['Status',     desvio ? desvio.status||'—'     : '—'],
+      ['Tempo etapa',(desvio ? desvio.tempoEtapa||'—' : '—')+' min'],
+      ['Captura',    capturaStr]
+    ].map(function(item){
+      var l = item[0], v = item[1];
+      return '<div><div style="font-size:0.62rem;color:#059669;font-weight:700;">'+l+'</div><div style="font-size:0.82rem;font-weight:800;color:#065F46;">'+v+'</div></div>';
+    }).join('');
+
+    // ── Estilo dos cards de classificação ──
+    var procBorder = clas==='procedente' ? '#059669' : '#E5E7EB';
+    var procBg     = clas==='procedente' ? '#ECFDF5' : 'white';
+    var procColor  = clas==='procedente' ? '#059669' : '#374151';
+    var impBorder  = clas==='improcedente' ? '#DC2626' : '#E5E7EB';
+    var impBg      = clas==='improcedente' ? '#FEF2F2' : 'white';
+    var impColor   = clas==='improcedente' ? '#DC2626' : '#374151';
+
+    // ── Timestamp ──
+    var updatedStr = sup.updatedAt
+      ? '<span style="font-size:0.65rem;color:#9CA3AF;">📅 '
+          +new Date(sup.updatedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+          +(sup.updatedBy?' · '+sup.updatedBy:'')+'</span>'
+      : '';
+
+    return (
+      '<div style="padding:1rem 1.25rem;font-family:\'Barlow\',sans-serif;background:#FAFBFF;">' +
+
+      // ── Header: Dados do desvio ──
+      '<div style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:1px solid #6EE7B7;border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+          '<div style="width:38px;height:38px;background:#059669;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+          '</div>' +
+          '<div><div style="font-size:0.62rem;color:#059669;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Desvio selecionado</div>' +
+          '<div style="font-size:0.95rem;font-weight:900;color:#065F46;">'+(desvio ? desvio.equipe||'—' : '—')+'</div></div>' +
+        '</div>' +
+        '<div style="flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:0.65rem;">' + dadosGrid + '</div>' +
+        '<button onclick="toggleBopAnnotation(\''+key+'\')" style="margin-left:auto;padding:5px 12px;border:none;background:rgba(255,255,255,0.5);border-radius:6px;cursor:pointer;color:#065F46;font-weight:700;font-size:0.75rem;flex-shrink:0;">▲ Recolher</button>' +
+      '</div>' +
+
+      // ── Layout 2 colunas ──
+      '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:1.25rem;margin-bottom:1rem;">' +
+
+        // COLUNA ESQUERDA
+        '<div style="display:flex;flex-direction:column;gap:0.85rem;">' +
+
+          // Responsável
+          '<div>' +
+            '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Responsável pela análise</label>' +
+            '<select id="bop-resp-'+key+'" style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+              '<option value="">— Selecione —</option>'+respOpts+
+            '</select>' +
+          '</div>' +
+
+          // Justificativa
+          '<div>' +
+            '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Justificativa <span style="color:#DC2626;">*</span></label>' +
+            '<textarea id="bop-just-'+key+'" rows="3" placeholder="Descreva a justificativa operacional..." style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;resize:vertical;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,0.05);">'+(sup.justificativa||'')+'</textarea>' +
+          '</div>' +
+
+          // Classificação
+          '<div>' +
+            '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.5rem;">A ação é <span style="color:#DC2626;">*</span></label>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem;">' +
+              '<button id="bop-cls-proc-'+key+'" onclick="bopSetClassificacao(\''+key+'\',\'procedente\')" style="padding:0.9rem;border-radius:10px;border:2px solid '+procBorder+';background:'+procBg+';cursor:pointer;text-align:left;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+                  '<span style="font-size:0.88rem;font-weight:800;color:'+procColor+';">✓ Procedente</span>' + checkProc +
+                '</div>' +
+                '<div style="font-size:0.68rem;color:#9CA3AF;">Desvio confirmado</div>' +
+              '</button>' +
+              '<button id="bop-cls-imp-'+key+'" onclick="bopSetClassificacao(\''+key+'\',\'improcedente\')" style="padding:0.9rem;border-radius:10px;border:2px solid '+impBorder+';background:'+impBg+';cursor:pointer;text-align:left;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+                  '<span style="font-size:0.88rem;font-weight:800;color:'+impColor+';">○ Improcedente</span>' + checkImp +
+                '</div>' +
+                '<div style="font-size:0.68rem;color:#9CA3AF;">Não é um desvio real</div>' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+
+          // Tratativa Procedente
+          '<div id="bop-trat-proc-'+key+'" style="display:'+(clas==='procedente'?'block':'none')+';">' +
+            '<div style="margin-bottom:0.75rem;">' +
+              '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Tratativa aplicada <span style="color:#DC2626;">*</span></label>' +
+              '<select id="bop-tratativa-'+key+'" style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+                '<option value="">— Selecione —</option>'+tratOpts+
+              '</select>' +
+            '</div>' +
+            '<div>' +
+              '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Ação tomada <span style="color:#DC2626;">*</span></label>' +
+              '<textarea id="bop-acaotomada-'+key+'" rows="2" placeholder="Descreva a ação aplicada..." style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;resize:vertical;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,0.05);">'+(sup.acaoTomada||'')+'</textarea>' +
+            '</div>' +
+          '</div>' +
+
+          // Tratativa Improcedente
+          '<div id="bop-trat-imp-'+key+'" style="display:'+(clas==='improcedente'?'block':'none')+';">' +
+            '<div style="margin-bottom:0.75rem;">' +
+              '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Relato da supervisão <span style="color:#DC2626;">*</span></label>' +
+              '<textarea id="bop-relato-'+key+'" rows="2" placeholder="Por que não é procedente..." style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;resize:vertical;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,0.05);">'+(sup.relato||'')+'</textarea>' +
+            '</div>' +
+            '<div style="margin-bottom:0.75rem;">' +
+              '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.4rem;">Cabe tratativa para outro setor?</label>' +
+              '<div style="display:flex;gap:0.5rem;">' +
+                '<button id="bop-ct-sim-'+key+'" onclick="bopSetCabeTratativa(\''+key+'\',\'sim\')" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(cabeTrat==='sim'?'#DC2626':'#E5E7EB')+';background:'+(cabeTrat==='sim'?'#FEF2F2':'white')+';font-family:\'Barlow\',sans-serif;font-size:0.82rem;font-weight:700;color:'+(cabeTrat==='sim'?'#DC2626':'#374151')+';cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.05);">Sim</button>' +
+                '<button id="bop-ct-nao-'+key+'" onclick="bopSetCabeTratativa(\''+key+'\',\'nao\')" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(cabeTrat==='nao'?'#374151':'#E5E7EB')+';background:'+(cabeTrat==='nao'?'#F3F4F6':'white')+';font-family:\'Barlow\',sans-serif;font-size:0.82rem;font-weight:700;color:'+(cabeTrat==='nao'?'#374151':'#6B7280')+';cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.05);">Não</button>' +
+              '</div>' +
+            '</div>' +
+            '<div id="bop-outro-setor-'+key+'" style="display:'+(cabeTrat==='sim'?'block':'none')+';">' +
+              '<div style="margin-bottom:0.65rem;">' +
+                '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Qual setor? <span style="color:#DC2626;">*</span></label>' +
+                '<select id="bop-setor-'+key+'" style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+                  '<option value="">— Selecione —</option>'+setorOpts+
+                '</select>' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.35rem;">Tratativa necessária <span style="color:#DC2626;">*</span></label>' +
+                '<textarea id="bop-desc-trat-'+key+'" rows="2" placeholder="Descreva a tratativa..." style="width:100%;font-family:\'Barlow\',sans-serif;font-size:0.85rem;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;outline:none;resize:vertical;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,0.05);">'+(sup.descTratativa||'')+'</textarea>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+        '</div>' + // fim coluna esquerda
+
+        // COLUNA DIREITA: Evidência
+        '<div>' +
+          '<label style="font-size:0.7rem;font-weight:800;color:#374151;display:block;margin-bottom:0.5rem;">Evidência <span style="color:#DC2626;">*</span></label>' +
+          '<div id="bop-evid-container-'+key+'" style="background:white;border:2px dashed '+(sup.evidenciaBase64?'#059669':'#BFDBFE')+';border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+            evidHtml +
+          '</div>' +
+          '<input type="file" id="bop-foto-input-'+key+'" accept=".jpg,.jpeg,.png,.pdf" style="display:none;" onchange="bopHandleFotoFile(\''+key+'\',event)">' +
+          '<input type="hidden" id="bop-foto-b64-'+key+'" value="'+(sup.evidenciaBase64||'')+'">' +
+          '<input type="hidden" id="bop-foto-type-'+key+'" value="'+(sup.evidenciaType||'')+'">' +
+          '<input type="hidden" id="bop-foto-nome-'+key+'" value="'+(sup.evidenciaNome||'')+'">' +
+        '</div>' +
+
+      '</div>' + // fim grid 2 colunas
+
+      // FOOTER
+      '<div style="display:flex;align-items:center;gap:0.75rem;padding-top:1rem;border-top:1.5px solid #E5E7EB;">' +
+        '<div style="flex:1;">' +
+          '<span id="bop-save-status-'+key+'" style="font-size:0.8rem;font-weight:700;"></span>' +
+          updatedStr +
+        '</div>' +
+        '<button onclick="toggleBopAnnotation(\''+key+'\')" style="font-family:\'Barlow\',sans-serif;font-size:0.85rem;font-weight:700;padding:0.7rem 1.5rem;border-radius:8px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#6B7280;">Cancelar</button>' +
+        '<button onclick="saveBopAnnotation(\''+key+'\')" style="font-family:\'Barlow\',sans-serif;font-size:0.85rem;font-weight:800;padding:0.7rem 1.75rem;border-radius:8px;border:none;background:linear-gradient(135deg,#047857,#059669);color:white;cursor:pointer;box-shadow:0 3px 12px rgba(5,150,105,0.3);">✓ Salvar e concluir</button>' +
+      '</div>' +
+
+      '</div>'
+    );
   }
 
-  // Toggle do painel de anotação
-  function toggleBopAnnotation(key) {
-    const row = document.getElementById(`bop-annot-${key}`);
-    if (!row) return;
-    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+
+
+  function bopFilterSelect(selectId, inputId) {
+    const sel   = document.getElementById(selectId);
+    const query = (document.getElementById(inputId)?.value || '').toLowerCase();
+    if (!sel) return;
+    let firstMatch = null;
+    Array.from(sel.options).forEach(opt => {
+      if (!opt.value) { opt.style.display=''; return; } // placeholder sempre visível
+      const match = opt.text.toLowerCase().includes(query);
+      opt.style.display = match ? '' : 'none';
+      if (match && !firstMatch) firstMatch = opt;
+    });
+    sel.size = query ? Math.min(sel.options.length, 6) : 1;
   }
 
-  // Salva anotação de supervisão no Firebase
-  async function saveBopAnnotation(key) {
-    const statusEl = document.getElementById(`bop-save-status-${key}`);
-    if (statusEl) statusEl.textContent = '⏳ Salvando...';
+  function bopSetClassificacao(key, val) {
+    const procBtn = document.getElementById(`bop-cls-proc-${key}`);
+    const impBtn  = document.getElementById(`bop-cls-imp-${key}`);
+    const procTrat= document.getElementById(`bop-trat-proc-${key}`);
+    const impTrat = document.getElementById(`bop-trat-imp-${key}`);
+    if (!procBtn) return;
+    if (val === 'procedente') {
+      procBtn.style.cssText += ';border-color:#059669;background:#ECFDF5;';
+      procBtn.children[1].style.color='#059669';
+      impBtn.style.cssText += ';border-color:#E5E7EB;background:white;';
+      impBtn.children[1].style.color='#374151';
+      if (procTrat) procTrat.style.display='block';
+      if (impTrat)  impTrat.style.display='none';
+    } else {
+      impBtn.style.cssText += ';border-color:#DC2626;background:#FEF2F2;';
+      impBtn.children[1].style.color='#DC2626';
+      procBtn.style.cssText += ';border-color:#E5E7EB;background:white;';
+      procBtn.children[1].style.color='#374151';
+      if (impTrat)  impTrat.style.display='block';
+      if (procTrat) procTrat.style.display='none';
+    }
+    if (!_bopSup[key]) _bopSup[key] = {};
+    _bopSup[key].__tempClas = val;
+  }
 
-    const sup = {
-      responsavel:  (document.getElementById(`bop-resp-${key}`)?.value        || '').trim(),
-      statusAcao:    document.getElementById(`bop-status-${key}`)?.value      || 'pendente',
-      comentario:   (document.getElementById(`bop-comment-${key}`)?.value     || '').trim(),
-      justificativa:(document.getElementById(`bop-just-${key}`)?.value        || '').trim(),
-      acaoTomada:   (document.getElementById(`bop-acaotomada-${key}`)?.value  || '').trim(),
-      updatedAt:     new Date().toISOString(),
-    };
-
-    try {
-      const resp = await fetch(`${FB_BASEOP_SUPERVISAO}/${key}.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sup)
-      });
-      if (!resp.ok) throw new Error('Firebase error');
-
-      _bopSup[key] = sup;
-      if (statusEl) {
-        statusEl.textContent = '✅ Salvo!';
-        setTimeout(() => { statusEl.textContent = ''; }, 3000);
-      }
-      updateBopStats();
-      // Atualiza o badge da linha sem re-renderizar tudo
-      const rowEl = document.getElementById(`bop-row-${key}`);
-      if (rowEl) {
-        const supCell = rowEl.cells[6];
-        if (supCell) {
-          const s = sup.statusAcao || 'pendente';
-          const map = { pendente: ['#D97706','#FFFBEB','⏳ Pendente'], em_andamento: ['#1E4DA1','#EFF6FF','🔄 Em andamento'], resolvido: ['#059669','#ECFDF5','✅ Resolvido'] };
-          const [color, bg, label] = map[s] || map.pendente;
-          supCell.innerHTML = `<span style="font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;background:${bg};color:${color};">${label}</span>`;
-        }
-      }
-    } catch (err) {
-      if (statusEl) statusEl.textContent = '❌ Erro ao salvar';
+  function bopSetCabeTratativa(key, val) {
+    const simBtn = document.getElementById(`bop-ct-sim-${key}`);
+    const naoBtn = document.getElementById(`bop-ct-nao-${key}`);
+    const outro  = document.getElementById(`bop-outro-setor-${key}`);
+    if (!simBtn) return;
+    if (val === 'sim') {
+      simBtn.style.borderColor='#DC2626'; simBtn.style.background='#FEF2F2'; simBtn.style.color='#DC2626';
+      naoBtn.style.borderColor='#E5E7EB'; naoBtn.style.background='white';   naoBtn.style.color='#6B7280';
+      if (outro) outro.style.display='block';
+    } else {
+      naoBtn.style.borderColor='#374151'; naoBtn.style.background='#F3F4F6'; naoBtn.style.color='#374151';
+      simBtn.style.borderColor='#E5E7EB'; simBtn.style.background='white';   simBtn.style.color='#6B7280';
+      if (outro) outro.style.display='none';
     }
   }
 
+  function bopCompressImage(file, callback) {
+    if (file.type === 'application/pdf') {
+      const r = new FileReader();
+      r.onload = e => callback(e.target.result, file.type, file.name);
+      r.readAsDataURL(file); return;
+    }
+    const img = new Image(), reader = new FileReader();
+    reader.onload = e => {
+      img.onload = () => {
+        const MAX=800; let w=img.width, h=img.height;
+        if (w>MAX||h>MAX) { if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        callback(c.toDataURL('image/jpeg',0.70),'image/jpeg',file.name);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function bopSetFotoPreview(key, b64, type, nome) {
+    document.getElementById(`bop-foto-b64-${key}`).value  = b64;
+    document.getElementById(`bop-foto-type-${key}`).value = type;
+    document.getElementById(`bop-foto-nome-${key}`).value = nome;
+    
+    // Atualizar container de evidência com preview
+    const container = document.getElementById(`bop-evid-container-${key}`);
+    if (container) {
+      container.style.borderColor = '#059669';
+      container.innerHTML = type === 'application/pdf'
+        ? `<div style="padding:2rem;text-align:center;background:#ECFDF5;">
+             <div style="font-size:2rem;margin-bottom:0.5rem;">📄</div>
+             <div style="font-size:0.85rem;font-weight:700;color:#059669;">${nome}</div>
+           </div>
+           <div style="padding:0.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+             <button onclick="document.getElementById('bop-foto-input-${key}').click()"
+               style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;">
+               Trocar arquivo
+             </button>
+             <button onclick="bopRemoveEvidencia('${key}')"
+               style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #FCA5A5;background:#FEF2F2;cursor:pointer;color:#DC2626;">
+               Remover arquivo
+             </button>
+           </div>`
+        : `<div style="position:relative;background:#F3F4F6;">
+             <img src="${b64}" style="width:100%;height:auto;max-height:280px;object-fit:cover;display:block;">
+             <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.6),transparent);display:flex;align-items:flex-end;padding:1rem;">
+               <div style="color:white;font-size:0.75rem;font-weight:700;">${nome}</div>
+             </div>
+           </div>
+           <div style="padding:0.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+             <button onclick="openEvidPreview('${b64}','${nome}')"
+               style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;display:flex;align-items:center;gap:0.4rem;justify-content:center;">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+               Visualizar
+             </button>
+             <button onclick="document.getElementById('bop-foto-input-${key}').click()"
+               style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#374151;display:flex;align-items:center;gap:0.4rem;justify-content:center;">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+               Trocar arquivo
+             </button>
+             <button onclick="bopRemoveEvidencia('${key}')"
+               style="font-family:'Barlow',sans-serif;font-size:0.78rem;font-weight:700;padding:7px 12px;border-radius:6px;border:1.5px solid #FCA5A5;background:#FEF2F2;cursor:pointer;color:#DC2626;display:flex;align-items:center;gap:0.4rem;justify-content:center;">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+               Remover arquivo
+             </button>
+           </div>`;
+    }
+  }
+
+  function bopRemoveEvidencia(key) {
+    document.getElementById(`bop-foto-b64-${key}`).value  = '';
+    document.getElementById(`bop-foto-type-${key}`).value = '';
+    document.getElementById(`bop-foto-nome-${key}`).value = '';
+    const container = document.getElementById(`bop-evid-container-${key}`);
+    if (container) {
+      container.style.borderColor = '#BFDBFE';
+      container.innerHTML = `<div onclick="document.getElementById('bop-foto-input-${key}').click()" style="padding:2.5rem 1.5rem;text-align:center;cursor:pointer;">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;opacity:0.5;">📷</div>
+        <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.25rem;">Arraste ou clique para anexar</div>
+        <div style="font-size:0.72rem;color:#9CA3AF;">JPG, PNG, PDF (máx 5MB)</div>
+      </div>`;
+    }
+  }
+
+  function openEvidPreview(base64, nome) {
+    const modal   = document.getElementById('evidPreviewModal');
+    const contentEl = document.getElementById('evidPreviewContent');
+    const download = document.getElementById('evidPreviewDownload');
+    if (!modal || !contentEl) return;
+    if (nome && nome.toLowerCase().endsWith('.pdf')) {
+      contentEl.innerHTML = '<iframe src="'+base64+'" style="width:100%;height:70vh;border:none;border-radius:8px;"></iframe>';
+    } else {
+      contentEl.innerHTML = '<img src="'+base64+'" style="max-width:100%;max-height:80vh;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.3);">';
+    }
+    if (download) { download.href = base64; download.download = nome || 'evidencia'; }
+    modal.style.display = 'flex';
+  }
+
+  // Alias usado no painel de análise
+  function bopOpenPreview(key) {
+    const b64  = document.getElementById('bop-foto-b64-'+key)?.value || '';
+    const nome = document.getElementById('bop-foto-nome-'+key)?.value || 'evidencia.jpg';
+    if (b64) openEvidPreview(b64, nome);
+  }
+
+  function bopHandleFotoDrop(key, event) {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) bopCompressImage(file, (b64,type,nome) => bopSetFotoPreview(key,b64,type,nome));
+  }
+
+  function bopHandleFotoFile(key, event) {
+    const file = event.target.files[0];
+    if (file) bopCompressImage(file, (b64,type,nome) => bopSetFotoPreview(key,b64,type,nome));
+    event.target.value = '';
+  }
+
+  function toggleBopAnnotation(key) {
+    const annotRow = document.getElementById(`bop-annot-${key}`);
+    if (!annotRow) return;
+    if (annotRow.style.display !== 'none') {
+      annotRow.style.display = 'none';
+    } else {
+      const sup    = _bopSup[key]    || {};
+      const desvio = _bopDesvios[key] || {};
+      annotRow.innerHTML = `<td colspan="8" style="padding:0;background:#FAFBFF;border-bottom:2px solid #BFDBFE;">${buildBopAnnotationPanel(key, sup, desvio)}</td>`;
+      annotRow.style.display = 'table-row';
+    }
+  }
+
+  async function saveBopAnnotation(key) {
+    const statusEl = document.getElementById(`bop-save-status-${key}`);
+    const resp     = (document.getElementById(`bop-resp-${key}`)?.value         || '').trim();
+    const just     = (document.getElementById(`bop-just-${key}`)?.value  || '').trim();
+    const fotoB64  =  document.getElementById(`bop-foto-b64-${key}`)?.value  || '';
+    const fotoType =  document.getElementById(`bop-foto-type-${key}`)?.value || '';
+    const fotoNome =  document.getElementById(`bop-foto-nome-${key}`)?.value || '';
+
+    // Detectar classificação pela cor das bordas dos botões
+    const procBtn = document.getElementById(`bop-cls-proc-${key}`);
+    const impBtn  = document.getElementById(`bop-cls-imp-${key}`);
+    let clas = _bopSup[key]?.__tempClas || _bopSup[key]?.classificacao || '';
+    if (!clas) {
+      if (procBtn?.style.borderColor === '#059669' || procBtn?.style.cssText.includes('#059669')) clas = 'procedente';
+      if (impBtn?.style.borderColor  === '#DC2626' || impBtn?.style.cssText.includes('#DC2626'))  clas = 'improcedente';
+    }
+
+    const erros = [];
+    if (!just)  erros.push('Justificativa');
+    if (!clas)  erros.push('Classificação');
+    if (!fotoB64) erros.push('Evidência (foto)');
+    if (clas === 'procedente') {
+      if (!document.getElementById(`bop-tratativa-${key}`)?.value) erros.push('Tratativa Aplicada');
+      if (!(document.getElementById(`bop-acaotomada-${key}`)?.value||'').trim()) erros.push('Ação Tomada');
+    }
+    if (clas === 'improcedente') {
+      if (!(document.getElementById(`bop-relato-${key}`)?.value||'').trim()) erros.push('Relato da Supervisão');
+      const ctSim = document.getElementById(`bop-ct-sim-${key}`);
+      if (ctSim?.style.borderColor==='#DC2626' || ctSim?.style.cssText.includes('#DC2626')) {
+        if (!document.getElementById(`bop-setor-${key}`)?.value) erros.push('Setor');
+        if (!(document.getElementById(`bop-desc-trat-${key}`)?.value||'').trim()) erros.push('Descrição da tratativa');
+      }
+    }
+
+    if (erros.length) {
+      if (statusEl) { statusEl.style.color='#DC2626'; statusEl.textContent=`⚠️ Preencha: ${erros.join(' · ')}`; }
+      return;
+    }
+
+    if (statusEl) { statusEl.style.color='#D97706'; statusEl.textContent='⏳ Salvando...'; }
+
+    const ctSim = document.getElementById(`bop-ct-sim-${key}`);
+    const cabeTrat = (ctSim?.style.borderColor==='#DC2626'||ctSim?.style.cssText.includes('#DC2626')) ? 'sim' : 'nao';
+
+    const sup = {
+      responsavel:     resp,
+      justificativa:   just,
+      classificacao:   clas,
+      tratativaAplicada: clas==='procedente' ? (document.getElementById(`bop-tratativa-${key}`)?.value||'') : '',
+      acaoTomada:      clas==='procedente' ? (document.getElementById(`bop-acaotomada-${key}`)?.value||'').trim() : '',
+      relato:          clas==='improcedente' ? (document.getElementById(`bop-relato-${key}`)?.value||'').trim() : '',
+      cabeTratativa:   clas==='improcedente' ? cabeTrat : '',
+      setor:           (clas==='improcedente'&&cabeTrat==='sim') ? (document.getElementById(`bop-setor-${key}`)?.value||'') : '',
+      descTratativa:   (clas==='improcedente'&&cabeTrat==='sim') ? (document.getElementById(`bop-desc-trat-${key}`)?.value||'').trim() : '',
+      evidenciaBase64: fotoB64,
+      evidenciaType:   fotoType,
+      evidenciaNome:   fotoNome,
+      statusAcao:      'resolvido',
+      updatedAt:       new Date().toISOString(),
+      updatedBy:       getCurrentUserName?.() || 'supervisor',
+    };
+
+    try {
+      const r = await fetch(`${FB_BASEOP_SUPERVISAO}/${key}.json`, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(sup)
+      });
+      if (!r.ok) throw new Error('Firebase error');
+      _bopSup[key] = sup;
+      if (statusEl) { statusEl.style.color='#059669'; statusEl.textContent='✅ Análise salva! Status → Resolvido'; }
+      const rowEl = document.getElementById(`bop-row-${key}`);
+      if (rowEl?.cells[6]) rowEl.cells[6].innerHTML = '<span style="font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#ECFDF5;color:#059669;">✅ Resolvido</span>';
+      updateBopStats();
+      // ✨ Fechar automaticamente o painel após 800ms (tempo para mostrar sucesso)
+      setTimeout(() => { toggleBopAnnotation(key); }, 800);
+    } catch (err) {
+      if (statusEl) { statusEl.style.color='#DC2626'; statusEl.textContent='❌ Erro ao salvar. Tente novamente.'; }
+    }
+  }
+
+  // ── Modal de exclusão ─────────────────────────────────────────────
+  let _bopDeleteKey = null;
+
+  function confirmDeleteBopDesvio(key) {
+    if (!isAdmin()) {
+      _showToastAuth('❌ Apenas administradores podem excluir registros');
+      return;
+    }
+    _bopDeleteKey = key;
+    const modal = document.getElementById('bopDeleteModal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeBopDeleteModal() {
+    const modal = document.getElementById('bopDeleteModal');
+    if (modal) modal.style.display = 'none';
+    _bopDeleteKey = null;
+  }
+
+  async function executeBopDelete() {
+    if (!_bopDeleteKey || !isAdmin()) {
+      closeBopDeleteModal();
+      return;
+    }
+    const key = _bopDeleteKey;
+    try {
+      // Deletar de ambas as bases Firebase
+      await Promise.all([
+        fetch(`${FB_BASEOP_DESVIOS}/${key}.json`, { method: 'DELETE' }),
+        fetch(`${FB_BASEOP_SUPERVISAO}/${key}.json`, { method: 'DELETE' })
+      ]);
+      
+      // Remover do cache local
+      delete _bopDesvios[key];
+      delete _bopSup[key];
+      
+      // Atualizar UI
+      renderBaseOperacional();
+      updateBopStats();
+      populateBopFilters();
+      
+      closeBopDeleteModal();
+      _showToast('✅ Registro excluído com sucesso', '#059669');
+    } catch (err) {
+      _showToast('❌ Erro ao excluir registro', '#DC2626');
+      closeBopDeleteModal();
+    }
+  }
+
+  // Helper — pegar nome do usuário atual
+  function getCurrentUserName() {
+    try { return JSON.parse(localStorage.getItem('currentUser') || '{}').nome || 'supervisor'; } catch { return 'supervisor'; }
+  }
+
   function switchTab(tab) {
+    // Guard: usuário comum só acessa Início e Tempo Real
+    const _restricted = ['form','notify','acao','dashboard','config'];
+    if (!isAdmin() && _restricted.includes(tab)) {
+      tab = 'temporeal';
+    }
+
     // Prevent non-admin users from accessing config tab
     if (tab === 'config' && !isAdmin()) {
       _showToastAuth('❌ Acesso restrito ao administrador');
@@ -7215,6 +7866,7 @@ if (!loggedInUser) {
 
     _currentTab = tab;
     document.getElementById('tabInicio').style.display      = tab === 'inicio'    ? 'block' : 'none';
+    document.getElementById('tabTempoReal').style.display   = tab === 'temporeal' ? 'block' : 'none';
     document.getElementById('tabForm').style.display        = tab === 'form'      ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'    ? 'block' : 'none';
     document.getElementById('tabAcao').style.display        = tab === 'acao'      ? 'block' : 'none';
@@ -7223,7 +7875,7 @@ if (!loggedInUser) {
       dashTab.style.display = tab === 'dashboard' ? 'block' : 'none';
     }
     document.getElementById('tabConfig').style.display      = tab === 'config'    ? 'block' : 'none';
-    ['Inicio','Form','Notify','Acao','Dashboard','Config'].forEach(t => {
+    ['Inicio','TempoReal','Form','Notify','Acao','Dashboard','Config'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
@@ -7253,6 +7905,7 @@ if (!loggedInUser) {
     }
     if (tab === 'acao')      { if (_acaoSubAtiva === 'pendente') renderAcaoPendentes(); else renderAcoesRespondidas(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'dashboard') { updateConfigButtonVisibility(); switchDashSub(_dashSub); }
+    if (tab === 'temporeal') { loadBaseOperacional(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -8547,6 +9200,7 @@ entryLines.join('\n\n') + '\n' +
     renderCfgContacts();
     renderCfgRespAcao();
     renderCfgRespOc();
+    renderCfgSetores();
     renderCfgTiposAcao();
     renderCfgJustificativas();
     // Gestão de usuários — recarrega do Firebase antes de renderizar
@@ -9699,8 +10353,9 @@ entryLines.join('\n\n') + '\n' +
     
     // ── APLICAR CONTROLE DE ACESSO POR PERFIL ──
     applyAccessControl();
-    
-    switchTab('inicio');
+
+    // Aba inicial: admin → Início, usuário → Tempo Real
+    switchTab(isAdmin() ? 'inicio' : 'temporeal');
   } catch(e) {
     console.error('Erro na inicialização:', e);
     try { switchTab('inicio'); } catch(e2) {}
@@ -9857,11 +10512,7 @@ entryLines.join('\n\n') + '\n' +
   }
 
   function updateConfigButtonVisibility() {
-    const btn = document.getElementById('tabBtnConfig');
-    if (!btn) return;
-    const isAdminUser = isAdmin();
-    btn.style.display = isAdminUser ? 'flex' : 'none';
-    btn.style.pointerEvents = isAdminUser ? 'auto' : 'none';
+    applyAccessControl(); // controle completo por perfil
   }
 
   function limparFiltrosReuniao() {
@@ -10717,6 +11368,49 @@ entryLines.join('\n\n') + '\n' +
     const nomes = getRespAcao().filter(n => n !== nome);
     saveRespAcao(nomes);
     renderCfgRespAcao();
+  }
+
+  // ── Setores (Base Operacional) ──────────────────────────────────
+  const SETORES_DEFAULT = ['COD','Planejamento','Programação','Operação','Trânsito','Sistema','RH','Segurança','Outro'];
+
+  function getSetores() {
+    return getCfg(CFG_SETORES_KEY, [...SETORES_DEFAULT]);
+  }
+
+  function saveSetores(arr) {
+    saveCfg(CFG_SETORES_KEY, [...new Set(arr)]);
+  }
+
+  function renderCfgSetores() {
+    const list = document.getElementById('cfgSetorList');
+    if (!list) return;
+    const setores = getSetores();
+    list.innerHTML = '';
+    setores.forEach(s => {
+      const tag = document.createElement('span');
+      tag.className = 'cfg-tag';
+      tag.innerHTML = s + `<button onclick="cfgRemoveSetor('${s.replace(/'/g,"\\'")}')">✕</button>`;
+      list.appendChild(tag);
+    });
+  }
+
+  function cfgAddSetor() {
+    const inp = document.getElementById('cfgSetorInput');
+    const nome = inp?.value.trim();
+    if (!nome) return;
+    const setores = getSetores();
+    if (!setores.map(s => s.toLowerCase()).includes(nome.toLowerCase())) {
+      setores.push(nome);
+      saveSetores(setores);
+      renderCfgSetores();
+    }
+    if (inp) inp.value = '';
+  }
+
+  function cfgRemoveSetor(nome) {
+    const setores = getSetores().filter(s => s !== nome);
+    saveSetores(setores);
+    renderCfgSetores();
   }
 
   const PRAZO_RESPOSTA_DIAS = 2; // Prazo máximo para responder uma ação
@@ -11737,6 +12431,169 @@ entryLines.join('\n\n') + '\n' +
     document.getElementById('totalBar').style.display = 'none';
     entryCounter = 0;
   }
+
+  // ═══════════════════════════════════════════════════════
+  // 📊 EXPORTAÇÃO DE TRATATIVAS PARA EXCEL
+  // ═══════════════════════════════════════════════════════
+
+  function abrirExportModal() {
+    const modal = document.getElementById('exportModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      document.getElementById('export-todos').checked = true;
+    }
+  }
+
+  function closeExportModal() {
+    const modal = document.getElementById('exportModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function executarExportacao() {
+    try {
+      const filtro = document.querySelector('input[name="export-filter"]:checked')?.value || 'todos';
+      console.log('[EXPORTAÇÃO] Filtro selecionado:', filtro);
+      
+      const dados = coletarDadosTratativas(filtro);
+      console.log('[EXPORTAÇÃO] Dados coletados:', dados.length, 'registros');
+      
+      if (dados.length === 0) {
+        showCopyToast('⚠️ Nenhum registro encontrado para exportar.');
+        return;
+      }
+      
+      gerarExcelTratativas(dados);
+      closeExportModal();
+      showCopyToast(`✅ Excel gerado com ${dados.length} registro(s)!`);
+    } catch (erro) {
+      console.error('[EXPORTAÇÃO] Erro:', erro);
+      showCopyToast('❌ Erro ao exportar. Verifique o console.');
+    }
+  }
+
+  function coletarDadosTratativas(filtro) {
+    const linhas = [];
+    
+    try {
+      Object.entries(_bopDesvios).forEach(([key, desvio]) => {
+        const supervisao = _bopSup[key];
+        
+        // Pular se não há supervisão (não foi tratado)
+        if (!supervisao) return;
+        
+        // Aplicar filtro de status
+        const statusAcao = supervisao.statusAcao || 'pendente';
+        if (filtro === 'resolvido' && statusAcao !== 'resolvido') return;
+        if (filtro === 'pendente' && statusAcao !== 'pendente') return;
+        
+        // Mapear valores para formato Excel
+        const decisao = supervisao.classificacao === 'procedente' ? 'Procedente' : 
+                       supervisao.classificacao === 'improcedente' ? 'Improcedente' : '—';
+        
+        const statusSup = statusAcao === 'resolvido' ? 'Resolvido' : 'Pendente';
+        
+        // Formatar data
+        let dataFormatada = '—';
+        if (desvio.dataHoraCaptura) {
+          try {
+            const data = new Date(desvio.dataHoraCaptura);
+            dataFormatada = data.toLocaleString('pt-BR');
+          } catch(e) {
+            dataFormatada = desvio.dataHoraCaptura;
+          }
+        }
+        
+        const linha = {
+          'Equipe': desvio.equipe || '—',
+          'Incidência': desvio.incidencia || '—',
+          'Status': desvio.status || '—',
+          'Ação': desvio.acao || '—',
+          'Tempo Etapa': desvio.tempoEtapa || '—',
+          'Data_Hora_Captura': dataFormatada,
+          'Responsável pela análise': supervisao.responsavel || '—',
+          'Justificativa': supervisao.justificativa || '—',
+          'Decisão': decisao,
+          'Tratativa Aplicada': supervisao.tratativaAplicada || '—',
+          'Ação Tomada': supervisao.acaoTomada || '—',
+          'Status Supervisão': statusSup
+        };
+        
+        linhas.push(linha);
+      });
+    } catch (erro) {
+      console.error('[COLETA] Erro ao coletar dados:', erro);
+    }
+    
+    // Ordenar por Data_Hora_Captura DESC (mais recentes primeiro)
+    try {
+      linhas.sort((a, b) => {
+        const dataA = new Date(a['Data_Hora_Captura']);
+        const dataB = new Date(b['Data_Hora_Captura']);
+        return dataB - dataA;
+      });
+    } catch (e) {
+      console.warn('[ORDENAÇÃO] Erro ao ordenar, mantendo ordem atual');
+    }
+    
+    return linhas;
+  }
+
+  function gerarExcelTratativas(dados) {
+    try {
+      console.log('[EXCEL] Iniciando geração...');
+      
+      if (!window.XLSX) {
+        throw new Error('SheetJS não carregou. Verifique conexão com CDN.');
+      }
+      
+      // Criar worksheet
+      const ws = XLSX.utils.json_to_sheet(dados);
+      console.log('[EXCEL] Worksheet criado');
+      
+      // Ajustar largura das colunas
+      ws['!cols'] = [
+        { wch: 12 },  // Equipe
+        { wch: 15 },  // Incidência
+        { wch: 12 },  // Status
+        { wch: 15 },  // Ação
+        { wch: 12 },  // Tempo Etapa
+        { wch: 18 },  // Data_Hora_Captura
+        { wch: 18 },  // Responsável pela análise
+        { wch: 30 },  // Justificativa
+        { wch: 12 },  // Decisão
+        { wch: 20 },  // Tratativa Aplicada
+        { wch: 25 },  // Ação Tomada
+        { wch: 15 }   // Status Supervisão
+      ];
+      
+      // Ativar filtros automáticos
+      if (ws['!ref']) {
+        ws['!autofilter'] = { ref: ws['!ref'] };
+      }
+      
+      // Criar workbook e adicionar worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Tratativas');
+      console.log('[EXCEL] Workbook criado');
+      
+      // Gerar nome do arquivo com data
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, '0');
+      const dia = String(agora.getDate()).padStart(2, '0');
+      const nomeArquivo = `tratativas_tempo_real_${ano}-${mes}-${dia}.xlsx`;
+      
+      console.log('[EXCEL] Nome do arquivo:', nomeArquivo);
+      
+      // Fazer download
+      XLSX.writeFile(wb, nomeArquivo);
+      console.log('[EXCEL] Download iniciado com sucesso');
+      
+    } catch (erro) {
+      console.error('[EXCEL] Erro ao gerar:', erro);
+      throw erro;
+    }
+  }
 </script>
 
 <!-- ── MODAL PREVIEW EVIDÊNCIA ── -->
@@ -11752,5 +12609,76 @@ entryLines.join('\n\n') + '\n' +
     <div id="evidPreviewContent" style="overflow:auto;max-height:80vh;padding:1rem;background:#f3f4f6;display:flex;align-items:center;justify-content:center;min-width:300px;min-height:200px;"></div>
   </div>
 </div>
+
+<!-- Modal: Confirmação de Exclusão (Tempo Real) -->
+<div id="bopDeleteModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;padding:1.5rem;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:1.1rem;font-weight:800;color:#DC2626;margin-bottom:0.75rem;font-family:'Barlow',sans-serif;">⚠️ Confirmar Exclusão</div>
+    <div style="font-size:0.88rem;color:#374151;margin-bottom:1.25rem;line-height:1.5;">
+      Deseja realmente excluir este registro?<br>
+      <strong>Essa ação não poderá ser desfeita.</strong>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button onclick="closeBopDeleteModal()"
+        style="font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:0.6rem 1.25rem;border-radius:8px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#6B7280;">
+        Cancelar
+      </button>
+      <button onclick="executeBopDelete()"
+        style="font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:800;padding:0.6rem 1.25rem;border-radius:8px;border:none;background:linear-gradient(135deg,#991B1B,#DC2626);color:white;cursor:pointer;box-shadow:0 3px 10px rgba(220,38,38,0.4);">
+        🗑️ Excluir Registro
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Exportar Tratativas -->
+<div id="exportModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;padding:2rem;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:1.3rem;font-weight:800;color:#059669;margin-bottom:0.75rem;font-family:'Barlow',sans-serif;">📊 Exportar Tratativas</div>
+    <div style="font-size:0.85rem;color:#9CA3AF;margin-bottom:1.5rem;font-weight:500;">Selecione quais registros exportar:</div>
+    
+    <div style="margin-bottom:2rem;display:flex;flex-direction:column;gap:1.2rem;">
+      
+      <!-- TODOS OS REGISTROS -->
+      <label style="display:flex;align-items:flex-start;gap:1rem;cursor:pointer;padding:0;">
+        <input type="radio" name="export-filter" id="export-todos" value="todos" checked style="cursor:pointer;margin-top:2px;accent-color:#6B7280;width:20px;height:20px;flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-weight:800;color:#1E3A5F;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.02em;">Todos os registros</div>
+          <div style="font-size:0.75rem;color:#9CA3AF;margin-top:2px;font-weight:500;">Exporta todos os tratadas/respondidas</div>
+        </div>
+      </label>
+      
+      <!-- APENAS RESOLVIDOS -->
+      <label style="display:flex;align-items:flex-start;gap:1rem;cursor:pointer;padding:0;">
+        <input type="radio" name="export-filter" id="export-resol" value="resolvido" style="cursor:pointer;margin-top:2px;accent-color:#10B981;width:20px;height:20px;flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-weight:800;color:#059669;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.02em;">✅ Apenas Resolvidos</div>
+          <div style="font-size:0.75rem;color:#9CA3AF;margin-top:2px;font-weight:500;">Somente status "Resolvido"</div>
+        </div>
+      </label>
+      
+      <!-- APENAS PENDENTES -->
+      <label style="display:flex;align-items:flex-start;gap:1rem;cursor:pointer;padding:0;">
+        <input type="radio" name="export-filter" id="export-pend" value="pendente" style="cursor:pointer;margin-top:2px;accent-color:#F59E0B;width:20px;height:20px;flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-weight:800;color:#D97706;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.02em;">⏳ Apenas Pendentes</div>
+          <div style="font-size:0.75rem;color:#9CA3AF;margin-top:2px;font-weight:500;">Somente status "Pendente"</div>
+        </div>
+      </label>
+    </div>
+    
+    <div style="display:flex;gap:0.75rem;justify-content:space-between;">
+      <button onclick="closeExportModal()"
+        style="flex:1;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:700;padding:0.75rem 1.25rem;border-radius:8px;border:1.5px solid #E5E7EB;background:white;cursor:pointer;color:#6B7280;transition:all 0.2s;margin-right:0.5rem;">
+        Cancelar
+      </button>
+      <button onclick="executarExportacao()"
+        style="flex:1;font-family:'Barlow',sans-serif;font-size:0.85rem;font-weight:800;padding:0.75rem 1.25rem;border-radius:8px;border:none;background:linear-gradient(135deg,#059669,#10B981);color:white;cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,0.3);transition:all 0.2s;">
+        📥 Exportar Excel
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
