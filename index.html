@@ -61,7 +61,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <style>
   :root {
     --green: #00843D;
@@ -12452,146 +12451,115 @@ entryLines.join('\n\n') + '\n' +
   function executarExportacao() {
     try {
       const filtro = document.querySelector('input[name="export-filter"]:checked')?.value || 'todos';
-      console.log('[EXPORTAÇÃO] Filtro selecionado:', filtro);
       
-      const dados = coletarDadosTratativas(filtro);
-      console.log('[EXPORTAÇÃO] Dados coletados:', dados.length, 'registros');
+      // Coletar dados
+      const dados = [];
+      
+      for (const key in _bopDesvios) {
+        const dev = _bopDesvios[key];
+        const sup = _bopSup[key];
+        
+        if (!sup) continue;
+        
+        const status = sup.statusAcao || 'pendente';
+        if (filtro === 'resolvido' && status !== 'resolvido') continue;
+        if (filtro === 'pendente' && status !== 'pendente') continue;
+        
+        dados.push({
+          equipe: dev.equipe || '',
+          incidencia: dev.incidencia || '',
+          status: dev.status || '',
+          acao: dev.acao || '',
+          tempo: dev.tempoEtapa || '',
+          data: dev.dataHoraCaptura ? new Date(dev.dataHoraCaptura).toLocaleString('pt-BR') : '',
+          responsavel: sup.responsavel || '',
+          justificativa: sup.justificativa || '',
+          decisao: sup.classificacao === 'procedente' ? 'Procedente' : sup.classificacao === 'improcedente' ? 'Improcedente' : '',
+          tratativa: sup.tratativaAplicada || '',
+          acao_tomada: sup.acaoTomada || '',
+          status_sup: status === 'resolvido' ? 'Resolvido' : 'Pendente'
+        });
+      }
       
       if (dados.length === 0) {
-        showCopyToast('⚠️ Nenhum registro encontrado para exportar.');
+        showCopyToast('⚠️ Nenhum registro para exportar');
         return;
       }
       
-      gerarExcelTratativas(dados);
+      // Gerar HTML Table
+      let html = `<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background-color: #059669; color: white; padding: 10px; text-align: left; border: 1px solid #ccc; font-weight: bold; }
+    td { padding: 8px; border: 1px solid #ccc; }
+    tr:nth-child(even) { background-color: #f9fafb; }
+  </style>
+</head>
+<body>
+<table>
+  <thead>
+    <tr>
+      <th>Equipe</th>
+      <th>Incidência</th>
+      <th>Status</th>
+      <th>Ação</th>
+      <th>Tempo Etapa</th>
+      <th>Data/Hora</th>
+      <th>Responsável</th>
+      <th>Justificativa</th>
+      <th>Decisão</th>
+      <th>Tratativa</th>
+      <th>Ação Tomada</th>
+      <th>Status Supervisão</th>
+    </tr>
+  </thead>
+  <tbody>`;
+      
+      dados.forEach(row => {
+        html += `<tr>
+      <td>${row.equipe}</td>
+      <td>${row.incidencia}</td>
+      <td>${row.status}</td>
+      <td>${row.acao}</td>
+      <td>${row.tempo}</td>
+      <td>${row.data}</td>
+      <td>${row.responsavel}</td>
+      <td>${row.justificativa}</td>
+      <td>${row.decisao}</td>
+      <td>${row.tratativa}</td>
+      <td>${row.acao_tomada}</td>
+      <td>${row.status_sup}</td>
+    </tr>`;
+      });
+      
+      html += `</tbody>
+</table>
+</body>
+</html>`;
+      
+      // Criar blob e download
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      const data = new Date();
+      const nome = `tratativas_${data.getFullYear()}-${String(data.getMonth()+1).padStart(2,'0')}-${String(data.getDate()).padStart(2,'0')}.xls`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', nome);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
       closeExportModal();
-      showCopyToast(`✅ Excel gerado com ${dados.length} registro(s)!`);
-    } catch (erro) {
-      console.error('[EXPORTAÇÃO] Erro:', erro);
-      showCopyToast('❌ Erro ao exportar. Verifique o console.');
-    }
-  }
-
-  function coletarDadosTratativas(filtro) {
-    const linhas = [];
-    
-    try {
-      Object.entries(_bopDesvios).forEach(([key, desvio]) => {
-        const supervisao = _bopSup[key];
-        
-        // Pular se não há supervisão (não foi tratado)
-        if (!supervisao) return;
-        
-        // Aplicar filtro de status
-        const statusAcao = supervisao.statusAcao || 'pendente';
-        if (filtro === 'resolvido' && statusAcao !== 'resolvido') return;
-        if (filtro === 'pendente' && statusAcao !== 'pendente') return;
-        
-        // Mapear valores para formato Excel
-        const decisao = supervisao.classificacao === 'procedente' ? 'Procedente' : 
-                       supervisao.classificacao === 'improcedente' ? 'Improcedente' : '—';
-        
-        const statusSup = statusAcao === 'resolvido' ? 'Resolvido' : 'Pendente';
-        
-        // Formatar data
-        let dataFormatada = '—';
-        if (desvio.dataHoraCaptura) {
-          try {
-            const data = new Date(desvio.dataHoraCaptura);
-            dataFormatada = data.toLocaleString('pt-BR');
-          } catch(e) {
-            dataFormatada = desvio.dataHoraCaptura;
-          }
-        }
-        
-        const linha = {
-          'Equipe': desvio.equipe || '—',
-          'Incidência': desvio.incidencia || '—',
-          'Status': desvio.status || '—',
-          'Ação': desvio.acao || '—',
-          'Tempo Etapa': desvio.tempoEtapa || '—',
-          'Data_Hora_Captura': dataFormatada,
-          'Responsável pela análise': supervisao.responsavel || '—',
-          'Justificativa': supervisao.justificativa || '—',
-          'Decisão': decisao,
-          'Tratativa Aplicada': supervisao.tratativaAplicada || '—',
-          'Ação Tomada': supervisao.acaoTomada || '—',
-          'Status Supervisão': statusSup
-        };
-        
-        linhas.push(linha);
-      });
-    } catch (erro) {
-      console.error('[COLETA] Erro ao coletar dados:', erro);
-    }
-    
-    // Ordenar por Data_Hora_Captura DESC (mais recentes primeiro)
-    try {
-      linhas.sort((a, b) => {
-        const dataA = new Date(a['Data_Hora_Captura']);
-        const dataB = new Date(b['Data_Hora_Captura']);
-        return dataB - dataA;
-      });
+      showCopyToast(`✅ ${nome} com ${dados.length} registros baixado!`);
+      
     } catch (e) {
-      console.warn('[ORDENAÇÃO] Erro ao ordenar, mantendo ordem atual');
-    }
-    
-    return linhas;
-  }
-
-  function gerarExcelTratativas(dados) {
-    try {
-      console.log('[EXCEL] Iniciando geração...');
-      
-      if (!window.XLSX) {
-        throw new Error('SheetJS não carregou. Verifique conexão com CDN.');
-      }
-      
-      // Criar worksheet
-      const ws = XLSX.utils.json_to_sheet(dados);
-      console.log('[EXCEL] Worksheet criado');
-      
-      // Ajustar largura das colunas
-      ws['!cols'] = [
-        { wch: 12 },  // Equipe
-        { wch: 15 },  // Incidência
-        { wch: 12 },  // Status
-        { wch: 15 },  // Ação
-        { wch: 12 },  // Tempo Etapa
-        { wch: 18 },  // Data_Hora_Captura
-        { wch: 18 },  // Responsável pela análise
-        { wch: 30 },  // Justificativa
-        { wch: 12 },  // Decisão
-        { wch: 20 },  // Tratativa Aplicada
-        { wch: 25 },  // Ação Tomada
-        { wch: 15 }   // Status Supervisão
-      ];
-      
-      // Ativar filtros automáticos
-      if (ws['!ref']) {
-        ws['!autofilter'] = { ref: ws['!ref'] };
-      }
-      
-      // Criar workbook e adicionar worksheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Tratativas');
-      console.log('[EXCEL] Workbook criado');
-      
-      // Gerar nome do arquivo com data
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, '0');
-      const dia = String(agora.getDate()).padStart(2, '0');
-      const nomeArquivo = `tratativas_tempo_real_${ano}-${mes}-${dia}.xlsx`;
-      
-      console.log('[EXCEL] Nome do arquivo:', nomeArquivo);
-      
-      // Fazer download
-      XLSX.writeFile(wb, nomeArquivo);
-      console.log('[EXCEL] Download iniciado com sucesso');
-      
-    } catch (erro) {
-      console.error('[EXCEL] Erro ao gerar:', erro);
-      throw erro;
+      showCopyToast('❌ Erro: ' + e.message);
     }
   }
 </script>
