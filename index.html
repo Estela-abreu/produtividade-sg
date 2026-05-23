@@ -1549,6 +1549,109 @@
   }
   .rota-popup .leaflet-popup-content { margin: 14px 16px !important; }
   .rota-popup .leaflet-popup-tip-container { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); }
+
+  /* ── ANOMALIAS ─────────────────────────────────────────────── */
+  #tabAnomalias{display:none;padding:1.5rem;}
+  .an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:1rem;margin-bottom:1.5rem;}
+  .an-card{background:white;border-radius:12px;padding:1.4rem;box-shadow:0 2px 8px rgba(0,0,0,.08);border-left:4px solid #EF4444;}
+  .an-num{font-size:1.8rem;font-weight:800;color:#1F2937;margin:.4rem 0;}
+  .an-lbl{font-size:.78rem;color:#6B7280;font-weight:700;text-transform:uppercase;}
+  .an-filters{background:white;padding:1.2rem 1.5rem;border-radius:12px;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+  .an-filters>div{display:flex;flex-direction:column;gap:3px;}
+  .an-filters label{font-size:.68rem;font-weight:800;color:#6B7280;text-transform:uppercase;}
+  .an-filters input,.an-filters select{padding:.55rem .7rem;border:1.5px solid #E5E7EB;border-radius:6px;font-size:.83rem;font-family:'Barlow',sans-serif;outline:none;}
+  .an-tbl-wrap{background:white;border-radius:12px;overflow-x:auto;box-shadow:0 4px 12px rgba(0,0,0,.08);}
+  .an-tbl{width:100%;border-collapse:collapse;}
+  .an-tbl th{background:#F3F4F6;padding:.85rem;text-align:left;font-size:.72rem;font-weight:800;color:#6B7280;text-transform:uppercase;border-bottom:2px solid #E5E7EB;white-space:nowrap;}
+  .an-tbl td{padding:.8rem;border-bottom:1px solid #F3F4F6;font-size:.83rem;vertical-align:middle;}
+  .an-tbl tr:hover td{background:#FAFBFC;}
+  .an-badge{display:inline-block;padding:.25rem .6rem;border-radius:20px;font-size:.72rem;font-weight:700;}
+  .an-cr-critica{background:#7C2D12;color:white;}
+  .an-cr-alta{background:#FEE2E2;color:#DC2626;}
+  .an-cr-media{background:#FEF3C7;color:#D97706;}
+  .an-cr-baixa{background:#ECFDF5;color:#10B981;}
+  .an-st-aberta{background:#DBEAFE;color:#1E40AF;}
+  .an-st-tratativa{background:#FEF3C7;color:#92400E;}
+  .an-st-concluida{background:#ECFDF5;color:#065F46;}
+  .an-drawer{position:fixed;right:-520px;top:0;width:480px;height:100vh;background:white;box-shadow:-4px 0 24px rgba(0,0,0,.15);overflow-y:auto;transition:right .3s ease;z-index:99999;}
+  .an-drawer.open{right:0;}
+  .an-drw-hdr{padding:1.25rem 1.5rem;border-bottom:2px solid #E5E7EB;display:flex;justify-content:space-between;align-items:center;}
+  .an-drw-body{padding:1.5rem;}
+  .an-fg{margin-bottom:1.1rem;}
+  .an-fg label{display:block;font-size:.75rem;font-weight:800;color:#374151;margin-bottom:.4rem;text-transform:uppercase;}
+  .an-fg input,.an-fg select,.an-fg textarea{width:100%;padding:.7rem .8rem;border:1.5px solid #E5E7EB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:.85rem;outline:none;}
+  .an-fg select:focus,.an-fg input:focus,.an-fg textarea:focus{border-color:#EF4444;}
+  .an-fg textarea{resize:vertical;min-height:80px;}
+  .an-drw-btns{display:flex;gap:.75rem;margin-top:1.5rem;}
+  .an-drw-btns button{flex:1;padding:.75rem;border:none;border-radius:8px;font-weight:700;font-size:.88rem;cursor:pointer;}
+  .an-btn-save{background:linear-gradient(135deg,#DC2626,#EF4444);color:white;box-shadow:0 4px 12px rgba(220,38,38,.25);}
+  .an-btn-cancel{background:#F3F4F6;color:#6B7280;border:1.5px solid #E5E7EB;}
+
+  .an-inp{width:100%;padding:.7rem .8rem;border:1.5px solid #E5E7EB;border-radius:8px;font-family:'Barlow',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;}
+  .an-inp:focus{border-color:#EF4444;box-shadow:0 0 0 2px rgba(239,68,68,.12);}
+  .an-fg textarea.an-inp{resize:vertical;min-height:80px;}
+
+  /* ── upload evidência ── */
+  #an-upload-label:hover{border-color:#EF4444;background:#FEF2F2;}
+  .an-prev-img{width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid #E5E7EB;cursor:zoom-in;transition:opacity .2s;}
+  .an-prev-img:hover{opacity:.85;}
+  .an-prev-pdf{display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;background:#F3F4F6;border-radius:8px;border:1px solid #E5E7EB;}
+  .an-prev-remove{position:absolute;top:6px;right:6px;background:#DC2626;color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;line-height:24px;text-align:center;}
+  /* lightbox */
+  #an-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;align-items:center;justify-content:center;}
+  #an-lightbox.open{display:flex;}
+  #an-lightbox img{max-width:92vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+  #an-lightbox-close{position:fixed;top:16px;right:20px;background:none;border:none;color:white;font-size:2rem;cursor:pointer;z-index:1000000;}
+
+  /* ── Modal Detalhes Anomalia ── */
+  .an-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99990;align-items:flex-start;justify-content:flex-end;}
+  .an-modal-overlay.open{display:flex;}
+  .an-modal-panel{width:min(620px,96vw);height:100vh;background:white;box-shadow:-6px 0 32px rgba(0,0,0,.18);overflow-y:auto;display:flex;flex-direction:column;}
+  .an-modal-top{padding:1.1rem 1.4rem;border-bottom:2px solid #F3F4F6;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;position:sticky;top:0;background:white;z-index:2;}
+  .an-modal-title{font-size:1.05rem;font-weight:800;color:#111827;flex:1;min-width:120px;}
+  .an-modal-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.5rem .9rem;border-radius:7px;font-size:.8rem;font-weight:700;cursor:pointer;border:none;transition:opacity .15s;}
+  .an-modal-btn:hover{opacity:.85;}
+  .an-modal-btn-dl{background:#1D4ED8;color:white;}
+  .an-modal-btn-pr{background:#F3F4F6;color:#374151;border:1.5px solid #E5E7EB;}
+  .an-modal-btn-cl{background:none;border:none;font-size:1.3rem;color:#6B7280;cursor:pointer;padding:.2rem .4rem;margin-left:.25rem;}
+  .an-modal-body{padding:1.4rem;flex:1;}
+  .an-modal-hero{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;}
+  .an-modal-meta{font-size:.76rem;color:#9CA3AF;margin-left:auto;text-align:right;line-height:1.5;}
+  .an-modal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem;}
+  .an-modal-cell{background:#F9FAFB;border-radius:8px;padding:.7rem .85rem;}
+  .an-modal-cell-label{font-size:.68rem;font-weight:800;color:#9CA3AF;text-transform:uppercase;margin-bottom:.25rem;}
+  .an-modal-cell-val{font-size:.88rem;font-weight:600;color:#111827;}
+  .an-modal-section{margin-bottom:1.1rem;}
+  .an-modal-section-title{font-size:.72rem;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;padding-bottom:.35rem;border-bottom:1px solid #F3F4F6;}
+  .an-modal-section-text{font-size:.88rem;color:#374151;line-height:1.6;}
+  .an-modal-evid{border-radius:10px;overflow:hidden;border:1px solid #E5E7EB;}
+  .an-modal-evid-img{width:100%;max-height:300px;object-fit:contain;background:#F9FAFB;cursor:zoom-in;display:block;}
+  .an-modal-evid-img:hover{opacity:.9;}
+  .an-modal-evid-footer{display:flex;align-items:center;gap:.75rem;padding:.65rem .85rem;background:#F9FAFB;border-top:1px solid #E5E7EB;}
+  .an-modal-evid-name{font-size:.8rem;font-weight:600;color:#374151;flex:1;}
+  .an-modal-evid-info{font-size:.72rem;color:#9CA3AF;}
+  .an-modal-evid-open{font-size:.78rem;font-weight:700;padding:.38rem .75rem;background:white;border:1.5px solid #D1D5DB;border-radius:6px;cursor:pointer;color:#374151;}
+  .an-modal-evid-open:hover{border-color:#EF4444;color:#DC2626;}
+  .an-modal-no-evid{font-size:.83rem;color:#9CA3AF;font-style:italic;padding:.5rem 0;}
+  /* btn Visualizar na tabela */
+  .an-btn-vis{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;background:#F3F4F6;border:1.5px solid #E5E7EB;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;color:#374151;transition:all .15s;}
+  .an-btn-vis:hover{background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8;}
+  .an-btn-del{display:inline-flex;align-items:center;justify-content:center;padding:.35rem .55rem;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:6px;font-size:.82rem;cursor:pointer;color:#DC2626;transition:all .15s;}
+  .an-btn-del:hover{background:#DC2626;border-color:#DC2626;color:white;}
+  /* print */
+  @media print{
+    .an-modal-overlay{display:block!important;position:static;background:none;}
+    .an-modal-panel{width:100%;height:auto;box-shadow:none;}
+    .an-modal-top .an-modal-btn,.an-modal-btn-cl{display:none!important;}
+    body>*:not(.an-modal-overlay){display:none!important;}
+  }
+
+  /* ── badges pendente/resolvido ── */
+  .an-badge-pendente{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .75rem;border-radius:20px;font-size:.78rem;font-weight:700;background:#FEF9C3;color:#854D0E;border:1px solid #FDE047;}
+  .an-badge-resolvido{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .9rem;border-radius:20px;font-size:.8rem;font-weight:800;background:#DCFCE7;color:#166534;border:1.5px solid #86EFAC;}
+  .an-row-resolvida td{opacity:.65;}
+  .an-row-resolvida:hover td{opacity:1;}
+  /* ── FIM ANOMALIAS ──────────────────────────────────────────── */
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -2127,6 +2230,10 @@ if (!loggedInUser) {
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Tempo Real
     </button>
+    <button class="sidebar-item" id="tabBtnAnomalias" onclick="switchTab('anomalias')" style="color:rgba(239,68,68,0.8);">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Anomalias
+    </button>
     <button class="sidebar-item" id="tabBtnForm" onclick="switchTab('form')">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Registro
@@ -2345,6 +2452,140 @@ if (!loggedInUser) {
 
 
 </div><!-- /tabTempoReal -->
+<!-- ── ABA ANOMALIAS ──────────────────────────────────────────── -->
+<div id="tabAnomalias" style="display:none;">
+  <div style="padding:1.5rem;">
+
+    <!-- Cards -->
+    <div class="an-grid">
+      <div class="an-card"><div style="font-size:2.2rem">⚠️</div><div class="an-lbl">Total de Anomalias</div><div class="an-num" id="an-total">0</div><div style="font-size:.72rem;color:#9CA3AF">No período</div></div>
+      <div class="an-card"><div style="font-size:2.2rem">👥</div><div class="an-lbl">Equipes Impactadas</div><div class="an-num" id="an-equipes">0</div><div style="font-size:.72rem;color:#9CA3AF">Com anomalias</div></div>
+      <div class="an-card" style="border-left-color:#7C2D12"><div style="font-size:2.2rem">🔴</div><div class="an-lbl">Críticas</div><div class="an-num" id="an-criticas">0</div><div style="font-size:.72rem;color:#9CA3AF">Atenção urgente</div></div>
+      <div class="an-card"><div style="font-size:2.2rem">👤</div><div class="an-lbl">Top Supervisor</div><div id="an-sup-nome" style="font-size:.92rem;font-weight:700;color:#1F2937;margin:.4rem 0">—</div><div style="font-size:.72rem;color:#9CA3AF" id="an-sup-qtd">0 registros</div></div>
+      <div class="an-card"><div style="font-size:2.2rem">🔄</div><div class="an-lbl">Reincidências</div><div class="an-num" id="an-reinc">0</div><div style="font-size:.72rem;color:#9CA3AF">Detectadas (30d)</div></div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="an-filters">
+      <div><label>De</label><input type="date" id="an-f-ini" onchange="anRender()"></div>
+      <div><label>Até</label><input type="date" id="an-f-fim" onchange="anRender()"></div>
+      <div><label>Supervisor</label><select id="an-f-sup" onchange="anRender()"><option value="">Todos</option></select></div>
+      <div><label>Equipe</label><select id="an-f-eq" onchange="anRender()"><option value="">Todas</option></select></div>
+      <div><label>Tipo</label><select id="an-f-tipo" onchange="anRender()"><option value="">Todos</option></select></div>
+      <div><label>Criticidade</label><select id="an-f-crit" onchange="anRender()"><option value="">Todas</option><option value="baixa">🟢 Baixa</option><option value="média">🟡 Média</option><option value="alta">🔴 Alta</option><option value="crítica">⚫ Crítica</option></select></div>
+      <div><label>Status</label><select id="an-f-st" onchange="anRender()"><option value="">Todos</option><option value="aberta">Aberta</option><option value="tratativa">Em Tratativa</option><option value="concluida">Concluída</option></select></div>
+      <div style="justify-content:flex-end"><button onclick="anResetFiltros()" style="padding:.55rem 1rem;background:#F3F4F6;border:1.5px solid #E5E7EB;border-radius:6px;cursor:pointer;font-weight:700;font-size:.82rem;">✕ Limpar</button></div>
+    </div>
+
+    <!-- Ações -->
+    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <button onclick="anAbrir()" style="padding:.8rem 1.5rem;background:linear-gradient(135deg,#DC2626,#EF4444);color:white;border:none;border-radius:8px;font-weight:700;font-size:.9rem;cursor:pointer;box-shadow:0 4px 12px rgba(220,38,38,.25);">+ Registrar Anomalia</button>
+      <button onclick="anExportar()" style="padding:.8rem 1.5rem;background:white;color:#059669;border:2px solid #059669;border-radius:8px;font-weight:700;font-size:.9rem;cursor:pointer;">📊 Exportar Excel</button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="an-tbl-wrap">
+      <table class="an-tbl">
+        <thead><tr><th>Data</th><th>Equipe</th><th>Colaboradores</th><th>Tipo</th><th>Crit.</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="an-tbody"><tr><td colspan="10" style="text-align:center;padding:2rem;color:#9CA3AF;">Nenhuma anomalia registrada</td></tr></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+<!-- ── DRAWER NOVA ANOMALIA ──────────────────────────────────── -->
+<div id="an-drawer" class="an-drawer">
+  <div class="an-drw-hdr">
+    <span style="font-size:1.05rem;font-weight:800;color:#1F2937">⚠️ Registrar Anomalia</span>
+    <button onclick="anFechar()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6B7280">✕</button>
+  </div>
+  <div class="an-drw-body">
+    <!-- datalists para busca digitável (colaboradores) -->
+    <datalist id="dl-c1"></datalist>
+    <datalist id="dl-c2"></datalist>
+
+    <form id="an-form" onsubmit="anSalvar(event)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem;">
+
+        <div class="an-fg">
+          <label>Supervisor *</label>
+          <select id="an-sup" required class="an-inp"></select>
+        </div>
+        <div class="an-fg">
+          <label>Equipe *</label>
+          <select id="an-eq" required class="an-inp"></select>
+        </div>
+
+        <div class="an-fg">
+          <label>Colaborador 1 *</label>
+          <input list="dl-c1" id="an-c1" placeholder="Digite ou selecione..." autocomplete="off" required class="an-inp">
+        </div>
+        <div class="an-fg">
+          <label>Colaborador 2 <span style="font-weight:400;text-transform:none;font-size:.72rem;color:#9CA3AF">(opcional)</span></label>
+          <input list="dl-c2" id="an-c2" placeholder="Digite ou selecione..." autocomplete="off" class="an-inp">
+        </div>
+
+        <div class="an-fg">
+          <label>Data da Ocorrência *</label>
+          <input type="date" id="an-data" required class="an-inp">
+        </div>
+        <div class="an-fg">
+          <label>Tipo de Anomalia *</label>
+          <select id="an-tipo" required class="an-inp"></select>
+        </div>
+
+        <div class="an-fg" style="grid-column:1/3;">
+          <label>Criticidade *</label>
+          <select id="an-crit" required class="an-inp">
+            <option value="">Selecione</option>
+            <option value="baixa">🟢 Baixa</option>
+            <option value="média">🟡 Média</option>
+            <option value="alta">🔴 Alta</option>
+            <option value="crítica">⚫ Crítica</option>
+          </select>
+        </div>
+
+        <div class="an-fg" style="grid-column:1/3;">
+          <label>Descrição *</label>
+          <textarea id="an-desc" placeholder="Descreva detalhadamente a anomalia..." required class="an-inp"></textarea>
+        </div>
+
+        <div class="an-fg">
+          <label>Ação Aplicada *</label>
+          <select id="an-acao" required class="an-inp"><option value="">Selecione</option></select>
+        </div>
+        <div class="an-fg">
+          <label>Acompanhamento?</label>
+          <select id="an-acomp" class="an-inp"><option value="não">Não</option><option value="sim">Sim</option></select>
+        </div>
+
+        <div class="an-fg" style="grid-column:1/3;">
+          <label>Detalhamento da Ação</label>
+          <textarea id="an-det" placeholder="Detalhe a ação tomada..." class="an-inp"></textarea>
+        </div>
+
+        <!-- Campo de evidência -->
+        <div class="an-fg" style="grid-column:1/3;">
+          <label>Evidência / Anexo <span style="font-weight:400;text-transform:none;font-size:.72rem;color:#9CA3AF">(opcional — JPG, PNG, JPEG, PDF)</span></label>
+          <label id="an-upload-label" style="display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;border:1.5px dashed #D1D5DB;border-radius:8px;cursor:pointer;background:#F9FAFB;transition:border-color .2s;">
+            <span style="font-size:1.3rem;">📎</span>
+            <span id="an-upload-txt" style="font-size:.83rem;color:#6B7280;">Clique para anexar imagem ou PDF</span>
+            <input type="file" id="an-evidencia" accept=".jpg,.jpeg,.png,.pdf" style="display:none;" onchange="anPreviewEvidencia(this)">
+          </label>
+          <div id="an-preview-box" style="display:none;margin-top:.75rem;position:relative;">
+            <!-- preview preenchido via JS -->
+          </div>
+        </div>
+
+      </div>
+      <div class="an-drw-btns">
+        <button type="button" class="an-btn-cancel" onclick="anFechar()">Cancelar</button>
+        <button type="submit" class="an-btn-save">💾 Salvar Anomalia</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 
 
 <div id="tabForm" style="display:none;">
@@ -3103,6 +3344,39 @@ if (!loggedInUser) {
         <button class="cfg-btn-add" onclick="cfgAddJustificativa()">+ Adicionar</button>
       </div>
       <div id="cfgJustificativaList" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+
+  <!-- Seção: Colaboradores (Anomalias) -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">👷 Colaboradores</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">
+        Colaboradores disponíveis nos campos da aba Anomalias.
+      </div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgNewColab" placeholder="Nome do colaborador" class="cfg-input" style="max-width:260px;"
+          onkeydown="if(event.key==='Enter')cfgAddColab()">
+        <button class="cfg-btn-add" onclick="cfgAddColab()">+ Adicionar</button>
+      </div>
+      <div id="cfgColabList" class="cfg-tag-list" style="margin-top:0.75rem;"></div>
+    </div>
+  </div>
+
+  <!-- Seção: Tipos de Anomalia -->
+  <div class="cfg-card">
+    <div class="cfg-card-header">⚠️ Tipos de Anomalia</div>
+    <div class="cfg-card-body">
+      <div style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;">
+        Tipos disponíveis no campo "Tipo de Anomalia" da aba Anomalias.
+      </div>
+      <div class="cfg-add-row">
+        <input type="text" id="cfgNewTipoAnom" placeholder="Ex: Atraso, Segurança..." class="cfg-input" style="max-width:260px;"
+          onkeydown="if(event.key==='Enter')cfgAddTipoAnom()">
+        <button class="cfg-btn-add" onclick="cfgAddTipoAnom()">+ Adicionar</button>
+      </div>
+      <div id="cfgTipoAnomList" class="cfg-tag-list" style="margin-top:0.75rem;"></div>
     </div>
   </div>
 
@@ -7267,7 +7541,13 @@ if (!loggedInUser) {
       });
     }
 
-    rows.sort((a, b) => (b.d.dataHoraCaptura || '').localeCompare(a.d.dataHoraCaptura || ''));
+    rows.sort((a, b) => {
+      // Pendentes sempre primeiro; dentro de cada grupo, mais recente primeiro
+      const aRes = a.sup?.statusAcao === 'resolvido' ? 1 : 0;
+      const bRes = b.sup?.statusAcao === 'resolvido' ? 1 : 0;
+      if (aRes !== bRes) return aRes - bRes;
+      return (b.d.dataHoraCaptura || '').localeCompare(a.d.dataHoraCaptura || '');
+    });
 
     if (!rows.length) {
       container.innerHTML = '<div style="padding:3rem;text-align:center;color:#9CA3AF;font-size:0.85rem;">Nenhum desvio encontrado com os filtros aplicados.</div>';
@@ -7282,9 +7562,14 @@ if (!loggedInUser) {
 
     const supBadge = (sup) => {
       const s = sup.statusAcao || 'pendente';
-      const map = { pendente: ['#D97706','#FFFBEB','⏳ Pendente'], em_andamento: ['#1E4DA1','#EFF6FF','🔄 Em andamento'], resolvido: ['#059669','#ECFDF5','✅ Resolvido'] };
-      const [color, bg, label] = map[s] || map.pendente;
-      return `<span style="font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;background:${bg};color:${color};">${label}</span>`;
+      if (s === 'resolvido') {
+        const quem = sup.responsavel || '';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:800;padding:4px 10px;border-radius:99px;background:#DCFCE7;color:#166534;border:1.5px solid #86EFAC;white-space:nowrap;">✔ Resolvido${quem ? ' por <strong style=\'margin-left:2px\'>' + quem + '</strong>' : ''}</span>`;
+      }
+      if (s === 'em_andamento') {
+        return `<span style="font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#EFF6FF;color:#1E4DA1;">🔄 Em andamento</span>`;
+      }
+      return `<span style="font-size:0.75rem;font-weight:800;padding:4px 10px;border-radius:99px;background:#FEF9C3;color:#854D0E;border:1px solid #FDE047;">🕐 Pendente</span>`;
     };
 
     container.innerHTML = `
@@ -7816,7 +8101,10 @@ if (!loggedInUser) {
       _bopSup[key] = sup;
       if (statusEl) { statusEl.style.color='#059669'; statusEl.textContent='✅ Análise salva! Status → Resolvido'; }
       const rowEl = document.getElementById(`bop-row-${key}`);
-      if (rowEl?.cells[6]) rowEl.cells[6].innerHTML = '<span style="font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#ECFDF5;color:#059669;">✅ Resolvido</span>';
+      if (rowEl?.cells[7]) {
+        const quem = sup.responsavel || '';
+        rowEl.cells[7].innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:800;padding:4px 10px;border-radius:99px;background:#DCFCE7;color:#166534;border:1.5px solid #86EFAC;white-space:nowrap;">✔ Resolvido${quem ? ' por <strong style="margin-left:2px">'+quem+'</strong>' : ''}</span>`;
+      }
       updateBopStats();
       // ✨ Fechar automaticamente o painel após 800ms (tempo para mostrar sucesso)
       setTimeout(() => { toggleBopAnnotation(key); }, 800);
@@ -7898,6 +8186,8 @@ if (!loggedInUser) {
     _currentTab = tab;
     document.getElementById('tabInicio').style.display      = tab === 'inicio'    ? 'block' : 'none';
     document.getElementById('tabTempoReal').style.display   = tab === 'temporeal' ? 'block' : 'none';
+    const anTab=document.getElementById('tabAnomalias'); if(anTab) anTab.style.display=tab==='anomalias'?'block':'none';
+    if (tab === 'anomalias' && typeof anPopulate === 'function') { anPopulate(); if(typeof anFetch==='function') anFetch(); }
     document.getElementById('tabForm').style.display        = tab === 'form'      ? 'block' : 'none';
     document.getElementById('tabNotify').style.display      = tab === 'notify'    ? 'block' : 'none';
     document.getElementById('tabAcao').style.display        = tab === 'acao'      ? 'block' : 'none';
@@ -8685,7 +8975,10 @@ if (!loggedInUser) {
           }, 800);
         };
       \x3C/script>
-    </body></html>`);
+    
+
+
+</body></html>`);
     win.document.close();
 
     if (btn) {
@@ -12207,7 +12500,10 @@ entryLines.join('\n\n') + '\n' +
       img{max-width:100%;max-height:100vh;object-fit:contain;}
       iframe{width:100vw;height:100vh;border:none;}</style></head><body>
       ${isImg ? `<img src="${dataUrl}" alt="${nome}">` : `<iframe src="${dataUrl}"></iframe>`}
-    </body></html>`);
+    
+
+
+</body></html>`);
     w.document.close();
   }
 
@@ -12572,6 +12868,9 @@ entryLines.join('\n\n') + '\n' +
       
       html += `</tbody>
 </table>
+
+
+
 </body>
 </html>`;
       
@@ -12597,6 +12896,727 @@ entryLines.join('\n\n') + '\n' +
       showCopyToast('❌ Erro: ' + e.message);
     }
   }
+
+
+
+
+
+
+
+// ── ANOMALIAS ─────────────────────────────────────────────────────
+(function() {
+  'use strict';
+
+  /* ─── Chaves de configuração ─── */
+  var CFG_COLAB_KEY     = 'enel_cfg_colaboradores';
+  var CFG_TIPO_ANOM_KEY = 'enel_cfg_tipos_anomalia';
+
+  /* ─── Defaults ─── */
+  var TIPOS_DEFAULT = ['Atraso','Falta de equipamento','Conduta ética','Segurança','Uso incorreto de EPI','Ausência operacional','Desvio de procedimento','Baixa produtividade','Retorno indevido à base','Falta de comunicação','Improdutividade','Veículo inadequado','Organização','Documentação','Outro'];
+  var ACOES_DEFAULT = ['Feedback aplicado','Orientação operacional','Advertência verbal','Reforço de segurança','Treinamento','Sem ação','Encaminhado ao gestor','Encaminhado ao RH'];
+
+  /* ─── Getters/Setters de config (usa getCfg/saveCfg globais) ─── */
+  function getColabs()       { return getCfg(CFG_COLAB_KEY,     []); }
+  function saveColabs(arr)   { saveCfg(CFG_COLAB_KEY, arr.filter(Boolean).sort()); renderCfgColabs(); }
+  function getTiposAnom()    { return getCfg(CFG_TIPO_ANOM_KEY, TIPOS_DEFAULT.slice()); }
+  function saveTiposAnom(a)  { saveCfg(CFG_TIPO_ANOM_KEY, a.filter(Boolean).sort()); renderCfgTiposAnom(); }
+
+  /* ─── Renderizar seção Colaboradores na Config ─── */
+  window.renderCfgColabs = function() {
+    var list = document.getElementById('cfgColabList');
+    if (!list) return;
+    var colabs = getColabs();
+    list.innerHTML = '';
+    colabs.forEach(function(n) {
+      var tag = document.createElement('span');
+      tag.className = 'cfg-tag';
+      tag.innerHTML = n + '<button onclick="cfgRemoveColab(\''+n.replace(/'/g,"\\'")+'\')">✕</button>';
+      list.appendChild(tag);
+    });
+  };
+
+  window.cfgAddColab = function() {
+    var inp = document.getElementById('cfgNewColab');
+    if (!inp) return;
+    var v = inp.value.trim();
+    if (!v) return;
+    var arr = getColabs();
+    if (arr.indexOf(v) === -1) arr.push(v);
+    saveColabs(arr);
+    inp.value = '';
+    anPopulate();
+  };
+
+  window.cfgRemoveColab = function(n) {
+    var arr = getColabs().filter(function(x){ return x !== n; });
+    saveColabs(arr);
+    anPopulate();
+  };
+
+  /* ─── Renderizar seção Tipos de Anomalia na Config ─── */
+  window.renderCfgTiposAnom = function() {
+    var list = document.getElementById('cfgTipoAnomList');
+    if (!list) return;
+    var tipos = getTiposAnom();
+    list.innerHTML = '';
+    tipos.forEach(function(t) {
+      var tag = document.createElement('span');
+      tag.className = 'cfg-tag';
+      tag.innerHTML = t + '<button onclick="cfgRemoveTipoAnom(\''+t.replace(/'/g,"\\'")+'\')">✕</button>';
+      list.appendChild(tag);
+    });
+  };
+
+  window.cfgAddTipoAnom = function() {
+    var inp = document.getElementById('cfgNewTipoAnom');
+    if (!inp) return;
+    var v = inp.value.trim();
+    if (!v) return;
+    var arr = getTiposAnom();
+    if (arr.indexOf(v) === -1) arr.push(v);
+    saveTiposAnom(arr);
+    inp.value = '';
+    anPopulate();
+  };
+
+  window.cfgRemoveTipoAnom = function(t) {
+    var arr = getTiposAnom().filter(function(x){ return x !== t; });
+    saveTiposAnom(arr);
+    anPopulate();
+  };
+
+  /* ─── Estado local das anomalias ─── */
+  var _AN = {};
+
+  /* ─── Polling Firebase ─── */
+  function anFetch() {
+    return fetch(FB_URL + '/anomalias.json')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d && typeof d==='object'){ _AN=d; anDash(); window.anRender(); } })
+      .catch(function(e){ console.warn('[AN]',e); });
+  }
+
+  /* ─── Init ─── */
+  window.anInit = function() {
+    var el = document.getElementById('an-data');
+    if (el) el.value = new Date().toISOString().split('T')[0];
+    anPopulate();
+    renderCfgColabs();
+    renderCfgTiposAnom();
+    anFetch();
+    setInterval(anFetch, 4000);
+    /* delegação de clique na tabela */
+    var tbody = document.getElementById('an-tbody');
+    if (tbody) {
+      tbody.addEventListener('click', function(e) {
+        var btnVis = e.target.closest('[data-anid]');
+        if (btnVis) window.anVisualizar(btnVis.getAttribute('data-anid'));
+        var btnDel = e.target.closest('[data-delid]');
+        if (btnDel) window.anExcluir(btnDel.getAttribute('data-delid'));
+      });
+    }
+  };
+
+  /* ─── Popular datalists e select de ação ─── */
+  function fillDatalist(id, arr) {
+    var dl = document.getElementById(id);
+    if (!dl) return;
+    dl.innerHTML = arr.map(function(v){ return '<option value="'+v+'">'; }).join('');
+  }
+
+  function fillSelect(id, arr, blank) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var cur = el.value;
+    el.innerHTML = '<option value="">'+(blank||'Selecione')+'</option>' +
+      arr.map(function(v){ return '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+v+'</option>'; }).join('');
+  }
+
+  function anPopulate() {
+    var sups   = (typeof getRespAcao === 'function') ? getRespAcao() : [];
+    var eqs    = (typeof getEquipes  === 'function') ? getEquipes()  : [];
+    var colabs = getColabs();
+    var tipos  = getTiposAnom();
+
+    /* selects do formulário */
+    fillSelect('an-sup',  sups,  'Selecione o supervisor');
+    fillSelect('an-eq',   eqs,   'Selecione a equipe');
+    fillSelect('an-tipo', tipos, 'Selecione o tipo');
+    fillSelect('an-acao', ACOES_DEFAULT, 'Selecione a ação');
+
+    /* datalists (busca livre para colaboradores) */
+    fillDatalist('dl-c1', colabs);
+    fillDatalist('dl-c2', colabs);
+
+    /* filtros da tabela */
+    fillSelectFilter('an-f-sup',  sups,  'Todos');
+    fillSelectFilter('an-f-eq',   eqs,   'Todas');
+    fillSelectFilter('an-f-tipo', tipos, 'Todos');
+  }
+
+  function fillSelectFilter(id, arr, blank) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var cur = el.value;
+    el.innerHTML = '<option value="">'+blank+'</option>' +
+      arr.map(function(v){ return '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+v+'</option>'; }).join('');
+  }
+
+  /* ─── Vínculo equipe → colaboradores (preenche se tiver match) ─── */
+  window.anPreencherColabs = function() {
+    /* Limpa, não tenta adivinhar — usuário escolhe da datalist */
+  };
+
+  /* ─── Abrir / fechar drawer ─── */
+  window.anAbrir = function() {
+    document.getElementById('an-drawer').classList.add('open');
+    var el = document.getElementById('an-data');
+    if (el) el.value = new Date().toISOString().split('T')[0];
+    anPopulate();
+  };
+
+  window.anFechar = function() {
+    document.getElementById('an-drawer').classList.remove('open');
+    var f = document.getElementById('an-form');
+    if (f) f.reset();
+    var el = document.getElementById('an-data');
+    if (el) el.value = new Date().toISOString().split('T')[0];
+    anClearPreview();
+  };
+
+  /* ─── Salvar ─── */
+  /* Base64 global para evidência em edição */
+  var _anEvidB64 = '';
+  var _anEvidNome = '';
+  var _anEvidTipo = '';
+
+  /* ─── Preview de evidência ─── */
+  window.anPreviewEvidencia = function(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var box  = document.getElementById('an-preview-box');
+    var txt  = document.getElementById('an-upload-txt');
+    var isPDF = file.type === 'application/pdf';
+
+    txt.textContent = file.name;
+    _anEvidNome = file.name;
+    _anEvidTipo = file.type;
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      _anEvidB64 = ev.target.result;
+      box.style.display = 'block';
+      box.innerHTML = '';
+      if (isPDF) {
+        var wrap = document.createElement('div');
+        wrap.className = 'an-prev-pdf';
+        wrap.innerHTML = '<span style="font-size:1.6rem">&#128196;</span><span style="font-size:.85rem;font-weight:600;color:#374151">'+file.name+'</span>';
+        box.appendChild(wrap);
+      } else {
+        var img = document.createElement('img');
+        img.className = 'an-prev-img';
+        img.src = ev.target.result;
+        img.alt = 'preview';
+        img.title = 'Clique para ampliar';
+        img.addEventListener('click', function(){ anLightboxOpen(this.src); });
+        box.appendChild(img);
+      }
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'an-prev-remove';
+      btn.title = 'Remover';
+      btn.innerHTML = '&#x2715;';
+      btn.addEventListener('click', anRemoverEvidencia);
+      box.appendChild(btn);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.anRemoverEvidencia = function() {
+    anClearPreview();
+  };
+
+  function anClearPreview() {
+    _anEvidB64 = ''; _anEvidNome = ''; _anEvidTipo = '';
+    var inp = document.getElementById('an-evidencia');
+    if (inp) inp.value = '';
+    var box = document.getElementById('an-preview-box');
+    if (box) { box.style.display='none'; box.innerHTML=''; }
+    var txt = document.getElementById('an-upload-txt');
+    if (txt) txt.textContent = 'Clique para anexar imagem ou PDF';
+  }
+
+  /* ─── Lightbox ─── */
+  window.anLightboxOpen = function(src) {
+    var lb = document.getElementById('an-lightbox');
+    var img = document.getElementById('an-lightbox-img');
+    if (!lb || !img) return;
+    img.src = src;
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  window.anLightboxClose = function() {
+    var lb = document.getElementById('an-lightbox');
+    if (lb) lb.classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  /* ─── Salvar ─── */
+  window.anSalvar = function(e) {
+    e.preventDefault();
+    function g(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
+    var sup=g('an-sup'), eq=g('an-eq'), c1=g('an-c1'), c2=g('an-c2'),
+        data=g('an-data'), tipo=g('an-tipo'), crit=g('an-crit'),
+        desc=g('an-desc'), acao=g('an-acao');
+
+    /* c2 é opcional */
+    if (!sup||!eq||!c1||!data||!tipo||!crit||!desc||!acao) {
+      if (typeof showCopyToast==='function') showCopyToast('⚠️ Preencha todos os campos obrigatórios');
+      return;
+    }
+    var colabs = c2 ? [c1,c2] : [c1];
+    var id  = 'an_' + Date.now();
+    var obj = {
+      supervisor:sup, equipe:eq, colaboradores:colabs, data:data, tipo:tipo,
+      criticidade:crit, descricao:desc, acao:acao, acao_detalhe:g('an-det'),
+      acompanhamento:g('an-acomp'), status:'aberta',
+      criadoEm:new Date().toISOString()
+    };
+    if (_anEvidB64) {
+      obj.evidencia     = _anEvidB64;
+      obj.evidencia_nome = _anEvidNome;
+      obj.evidencia_tipo = _anEvidTipo;
+    }
+    fetch(FB_URL+'/anomalias/'+id+'.json', {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(obj)
+    }).then(function(){
+      if (typeof showCopyToast==='function') showCopyToast('✅ Anomalia salva!');
+      window.anFechar(); anFetch();
+    }).catch(function(err){
+      if (typeof showCopyToast==='function') showCopyToast('❌ Erro: '+err.message);
+    });
+  };
+
+  /* ─── Render tabela ─── */
+  window.anRender = function() {
+    var tb = document.getElementById('an-tbody');
+    if (!tb) return;
+    function gv(id){ var el=document.getElementById(id); return el?el.value:''; }
+    var fi=gv('an-f-ini'), ff=gv('an-f-fim'), fs=gv('an-f-sup'), fe=gv('an-f-eq'),
+        ft=gv('an-f-tipo'), fc=gv('an-f-crit'), fst=gv('an-f-st');
+
+    var rows = Object.keys(_AN).map(function(k){ return Object.assign({_id:k}, _AN[k]); })
+      .filter(function(a){
+        return (!fi||a.data>=fi) && (!ff||a.data<=ff) && (!fs||a.supervisor===fs) &&
+               (!fe||a.equipe===fe) && (!ft||a.tipo===ft) && (!fc||a.criticidade===fc) &&
+               (!fst||a.status===fst);
+      }).sort(function(a,b){
+        /* pendentes sempre primeiro; dentro de cada grupo, mais recente primeiro */
+        var aRes = a.status==='concluida' ? 1 : 0;
+        var bRes = b.status==='concluida' ? 1 : 0;
+        if (aRes !== bRes) return aRes - bRes;
+        return new Date(b.data) - new Date(a.data);
+      });
+
+    if (!rows.length) {
+      tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2rem;color:#9CA3AF">Nenhuma anomalia</td></tr>';
+      return;
+    }
+    var bc={'crítica':'an-cr-critica','alta':'an-cr-alta','média':'an-cr-media','baixa':'an-cr-baixa'};
+
+    tb.innerHTML = rows.map(function(a){
+      var data   = a.data ? new Date(a.data+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+      var colabs = (a.colaboradores||[]).join(', ') || '—';
+      var critCls= bc[a.criticidade] || 'an-cr-alta';
+      var resolvida = a.status === 'concluida';
+      var stBadge;
+      if (resolvida) {
+        var quem = a.resolvidoPor || a.supervisor || '';
+        stBadge = '<span class="an-badge-resolvido">✔ Resolvido' + (quem ? ' por <strong>'+quem+'</strong>' : '') + '</span>';
+      } else {
+        stBadge = '<span class="an-badge-pendente">🕐 Pendente</span>';
+      }
+      var rein = a.reincidente ? ' <span title="Reincidente" style="margin-left:3px">⚠️</span>' : '';
+      var rowCls = resolvida ? ' class="an-row-resolvida"' : '';
+      return '<tr'+rowCls+'>'+
+        '<td style="white-space:nowrap;font-size:.82rem">'+data+'</td>'+
+        '<td><strong style="font-size:.85rem">'+(a.equipe||'—')+'</strong></td>'+
+        '<td style="font-size:.82rem">'+colabs+'</td>'+
+        '<td style="font-size:.82rem">'+(a.tipo||'—')+'</td>'+
+        '<td><span class="an-badge '+critCls+'">'+(a.criticidade||'—')+'</span></td>'+
+        '<td>'+stBadge+rein+'</td>'+
+        '<td style="white-space:nowrap"><button class="an-btn-vis" data-anid="'+a._id+'">👁 Visualizar</button> <button class="an-btn-del" data-delid="'+a._id+'">🗑</button></td>'+
+        '</tr>';
+    }).join('');
+  };
+
+  /* ─── Dashboard cards ─── */
+  function anDash() {
+    var vs = Object.values(_AN);
+    var eqSet={};  vs.forEach(function(a){ if(a.equipe) eqSet[a.equipe]=1; });
+    var supCnt={}; vs.forEach(function(a){ if(a.supervisor) supCnt[a.supervisor]=(supCnt[a.supervisor]||0)+1; });
+    var top = Object.keys(supCnt).sort(function(a,b){ return supCnt[b]-supCnt[a]; })[0];
+    function set(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+    set('an-total',    vs.length);
+    set('an-equipes',  Object.keys(eqSet).length);
+    set('an-criticas', vs.filter(function(a){ return a.criticidade==='crítica'; }).length);
+    set('an-reinc',    vs.filter(function(a){ return a.reincidente; }).length);
+    set('an-sup-nome', top||'—');
+    set('an-sup-qtd',  top ? supCnt[top]+' registros' : '0 registros');
+  }
+
+  /* ─── Exportar Excel ─── */
+  window.anExportar = function() {
+    var rows = Object.values(_AN);
+    if (!rows.length) { alert('Nenhuma anomalia'); return; }
+    var cols=['Data','Equipe','Colaboradores','Tipo','Criticidade','Descrição','Ação','Supervisor','Status','Reincidente'];
+    var h='<html><head><meta charset="UTF-8"><style>th{background:#DC2626;color:white;padding:10px}td{border:1px solid #ddd;padding:8px}table{border-collapse:collapse;width:100%}</style></head><body><table>';
+    h+='<tr>'+cols.map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr>';
+    rows.forEach(function(a){
+      h+='<tr>'+[
+        a.data?new Date(a.data+'T12:00:00').toLocaleDateString('pt-BR'):'',
+        a.equipe||'',(a.colaboradores||[]).join(', '),a.tipo||'',a.criticidade||'',
+        a.descricao||'',a.acao||'',a.supervisor||'',a.status||'',a.reincidente?'Sim':'Não'
+      ].map(function(v){ return '<td>'+(v||'')+'</td>'; }).join('')+'</tr>';
+    });
+    h+='</table></body' + '></html>';
+    var lnk=document.createElement('a');
+    lnk.href=URL.createObjectURL(new Blob([h],{type:'application/vnd.ms-excel'}));
+    lnk.download='anomalias_'+new Date().toISOString().split('T')[0]+'.xls';
+    lnk.click();
+  };
+
+  /* ─── ID da anomalia em visualização ─── */
+  var _anViewId = null;
+
+  /* ─── Abrir modal de detalhes ─── */
+  window.anVisualizar = function(id) {
+    var a = _AN[id];
+    if (!a) return;
+    _anViewId = id;
+
+    var ov = document.getElementById('an-modal-overlay');
+    var bd = document.getElementById('an-modal-body');
+    if (!ov || !bd) return;
+
+    /* mapeamentos */
+    var critCor = {crítica:'#7C2D12',alta:'#DC2626',média:'#D97706',baixa:'#10B981'};
+    var critBg  = {crítica:'#7C2D12',alta:'#FEE2E2',média:'#FEF3C7',baixa:'#ECFDF5'};
+    var critTxt = {crítica:'white',alta:'#DC2626',média:'#D97706',baixa:'#10B981'};
+    var stBg    = {aberta:'#DBEAFE',tratativa:'#FEF3C7',concluida:'#ECFDF5'};
+    var stTxt   = {aberta:'#1E40AF',tratativa:'#92400E',concluida:'#065F46'};
+    var stLabel = {aberta:'Aberta',tratativa:'Em Tratativa',concluida:'Concluída'};
+
+    var crit = a.criticidade || 'alta';
+    var st   = a.status      || 'aberta';
+    var data = a.data ? new Date(a.data+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    var hora = a.criadoEm ? new Date(a.criadoEm).toLocaleString('pt-BR') : '—';
+    var colabs = a.colaboradores || [];
+
+    /* bloco de evidência */
+    var evidHTML = '';
+    if (a.evidencia) {
+      var isPDF = a.evidencia_tipo === 'application/pdf';
+      if (isPDF) {
+        evidHTML =
+          '<div class="an-modal-evid">'+
+            '<div class="an-modal-evid-footer" style="padding:1rem">'+
+              '<span style="font-size:2rem">&#128196;</span>'+
+              '<span class="an-modal-evid-name">'+(a.evidencia_nome||'arquivo.pdf')+'</span>'+
+              '<button class="an-modal-evid-open" onclick="anAbrirEvidencia()">&#128196; Abrir PDF</button>'+
+            '</div>'+
+          '</div>';
+      } else {
+        evidHTML =
+          '<div class="an-modal-evid">'+
+            '<img class="an-modal-evid-img" id="an-modal-evid-img" src="'+a.evidencia+'" alt="Evidência" onclick="anLightboxOpen(this.src)">'+
+            '<div class="an-modal-evid-footer">'+
+              '<div>'+
+                '<div class="an-modal-evid-name">'+(a.evidencia_nome||'imagem.jpg')+'</div>'+
+                '<div class="an-modal-evid-info">'+((a.evidencia_tipo||'').split('/')[1]||'IMG').toUpperCase()+'</div>'+
+              '</div>'+
+              '<button class="an-modal-evid-open" data-action="lightbox">&#128065; Abrir imagem</button>'+
+            '</div>'+
+          '</div>';
+      }
+    } else {
+      evidHTML = '<p class="an-modal-no-evid">Nenhuma evidência anexada</p>';
+    }
+
+    /* montar HTML do corpo */
+    var resolvidaModal = a.status === 'concluida';
+    var stBadgeModal = resolvidaModal
+      ? '<span class="an-badge-resolvido" style="font-size:.85rem">✔ Resolvido' + (a.resolvidoPor ? ' por <strong>'+a.resolvidoPor+'</strong>' : '') + '</span>'
+      : '<span class="an-badge-pendente" style="font-size:.85rem">🕐 Pendente</span>';
+
+    var btnResolver = resolvidaModal ? '' :
+      '<button class="an-modal-btn" style="background:#16A34A;color:white" onclick="anMarcarResolvido()">✔ Marcar como Resolvido</button>';
+
+    /* inserir botão resolver no topo do modal */
+    var modalTop = document.querySelector('.an-modal-top');
+    var btnResolverExist = document.getElementById('an-btn-resolver');
+    if (btnResolverExist) btnResolverExist.remove();
+    if (!resolvidaModal && modalTop) {
+      var bEl = document.createElement('button');
+      bEl.id = 'an-btn-resolver';
+      bEl.className = 'an-modal-btn';
+      bEl.style.cssText = 'background:#16A34A;color:white';
+      bEl.textContent = '✔ Marcar como Resolvido';
+      bEl.addEventListener('click', anMarcarResolvido);
+      modalTop.insertBefore(bEl, modalTop.querySelector('.an-modal-btn-cl'));
+    }
+
+    bd.innerHTML =
+      /* hero — badges */
+      '<div class="an-modal-hero">'+
+        '<span class="an-badge" style="background:'+(critBg[crit]||'#FEE2E2')+';color:'+(critTxt[crit]||'#DC2626')+';font-size:.85rem;padding:.3rem .85rem">'+crit.charAt(0).toUpperCase()+crit.slice(1)+'</span>'+
+        stBadgeModal+
+        (a.reincidente ? '<span class="an-badge" style="background:#FEF3C7;color:#92400E;font-size:.85rem;padding:.3rem .85rem">⚠️ Reincidente</span>' : '')+
+        '<div class="an-modal-meta">Registrado em '+hora+'<br>por '+(a.supervisor||'—')+'</div>'+
+      '</div>'+
+
+      /* grid de campos */
+      '<div class="an-modal-grid">'+
+        anModalCell('&#128197; Data da Ocorrência', data)+
+        anModalCell('&#128101; Supervisor', a.supervisor||'—')+
+        anModalCell('&#128736; Equipe', a.equipe||'—')+
+        anModalCell('&#128100; Colaborador 1', colabs[0]||'—')+
+        anModalCell('&#128100; Colaborador 2', colabs[1]||'—')+
+        anModalCell('&#128203; Tipo de Anomalia', a.tipo||'—')+
+      '</div>'+
+
+      /* descrição */
+      '<div class="an-modal-section">'+
+        '<div class="an-modal-section-title">Descrição da Anomalia</div>'+
+        '<div class="an-modal-section-text">'+(a.descricao||'—')+'</div>'+
+      '</div>'+
+
+      /* ação */
+      '<div class="an-modal-section">'+
+        '<div class="an-modal-section-title">Ação Tomada</div>'+
+        '<div class="an-modal-section-text">'+
+          '<strong>'+(a.acao||'—')+'</strong>'+
+          (a.acao_detalhe ? '<br><span style="color:#6B7280">'+(a.acao_detalhe)+'</span>' : '')+
+        '</div>'+
+      '</div>'+
+
+      /* acompanhamento */
+      (a.acompanhamento && a.acompanhamento!=='não' ?
+        '<div class="an-modal-section">'+
+          '<div class="an-modal-section-title">Acompanhamento</div>'+
+          '<div class="an-modal-section-text">&#9989; Necessita acompanhamento</div>'+
+        '</div>' : '')+
+
+      /* evidência */
+      '<div class="an-modal-section">'+
+        '<div class="an-modal-section-title">Evidência / Anexo</div>'+
+        evidHTML+
+      '</div>';
+
+    ov.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  function anModalCell(label, val) {
+    return '<div class="an-modal-cell">'+
+      '<div class="an-modal-cell-label">'+label+'</div>'+
+      '<div class="an-modal-cell-val">'+val+'</div>'+
+    '</div>';
+  }
+
+  /* ─── Fechar modal ─── */
+  window.anFecharModal = function(e) {
+    if (e && e.target !== document.getElementById('an-modal-overlay')) return;
+    var ov = document.getElementById('an-modal-overlay');
+    if (ov) ov.classList.remove('open');
+    document.body.style.overflow = '';
+    var bEl = document.getElementById('an-btn-resolver');
+    if (bEl) bEl.remove();
+    _anViewId = null;
+  };
+  /* fechar pelo botão X + delegação lightbox */
+  (function(){
+    document.addEventListener('keydown', function(e){
+      if (e.key==='Escape') {
+        var ov=document.getElementById('an-modal-overlay');
+        if (ov && ov.classList.contains('open')) { ov.classList.remove('open'); document.body.style.overflow=''; }
+      }
+    });
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-action="lightbox"]');
+      if (btn) {
+        var img = document.getElementById('an-modal-evid-img');
+        if (img) anLightboxOpen(img.src);
+      }
+    });
+  })();
+
+  /* ─── Abrir evidência em nova aba ─── */
+  window.anAbrirEvidencia = function() {
+    var a = _anViewId ? _AN[_anViewId] : null;
+    if (!a || !a.evidencia) return;
+    var w = window.open();
+    if (w) { w.document.write('<iframe src="'+a.evidencia+'" style="width:100%;height:100%;border:none"></iframe>'); }
+  };
+
+  /* ─── Imprimir registro ─── */
+  window.anImprimirRegistro = function() {
+    var a = _anViewId ? _AN[_anViewId] : null;
+    if (!a) return;
+    var printWin = window.open('', '_blank', 'width=850,height=700');
+    printWin.document.write(anGerarHTMLRegistro(a));
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(function(){ printWin.print(); }, 500);
+  };
+
+  /* ─── Baixar registro como HTML ─── */
+  window.anBaixarRegistro = function() {
+    var a = _anViewId ? _AN[_anViewId] : null;
+    if (!a) return;
+    var content = anGerarHTMLRegistro(a);
+    var blob = new Blob([content], {type:'text/html;charset=utf-8'});
+    var lnk = document.createElement('a');
+    lnk.href = URL.createObjectURL(blob);
+    var dt = a.data ? a.data.replace(/-/g,'') : 'sem_data';
+    lnk.download = 'anomalia_'+(a.equipe||'equipe').replace(/\s/g,'_')+'_'+dt+'.html';
+    lnk.click();
+  };
+
+  /* ─── Gerar HTML para impressão/download ─── */
+  function anGerarHTMLRegistro(a) {
+    var stLabel = {aberta:'Aberta',tratativa:'Em Tratativa',concluida:'Concluída'};
+    var data = a.data ? new Date(a.data+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    var hora = a.criadoEm ? new Date(a.criadoEm).toLocaleString('pt-BR') : '—';
+    var colabs = a.colaboradores || [];
+    var critCor = {crítica:'#7C2D12',alta:'#DC2626',média:'#D97706',baixa:'#10B981'};
+    var cor = critCor[a.criticidade] || '#DC2626';
+
+    var evidHTML = '';
+    if (a.evidencia && a.evidencia_tipo !== 'application/pdf') {
+      evidHTML = '<div style="margin-top:16px"><img src="'+a.evidencia+'" style="max-width:100%;max-height:350px;object-fit:contain;border-radius:8px;border:1px solid #e5e7eb"></div>';
+    } else if (a.evidencia) {
+      evidHTML = '<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb">&#128196; '+(a.evidencia_nome||'arquivo.pdf')+'</div>';
+    }
+
+    return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Anomalia — '+(a.equipe||'')+'</title>'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1f2937;padding:24px;max-width:800px;margin:0 auto}'+
+    'h1{font-size:18px;font-weight:700;color:#111827;margin-bottom:4px}'+
+    '.header{border-bottom:3px solid '+cor+';padding-bottom:12px;margin-bottom:20px}'+
+    '.badges{display:flex;gap:8px;margin:8px 0}'+
+    '.badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700}'+
+    '.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}'+
+    '.cell{background:#f9fafb;border-radius:6px;padding:10px}'+
+    '.cell-lbl{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px}'+
+    '.cell-val{font-size:13px;font-weight:600;color:#111827}'+
+    '.section{margin-bottom:14px}'+
+    '.section-title{font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;padding-bottom:5px;margin-bottom:8px}'+
+    '.section-text{font-size:13px;color:#374151;line-height:1.6}'+
+    '.meta{font-size:11px;color:#9ca3af;margin-top:4px}'+
+    '@media print{body{padding:8px}}</style></head><body>'+
+    '<div class="header">'+
+      '<h1>Ficha de Ocorrência — Anomalia Operacional</h1>'+
+      '<div class="meta">Registrado em '+hora+' por '+(a.supervisor||'—')+'</div>'+
+      '<div class="badges">'+
+        '<span class="badge" style="background:'+cor+';color:white">'+(a.criticidade||'—')+'</span>'+
+        '<span class="badge" style="background:#dbeafe;color:#1d4ed8">'+(stLabel[a.status]||a.status||'—')+'</span>'+
+        (a.reincidente ? '<span class="badge" style="background:#fef3c7;color:#92400e">⚠️ Reincidente</span>' : '')+
+      '</div>'+
+    '</div>'+
+    '<div class="grid">'+
+      '<div class="cell"><div class="cell-lbl">Data da Ocorrência</div><div class="cell-val">'+data+'</div></div>'+
+      '<div class="cell"><div class="cell-lbl">Supervisor</div><div class="cell-val">'+(a.supervisor||'—')+'</div></div>'+
+      '<div class="cell"><div class="cell-lbl">Equipe</div><div class="cell-val">'+(a.equipe||'—')+'</div></div>'+
+      '<div class="cell"><div class="cell-lbl">Colaborador 1</div><div class="cell-val">'+(colabs[0]||'—')+'</div></div>'+
+      '<div class="cell"><div class="cell-lbl">Colaborador 2</div><div class="cell-val">'+(colabs[1]||'—')+'</div></div>'+
+      '<div class="cell"><div class="cell-lbl">Tipo de Anomalia</div><div class="cell-val">'+(a.tipo||'—')+'</div></div>'+
+    '</div>'+
+    '<div class="section"><div class="section-title">Descrição da Anomalia</div><div class="section-text">'+(a.descricao||'—')+'</div></div>'+
+    '<div class="section"><div class="section-title">Ação Tomada</div><div class="section-text"><strong>'+(a.acao||'—')+'</strong>'+(a.acao_detalhe?'<br>'+(a.acao_detalhe):'')+'</div></div>'+
+    (evidHTML ? '<div class="section"><div class="section-title">Evidência / Anexo</div>'+evidHTML+'</div>' : '')+
+    '</body></html>';
+  }
+
+  /* ─── Marcar como Resolvido (irreversível) ─── */
+  window.anMarcarResolvido = function() {
+    if (!_anViewId) return;
+    var a = _AN[_anViewId];
+    if (!a || a.status === 'concluida') return;
+    var quem = (typeof nomeUsuario === 'function' ? nomeUsuario() : '') || a.supervisor || 'Supervisor';
+    if (!confirm('Marcar como Resolvida por ' + quem + '?\n\nEssa ação não pode ser desfeita.')) return;
+
+    var patch = { status: 'concluida', resolvidoPor: quem, resolvidoEm: new Date().toISOString() };
+    Object.assign(_AN[_anViewId], patch);
+
+    fetch(FB_URL + '/anomalias/' + _anViewId + '.json', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    }).then(function() {
+      if (typeof showCopyToast === 'function') showCopyToast('✅ Resolvido por ' + quem);
+      window.anVisualizar(_anViewId);
+      anDash();
+      window.anRender();
+    }).catch(function(err) {
+      _AN[_anViewId].status = 'aberta';
+      delete _AN[_anViewId].resolvidoPor;
+      delete _AN[_anViewId].resolvidoEm;
+      if (typeof showCopyToast === 'function') showCopyToast('❌ Erro: ' + err.message);
+    });
+  };
+
+  /* ─── Excluir anomalia ─── */
+  window.anExcluir = function(id) {
+    var a = _AN[id];
+    if (!a) return;
+    var label = (a.equipe || 'equipe') + ' — ' + (a.tipo || 'anomalia') + ' (' + (a.data || '') + ')';
+    if (!confirm('Excluir anomalia?\n\n' + label + '\n\nEssa ação não pode ser desfeita.')) return;
+    fetch(FB_URL + '/anomalias/' + id + '.json', { method: 'DELETE' })
+      .then(function() {
+        delete _AN[id];
+        if (typeof showCopyToast === 'function') showCopyToast('🗑 Anomalia excluída');
+        anDash();
+        window.anRender();
+      })
+      .catch(function(err) {
+        if (typeof showCopyToast === 'function') showCopyToast('❌ Erro ao excluir: ' + err.message);
+      });
+  };
+
+  /* ─── Limpar filtros ─── */
+  window.anResetFiltros = function() {
+    ['an-f-ini','an-f-fim','an-f-sup','an-f-eq','an-f-tipo','an-f-crit','an-f-st'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.value='';
+    });
+    window.anRender();
+  };
+
+  /* ─── Auto-init: roda ao carregar + escuta login ─── */
+  document.addEventListener('DOMContentLoaded', function() {
+    /* tenta imediatamente (já logado) */
+    setTimeout(function() {
+      var ls = document.getElementById('loginScreen');
+      var hidden = !ls || ls.style.display === 'none' ||
+                   getComputedStyle(ls).display === 'none';
+      if (hidden && typeof window.anInit === 'function') window.anInit();
+    }, 800);
+
+    /* também observa mudança de estilo no loginScreen */
+    var ls = document.getElementById('loginScreen');
+    if (ls) {
+      var obs = new MutationObserver(function() {
+        if (getComputedStyle(ls).display === 'none') {
+          setTimeout(function(){ if(typeof window.anInit==='function') window.anInit(); }, 400);
+          obs.disconnect();
+        }
+      });
+      obs.observe(ls, { attributes: true, attributeFilter: ['style','class'] });
+    }
+  });
+
+})();
+// ── FIM ANOMALIAS ──────────────────────────────────────────────────
+
 </script>
 
 <!-- ── MODAL PREVIEW EVIDÊNCIA ── -->
@@ -12683,5 +13703,34 @@ entryLines.join('\n\n') + '\n' +
   </div>
 </div>
 
+
+
+
+
+<!-- ── MODAL DETALHES ANOMALIA ─────────────────────────────── -->
+<div id="an-modal-overlay" class="an-modal-overlay" onclick="anFecharModal(event)">
+  <div class="an-modal-panel" onclick="event.stopPropagation()" id="an-modal-panel">
+
+    <!-- Topo fixo -->
+    <div class="an-modal-top">
+      <span class="an-modal-title">Detalhes da Anomalia</span>
+      <button class="an-modal-btn an-modal-btn-dl" onclick="anBaixarRegistro()">⬇ Baixar Registro</button>
+      <button class="an-modal-btn an-modal-btn-pr" onclick="anImprimirRegistro()">🖨 Imprimir</button>
+      <button class="an-modal-btn-cl" onclick="anFecharModal()">&times;</button>
+    </div>
+
+    <!-- Corpo -->
+    <div class="an-modal-body" id="an-modal-body">
+      <p style="color:#9CA3AF;font-size:.85rem">Carregando...</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- lightbox anomalias -->
+<div id="an-lightbox" onclick="anLightboxClose()">
+  <button id="an-lightbox-close" onclick="anLightboxClose()">✕</button>
+  <img id="an-lightbox-img" src="" alt="Evidência">
+</div>
 </body>
 </html>
