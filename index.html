@@ -1652,6 +1652,29 @@
   .an-row-resolvida td{opacity:.65;}
   .an-row-resolvida:hover td{opacity:1;}
   /* ── FIM ANOMALIAS ──────────────────────────────────────────── */
+
+  /* ── Storage Monitor ── */
+  #storage-monitor{background:white;border-radius:14px;padding:1.4rem 1.6rem;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid #E5E7EB;margin:1.5rem;display:none;}
+  html[data-role="admin"] #storage-monitor{display:block;}
+  .stor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;}
+  .stor-title{font-size:.95rem;font-weight:800;color:#111827;}
+  .stor-refresh{font-size:.75rem;font-weight:700;padding:.35rem .75rem;background:#F3F4F6;border:1.5px solid #E5E7EB;border-radius:6px;cursor:pointer;color:#374151;}
+  .stor-refresh:hover{background:#E5E7EB;}
+  .stor-bar-wrap{background:#F3F4F6;border-radius:99px;height:12px;overflow:hidden;margin:.35rem 0 .5rem;}
+  .stor-bar{height:100%;border-radius:99px;transition:width .6s ease;}
+  .stor-legend{display:flex;justify-content:space-between;font-size:.72rem;color:#6B7280;margin-bottom:1.1rem;}
+  .stor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-top:1rem;}
+  .stor-card{background:#F9FAFB;border-radius:10px;padding:.85rem 1rem;border:1px solid #E5E7EB;}
+  .stor-card-icon{font-size:1.4rem;margin-bottom:.3rem;}
+  .stor-card-name{font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:.25rem;}
+  .stor-card-val{font-size:.92rem;font-weight:800;color:#111827;}
+  .stor-card-sub{font-size:.68rem;color:#9CA3AF;margin-top:.15rem;}
+  .stor-warn{display:none;margin-top:1rem;padding:.75rem 1rem;border-radius:8px;font-size:.82rem;font-weight:600;}
+  .stor-warn.show{display:flex;align-items:center;gap:.5rem;}
+  .stor-warn-yellow{background:#FEF9C3;color:#854D0E;border:1px solid #FDE047;}
+  .stor-warn-red{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;}
+  .stor-note{font-size:.72rem;color:#9CA3AF;margin-top:.85rem;line-height:1.5;}
+
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -2154,7 +2177,10 @@ if (!loggedInUser) {
   }
 
   if (localStorage.getItem('enel_auth') === '1' && userValid) {
-    document.write('<style>#loginScreen{display:none!important}</style>');
+    document.write('<style>#loginScreen{display:none!important}
+
+
+</style>');
   }
 })();
 </script>
@@ -2356,6 +2382,50 @@ if (!loggedInUser) {
       </div>
     </div>
   </div>
+
+  <!-- ── Monitor de Armazenamento ────────────────────────────── -->
+  <div id="storage-monitor">
+    <div class="stor-header">
+      <div>
+        <div class="stor-title">💾 Uso de Armazenamento — Firebase</div>
+        <div style="font-size:.72rem;color:#9CA3AF;margin-top:.15rem;">Plano gratuito · Limite: 1 GB</div>
+      </div>
+      <button class="stor-refresh" onclick="storageCalc()">↻ Atualizar</button>
+    </div>
+
+    <!-- Barra principal -->
+    <div class="stor-bar-wrap">
+      <div id="stor-bar" class="stor-bar" style="width:0%;background:#3B82F6;"></div>
+    </div>
+    <div class="stor-legend">
+      <span id="stor-used-label">Calculando...</span>
+      <span id="stor-pct-label">— de 1 GB</span>
+    </div>
+
+    <!-- Cards por coleção -->
+    <div class="stor-grid" id="stor-grid">
+      <div class="stor-card"><div class="stor-card-icon">📊</div><div class="stor-card-name">Registros</div><div class="stor-card-val" id="sc-records">—</div><div class="stor-card-sub" id="sc-records-n">— registros</div></div>
+      <div class="stor-card"><div class="stor-card-icon">📡</div><div class="stor-card-name">Tempo Real (desvios)</div><div class="stor-card-val" id="sc-bop">—</div><div class="stor-card-sub" id="sc-bop-n">— desvios</div></div>
+      <div class="stor-card"><div class="stor-card-icon">🔍</div><div class="stor-card-name">Supervisões</div><div class="stor-card-val" id="sc-sup">—</div><div class="stor-card-sub" id="sc-sup-n">— supervisões</div></div>
+      <div class="stor-card"><div class="stor-card-icon">⚠️</div><div class="stor-card-name">Anomalias</div><div class="stor-card-val" id="sc-anom">—</div><div class="stor-card-sub" id="sc-anom-n">— anomalias</div></div>
+      <div class="stor-card"><div class="stor-card-icon">⚙️</div><div class="stor-card-name">Configurações</div><div class="stor-card-val" id="sc-cfg">—</div><div class="stor-card-sub">dados do sistema</div></div>
+      <div class="stor-card"><div class="stor-card-icon">🖼️</div><div class="stor-card-name">Evidências (fotos)</div><div class="stor-card-val" id="sc-evid">—</div><div class="stor-card-sub" id="sc-evid-n">estimado</div></div>
+    </div>
+
+    <!-- Alertas -->
+    <div id="stor-warn" class="stor-warn stor-warn-yellow">
+      <span>⚠️</span><span id="stor-warn-msg">Atenção</span>
+    </div>
+
+    <!-- Nota explicativa -->
+    <div class="stor-note">
+      ℹ️ Os dados de registros, supervisões e anomalias ficam no <strong>Firebase Realtime Database</strong> (não no GitHub).
+      O GitHub hospeda apenas o arquivo <code>index.html</code>.
+      Fotos/evidências salvas como base64 consomem mais espaço — considere comprimir as imagens antes de anexar.
+      <br>Limite gratuito Firebase: <strong>1 GB de armazenamento</strong> · <strong>10 GB/mês de download</strong>.
+    </div>
+  </div>
+
 </div><!-- /tabInicio -->
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
@@ -8185,6 +8255,7 @@ if (!loggedInUser) {
 
     _currentTab = tab;
     document.getElementById('tabInicio').style.display      = tab === 'inicio'    ? 'block' : 'none';
+    if (tab === 'inicio' && typeof window.storageCalc === 'function') setTimeout(window.storageCalc, 300);
     document.getElementById('tabTempoReal').style.display   = tab === 'temporeal' ? 'block' : 'none';
     const anTab=document.getElementById('tabAnomalias'); if(anTab) anTab.style.display=tab==='anomalias'?'block':'none';
     if (tab === 'anomalias' && typeof anPopulate === 'function') { anPopulate(); if(typeof anFetch==='function') anFetch(); }
@@ -8965,7 +9036,10 @@ if (!loggedInUser) {
           body { padding: 0; background: white; }
           .resumo-modal { box-shadow: none; border-radius: 0; }
         }
-      </style>
+      
+
+
+</style>
     </head><body>
       ${clone.outerHTML}
       \x3Cscript>
@@ -12498,7 +12572,10 @@ entryLines.join('\n\n') + '\n' +
     w.document.write(`<!DOCTYPE html><html><head><title>${nome}</title>
       <style>body{margin:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;}
       img{max-width:100%;max-height:100vh;object-fit:contain;}
-      iframe{width:100vw;height:100vh;border:none;}</style></head><body>
+      iframe{width:100vw;height:100vh;border:none;}
+
+
+</style></head><body>
       ${isImg ? `<img src="${dataUrl}" alt="${nome}">` : `<iframe src="${dataUrl}"></iframe>`}
     
 
@@ -12825,7 +12902,10 @@ entryLines.join('\n\n') + '\n' +
     th { background-color: #059669; color: white; padding: 10px; text-align: left; border: 1px solid #ccc; font-weight: bold; }
     td { padding: 8px; border: 1px solid #ccc; }
     tr:nth-child(even) { background-color: #f9fafb; }
-  </style>
+  
+
+
+</style>
 </head>
 <body>
 <table>
@@ -13270,7 +13350,7 @@ entryLines.join('\n\n') + '\n' +
     var rows = Object.values(_AN);
     if (!rows.length) { alert('Nenhuma anomalia'); return; }
     var cols=['Data','Equipe','Colaboradores','Tipo','Criticidade','Descrição','Ação','Supervisor','Status','Reincidente'];
-    var h='<html><head><meta charset="UTF-8"><style>th{background:#DC2626;color:white;padding:10px}td{border:1px solid #ddd;padding:8px}table{border-collapse:collapse;width:100%}</style></head><body><table>';
+    var h='<html><head><meta charset="UTF-8"><style>th{background:#DC2626;color:white;padding:10px}td{border:1px solid #ddd;padding:8px}table{border-collapse:collapse;width:100%}</style' + '></head><body><table>';
     h+='<tr>'+cols.map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr>';
     rows.forEach(function(a){
       h+='<tr>'+[
@@ -13513,7 +13593,7 @@ entryLines.join('\n\n') + '\n' +
     '.section-title{font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;padding-bottom:5px;margin-bottom:8px}'+
     '.section-text{font-size:13px;color:#374151;line-height:1.6}'+
     '.meta{font-size:11px;color:#9ca3af;margin-top:4px}'+
-    '@media print{body{padding:8px}}</style></head><body>'+
+    '@media print{body{padding:8px}}</style' + '></head><body>'+
     '<div class="header">'+
       '<h1>Ficha de Ocorrência — Anomalia Operacional</h1>'+
       '<div class="meta">Registrado em '+hora+' por '+(a.supervisor||'—')+'</div>'+
@@ -13616,6 +13696,123 @@ entryLines.join('\n\n') + '\n' +
 
 })();
 // ── FIM ANOMALIAS ──────────────────────────────────────────────────
+
+
+// ── MONITOR DE ARMAZENAMENTO ─────────────────────────────────────
+(function() {
+  'use strict';
+
+  var FB_BASE = 'https://produtividade-sg-default-rtdb.firebaseio.com';
+  var LIMIT_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
+
+  function fmtBytes(b) {
+    if (b < 1024)       return b + ' B';
+    if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b/1048576).toFixed(2) + ' MB';
+    return (b/1073741824).toFixed(3) + ' GB';
+  }
+
+  function countEvid(obj) {
+    /* conta bytes de todas as strings base64 de evidência */
+    var total = 0;
+    if (!obj || typeof obj !== 'object') return total;
+    Object.values(obj).forEach(function(rec) {
+      if (!rec || typeof rec !== 'object') return;
+      ['evidencia','evidenciaBase64','evidData'].forEach(function(k) {
+        if (rec[k] && typeof rec[k] === 'string') total += rec[k].length * 0.75; // base64 → bytes
+      });
+    });
+    return total;
+  }
+
+  function jsonBytes(data) {
+    try { return new Blob([JSON.stringify(data)]).size; }
+    catch(e) { return JSON.stringify(data).length; }
+  }
+
+  function set(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+
+  window.storageCalc = async function() {
+    var grid = document.getElementById('stor-grid');
+    var bar  = document.getElementById('stor-bar');
+    var warn = document.getElementById('stor-warn');
+    var warnMsg = document.getElementById('stor-warn-msg');
+    if (!grid) return;
+
+    set('stor-used-label', 'Buscando dados...');
+    set('stor-pct-label', '');
+
+    var paths = [
+      { path: 'records',                  id: 'sc-records', name: 'Registros',   nid: 'sc-records-n' },
+      { path: 'produtividade/desvios',     id: 'sc-bop',     name: 'Desvios',     nid: 'sc-bop-n' },
+      { path: 'produtividade/supervisoes', id: 'sc-sup',     name: 'Supervisões', nid: 'sc-sup-n' },
+      { path: 'anomalias',                 id: 'sc-anom',    name: 'Anomalias',   nid: 'sc-anom-n' },
+      { path: 'produtividade/config',      id: 'sc-cfg',     name: 'Config' },
+    ];
+
+    var totalBytes = 0;
+    var evidBytes  = 0;
+
+    for (var i = 0; i < paths.length; i++) {
+      var p = paths[i];
+      try {
+        var resp = await fetch(FB_BASE + '/' + p.path + '.json');
+        var data = resp.ok ? await resp.json() : null;
+        var bytes = data ? jsonBytes(data) : 0;
+        totalBytes += bytes;
+        set(p.id, fmtBytes(bytes));
+        if (p.nid && data && typeof data === 'object') {
+          set(p.nid, Object.keys(data).length + (p.name==='Registros'?' registros':
+            p.name==='Desvios'?' desvios':p.name==='Supervisões'?' supervisões':' anomalias'));
+        }
+        /* contabilizar evidências separado */
+        var ev = countEvid(data);
+        evidBytes += ev;
+      } catch(e) {
+        set(p.id, 'erro');
+      }
+    }
+
+    /* evidências */
+    set('sc-evid', fmtBytes(evidBytes));
+    set('sc-evid-n', 'fotos/PDFs em base64');
+
+    /* barra total */
+    var pct = Math.min((totalBytes / LIMIT_BYTES) * 100, 100);
+    var pctR = pct.toFixed(2);
+
+    if (bar) {
+      bar.style.width = pct + '%';
+      bar.style.background = pct > 80 ? '#DC2626' : pct > 50 ? '#F59E0B' : '#3B82F6';
+    }
+    set('stor-used-label', fmtBytes(totalBytes) + ' usados');
+    set('stor-pct-label', pctR + '% de 1 GB');
+
+    /* alertas */
+    if (warn && warnMsg) {
+      warn.className = 'stor-warn';
+      if (pct > 80) {
+        warn.classList.add('show', 'stor-warn-red');
+        warnMsg.textContent = 'Atenção crítica: ' + pctR + '% do limite usado. Considere apagar registros antigos ou fazer backup.';
+      } else if (pct > 50) {
+        warn.classList.add('show', 'stor-warn-yellow');
+        warnMsg.textContent = 'Atenção: ' + pctR + '% do limite usado. Monitore o crescimento.';
+      } else {
+        warn.classList.remove('show');
+      }
+    }
+  };
+
+  /* rodar automaticamente ao carregar a aba Início */
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      var el = document.getElementById('storage-monitor');
+      if (el) window.storageCalc();
+    }, 2000);
+  });
+
+})();
+// ── FIM STORAGE MONITOR ──────────────────────────────────────────
 
 </script>
 
