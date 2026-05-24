@@ -1711,6 +1711,25 @@
     #topbarMetrics > .topbar-sep:last-of-type { display: none; }
   }
 
+  @media (max-width: 768px) {
+    /* Painel de tratativa: 2 colunas viram 1 no celular */
+    .bop-panel-grid {
+      grid-template-columns: 1fr !important;
+      gap: 1rem !important;
+    }
+    /* Garantir que botões e campos do painel sejam totalmente clicáveis */
+    .bop-mcard-annot { overflow: visible !important; }
+    /* o painel interno tem padding próprio; neutralizar para caber no card */
+    .bop-mcard-annot > div[style*="padding:1rem 1.25rem"],
+    .bop-mcard-annot > div { padding-left: 0 !important; padding-right: 0 !important; background: transparent !important; }
+    .bop-mcard-annot button,
+    .bop-mcard-annot select,
+    .bop-mcard-annot textarea,
+    .bop-mcard-annot input { position: relative; z-index: 1; max-width: 100%; box-sizing: border-box; }
+    /* Header do painel quebra melhor no mobile */
+    .bop-panel-grid + * { width: 100%; }
+  }
+
   /* ── CARDS MOBILE — TEMPO REAL (Fase 3) ── */
   .bop-mobile-cards { display: none; }
 
@@ -8055,7 +8074,7 @@ if (!loggedInUser) {
       '</div>' +
 
       // ── Layout 2 colunas ──
-      '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:1.25rem;margin-bottom:1rem;">' +
+      '<div class="bop-panel-grid" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:1.25rem;margin-bottom:1rem;">' +
 
         // COLUNA ESQUERDA
         '<div style="display:flex;flex-direction:column;gap:0.85rem;">' +
