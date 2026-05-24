@@ -1675,6 +1675,126 @@
   .stor-warn-red{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;}
   .stor-note{font-size:.72rem;color:#9CA3AF;margin-top:.85rem;line-height:1.5;}
 
+
+  /* ════════════════════════════════════════════════════════════
+     FASE 2 — RESPONSIVIDADE + MENU MOBILE
+     ════════════════════════════════════════════════════════════ */
+
+  /* Botão hambúrguer — oculto no desktop */
+  .hamburger-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 38px;
+    height: 38px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0 9px;
+  }
+  .hamburger-btn span {
+    display: block;
+    width: 100%;
+    height: 2.5px;
+    background: white;
+    border-radius: 2px;
+    transition: all 0.25s ease;
+  }
+  .hamburger-btn.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .hamburger-btn.open span:nth-child(2) { opacity: 0; }
+  .hamburger-btn.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+  /* Overlay escuro atrás do menu mobile */
+  .mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 199;
+  }
+  .mobile-menu-overlay.show { display: block; }
+
+  /* ── TABLET (≤1024px) ── */
+  @media (max-width: 1024px) {
+    main { max-width: 100%; padding: 1.25rem 1.25rem 3rem; }
+    .topbar { padding: 0.45rem 1rem; }
+  }
+
+  /* ── MOBILE (≤768px) ── */
+  @media (max-width: 768px) {
+    /* Sidebar vira drawer deslizante */
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      width: 260px;
+      z-index: 300;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* Conteúdo ocupa tela toda */
+    .main-content {
+      margin-left: 0 !important;
+      padding-top: 52px;
+    }
+
+    /* Topbar full width + hambúrguer visível */
+    .topbar { left: 0 !important; padding: 0.4rem 0.85rem; }
+    .hamburger-btn { display: flex; }
+
+    /* Topbar enxuto: esconder métricas secundárias, manter relógio/status */
+    .topbar-sub { display: none; }
+    .topbar-title { font-size: 0.82rem; }
+    .topbar-metrics { gap: 0; }
+    .topbar-metric { padding: 0 0.4rem; }
+    .topbar-metric-label { display: none; }
+    .topbar-sep { display: none; }
+
+    /* Sem rolagem horizontal em lugar nenhum */
+    body, .main-content, main { overflow-x: hidden; max-width: 100vw; }
+
+    /* Padding de abas reduzido */
+    #tabAnomalias, #tabTempoReal { padding: 0.85rem !important; }
+    main { padding: 1rem 0.85rem 3rem; }
+
+    /* Cards de dashboard empilham */
+    .an-grid, .anomalias-grid { grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+
+    /* Filtros empilham */
+    .an-filters { grid-template-columns: 1fr 1fr; padding: 1rem; }
+
+    /* Drawer de anomalias ocupa tela toda */
+    .an-drawer { width: 100vw; right: -100vw; }
+
+    /* Modal de detalhes ocupa tela toda */
+    .an-modal-panel { width: 100vw; }
+
+    /* Grid 2-colunas do formulário vira 1 coluna */
+    #an-form > div[style*="grid-template-columns:1fr 1fr"],
+    #an-form > div[style*="grid-template-columns: 1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Tabelas com scroll suave dentro do próprio container */
+    .an-tbl-wrap, .anomalias-table { -webkit-overflow-scrolling: touch; }
+
+    /* Botões maiores para toque */
+    .an-btn-vis, .an-btn-del { padding: 0.5rem 0.7rem; font-size: 0.8rem; }
+
+    /* Storage monitor compacto */
+    #storage-monitor { margin: 0.85rem; padding: 1rem; }
+    .stor-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── MOBILE PEQUENO (≤480px) ── */
+  @media (max-width: 480px) {
+    .an-grid, .anomalias-grid, .stor-grid { grid-template-columns: 1fr; }
+    .an-filters { grid-template-columns: 1fr; }
+    .topbar-title { font-size: 0.75rem; }
+  }
+
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -2239,7 +2359,8 @@ if (!loggedInUser) {
 
 <!-- ── Header ── -->
 <!-- ── Sidebar ── -->
-<nav class="sidebar">
+<div id="mobileMenuOverlay" class="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+<nav class="sidebar" id="appSidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-text">
       <span class="sidebar-logo-title" style="font-size:1.1rem;letter-spacing:0.08em;">ENEL BRASIL</span>
@@ -2292,9 +2413,14 @@ if (!loggedInUser) {
 
 <!-- ── TOPBAR (FIXED) ── -->
 <div class="topbar">
-  <div>
-    <div class="topbar-title" id="topbarTitle">Registro</div>
-    <div class="topbar-sub">Gestão de Equipes · Campo Operacional</div>
+  <div style="display:flex;align-items:center;gap:0.6rem;min-width:0;">
+    <button id="hamburgerBtn" class="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div style="min-width:0;">
+      <div class="topbar-title" id="topbarTitle">Registro</div>
+      <div class="topbar-sub">Gestão de Equipes · Campo Operacional</div>
+    </div>
   </div>
   <div class="topbar-metrics" id="topbarMetrics">
     <!-- Firebase status -->
@@ -13813,6 +13939,50 @@ entryLines.join('\n\n') + '\n' +
 
 })();
 // ── FIM STORAGE MONITOR ──────────────────────────────────────────
+
+
+// ── MENU MOBILE (Fase 2) ─────────────────────────────────────────
+(function() {
+  'use strict';
+  function sb()  { return document.getElementById('appSidebar'); }
+  function ov()  { return document.getElementById('mobileMenuOverlay'); }
+  function ham() { return document.getElementById('hamburgerBtn'); }
+
+  window.toggleMobileMenu = function() {
+    var s = sb();
+    if (!s) return;
+    if (s.classList.contains('open')) window.closeMobileMenu();
+    else window.openMobileMenu();
+  };
+  window.openMobileMenu = function() {
+    if (sb())  sb().classList.add('open');
+    if (ov())  ov().classList.add('show');
+    if (ham()) ham().classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeMobileMenu = function() {
+    if (sb())  sb().classList.remove('open');
+    if (ov())  ov().classList.remove('show');
+    if (ham()) ham().classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  /* Fechar menu ao clicar em qualquer item da sidebar (no mobile) */
+  document.addEventListener('DOMContentLoaded', function() {
+    var items = document.querySelectorAll('.sidebar-item');
+    items.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (window.innerWidth <= 768) setTimeout(window.closeMobileMenu, 80);
+      });
+    });
+  });
+
+  /* Fechar ao redimensionar para desktop */
+  window.addEventListener('resize', function() {
+    if (window.innerWidth > 768) window.closeMobileMenu();
+  });
+})();
+// ── FIM MENU MOBILE ──────────────────────────────────────────────
 
 </script>
 
