@@ -7912,9 +7912,7 @@ if (!loggedInUser) {
                 </td>
               </tr>
               <tr id="bop-annot-${key}" style="display:none;">
-                <td colspan="9" style="padding:0;background:#F8FAFF;border-bottom:2px solid #DBEAFE;">
-                  ${buildBopAnnotationPanel(key, sup)}
-                </td>
+                <td colspan="9" style="padding:0;background:#F8FAFF;border-bottom:2px solid #DBEAFE;"></td>
               </tr>`;
           }).join('');
 
@@ -7939,9 +7937,7 @@ if (!loggedInUser) {
             <button onclick="toggleBopAnnotation('${key}')" class="bop-mcard-btn-resolve">✓ Resolver</button>
             ${isAdmin() ? `<button onclick="confirmDeleteBopDesvio('${key}')" class="bop-mcard-btn-del">🗑️</button>` : ''}
           </div>
-          <div id="bop-annot-m-${key}" class="bop-mcard-annot" style="display:none;">
-            ${buildBopAnnotationPanel(key, sup)}
-          </div>
+          <div id="bop-annot-m-${key}" class="bop-mcard-annot" style="display:none;"></div>
         </div>`;
     }).join('');
 
@@ -8161,7 +8157,7 @@ if (!loggedInUser) {
           '<div id="bop-evid-container-'+key+'" style="background:white;border:2px dashed '+(sup.evidenciaBase64?'#059669':'#BFDBFE')+';border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
             evidHtml +
           '</div>' +
-          '<input type="file" id="bop-foto-input-'+key+'" accept=".jpg,.jpeg,.png,.pdf" style="display:none;" onchange="bopHandleFotoFile(\''+key+'\',event)">' +
+          '<input type="file" id="bop-foto-input-'+key+'" accept="image/*,application/pdf" style="display:none;" onchange="bopHandleFotoFile(\''+key+'\',event)">' +
           '<input type="hidden" id="bop-foto-b64-'+key+'" value="'+(sup.evidenciaBase64||'')+'">' +
           '<input type="hidden" id="bop-foto-type-'+key+'" value="'+(sup.evidenciaType||'')+'">' +
           '<input type="hidden" id="bop-foto-nome-'+key+'" value="'+(sup.evidenciaNome||'')+'">' +
@@ -8364,25 +8360,36 @@ if (!loggedInUser) {
     const isMobile = window.innerWidth <= 768 && annotRowMobile;
 
     if (isMobile) {
-      if (annotRowMobile.style.display !== 'none') {
-        annotRowMobile.style.display = 'none';
-      } else {
+      const jaAberto = annotRowMobile.style.display !== 'none';
+      // Fecha TODOS os painéis mobile abertos (evita IDs duplicados no DOM)
+      document.querySelectorAll('.bop-mcard-annot').forEach(el => {
+        el.style.display = 'none';
+        el.innerHTML = '';
+      });
+      if (!jaAberto) {
         const sup    = _bopSup[key]    || {};
         const desvio = _bopDesvios[key] || {};
         annotRowMobile.innerHTML = buildBopAnnotationPanel(key, sup, desvio);
         annotRowMobile.style.display = 'block';
+        annotRowMobile.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       return;
     }
 
     const annotRow = document.getElementById(`bop-annot-${key}`);
     if (!annotRow) return;
-    if (annotRow.style.display !== 'none') {
-      annotRow.style.display = 'none';
-    } else {
+    const jaAberto = annotRow.style.display !== 'none';
+    // Fecha TODAS as linhas de anotação desktop abertas
+    document.querySelectorAll('[id^="bop-annot-"]').forEach(el => {
+      if (el.id.startsWith('bop-annot-m-')) return; // pula os mobile
+      el.style.display = 'none';
+      const td = el.querySelector('td');
+      if (td) td.innerHTML = '';
+    });
+    if (!jaAberto) {
       const sup    = _bopSup[key]    || {};
       const desvio = _bopDesvios[key] || {};
-      annotRow.innerHTML = `<td colspan="8" style="padding:0;background:#FAFBFF;border-bottom:2px solid #BFDBFE;">${buildBopAnnotationPanel(key, sup, desvio)}</td>`;
+      annotRow.innerHTML = `<td colspan="9" style="padding:0;background:#FAFBFF;border-bottom:2px solid #BFDBFE;">${buildBopAnnotationPanel(key, sup, desvio)}</td>`;
       annotRow.style.display = 'table-row';
     }
   }
