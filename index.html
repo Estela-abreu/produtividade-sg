@@ -1676,6 +1676,59 @@
   .stor-note{font-size:.72rem;color:#9CA3AF;margin-top:.85rem;line-height:1.5;}
 
 
+  /* ── CARDS MOBILE — TEMPO REAL (Fase 3) ── */
+  .bop-mobile-cards { display: none; }
+
+  .bop-mcard {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    border-left: 4px solid #DC2626;
+  }
+  .bop-mcard-resolved { border-left-color: #16A34A; opacity: 0.75; }
+  .bop-mcard-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .bop-mcard-equipe { font-size: 1rem; font-weight: 800; color: #1E3A5F; }
+  .bop-mcard-periodo {
+    font-size: 0.72rem; font-weight: 700; color: #6B7280;
+    background: #F3F4F6; padding: 3px 10px; border-radius: 99px;
+  }
+  .bop-mcard-acao {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+  .bop-mcard-tempo { font-size: 1.1rem; font-weight: 800; }
+  .bop-mcard-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.3rem 0; font-size: 0.82rem; border-top: 1px solid #F3F4F6;
+  }
+  .bop-mcard-row span { color: #9CA3AF; font-weight: 600; }
+  .bop-mcard-row strong { color: #374151; text-align: right; }
+  .bop-mcard-sup { margin: 0.6rem 0; }
+  .bop-mcard-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .bop-mcard-btn-resolve {
+    flex: 1; font-family: 'Barlow', sans-serif; font-size: 0.92rem; font-weight: 800;
+    padding: 0.7rem; border-radius: 8px; border: none; background: #059669;
+    color: white; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.3);
+  }
+  .bop-mcard-btn-del {
+    font-size: 1rem; padding: 0.7rem 0.9rem; border-radius: 8px;
+    border: 1.5px solid #FCA5A5; background: #FEF2F2; color: #DC2626; cursor: pointer;
+  }
+  .bop-mcard-annot { margin-top: 0.75rem; }
+
+  @media (max-width: 768px) {
+    .bop-desktop-table { display: none !important; }
+    .bop-mobile-cards { display: block !important; }
+    /* container da tabela sem padding/scroll horizontal no mobile */
+    #baseop-table-container { overflow: visible !important; box-shadow: none !important; background: transparent !important; }
+  }
+
   /* ════════════════════════════════════════════════════════════
      FASE 2 — RESPONSIVIDADE + MENU MOBILE
      ════════════════════════════════════════════════════════════ */
@@ -7768,23 +7821,7 @@ if (!loggedInUser) {
       return `<span style="font-size:0.75rem;font-weight:800;padding:4px 10px;border-radius:99px;background:#FEF9C3;color:#854D0E;border:1px solid #FDE047;">🕐 Pendente</span>`;
     };
 
-    container.innerHTML = `
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="background:#F9FAFB;">
-            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;">Equipe</th>
-            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;">Período</th>
-            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Incidência</th>
-            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Status</th>
-            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Ação</th>
-            <th style="padding:0.65rem 0.85rem;text-align:center;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Tempo Etapa</th>
-            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Captura</th>
-            <th style="padding:0.65rem 0.85rem;text-align:center;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Supervisão</th>
-            <th style="padding:0.65rem 0.85rem;text-align:center;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;"></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(({ key, d, sup }, idx) => {
+    const bopRowsHTML = rows.map(({ key, d, sup }, idx) => {
             const captura = d.dataHoraCaptura ? new Date(d.dataHoraCaptura).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—';
             const tempoNum = parseInt(d.tempoEtapa);
             const tempoColor = tempoNum > 60 ? '#DC2626' : tempoNum > 30 ? '#D97706' : '#374151';
@@ -7818,9 +7855,55 @@ if (!loggedInUser) {
                   ${buildBopAnnotationPanel(key, sup)}
                 </td>
               </tr>`;
-          }).join('')}
+          }).join('');
+
+    // ── Cards mobile (visíveis apenas em telas pequenas via CSS) ──
+    const bopCardsHTML = rows.map(({ key, d, sup }) => {
+      const tempoNum = parseInt(d.tempoEtapa);
+      const tempoColor = tempoNum > 60 ? '#DC2626' : tempoNum > 30 ? '#D97706' : '#374151';
+      const captura = d.dataHoraCaptura ? new Date(d.dataHoraCaptura).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—';
+      const resolvido = (sup.statusAcao === 'resolvido');
+      return `
+        <div class="bop-mcard${resolvido ? ' bop-mcard-resolved' : ''}">
+          <div class="bop-mcard-head">
+            <span class="bop-mcard-equipe">${d.equipe || '—'}</span>
+            <span class="bop-mcard-periodo">${d.periodo || '—'}</span>
+          </div>
+          <div class="bop-mcard-acao">${acaoBadge(d.acao || '—')}<span class="bop-mcard-tempo" style="color:${tempoColor};">${d.tempoEtapa || '—'} min</span></div>
+          <div class="bop-mcard-row"><span>Incidência</span><strong>${d.incidencia || '—'}</strong></div>
+          <div class="bop-mcard-row"><span>Status</span><strong>${d.status || '—'}</strong></div>
+          <div class="bop-mcard-row"><span>Captura</span><strong>${captura}</strong></div>
+          <div class="bop-mcard-sup">${supBadge(sup)}</div>
+          <div class="bop-mcard-actions">
+            <button onclick="toggleBopAnnotation('${key}')" class="bop-mcard-btn-resolve">✓ Resolver</button>
+            ${isAdmin() ? `<button onclick="confirmDeleteBopDesvio('${key}')" class="bop-mcard-btn-del">🗑️</button>` : ''}
+          </div>
+          <div id="bop-annot-m-${key}" class="bop-mcard-annot" style="display:none;">
+            ${buildBopAnnotationPanel(key, sup)}
+          </div>
+        </div>`;
+    }).join('');
+
+    container.innerHTML = `
+      <table class="bop-desktop-table" style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#F9FAFB;">
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;">Equipe</th>
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;">Período</th>
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Incidência</th>
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Status</th>
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Ação</th>
+            <th style="padding:0.65rem 0.85rem;text-align:center;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Tempo Etapa</th>
+            <th style="padding:0.65rem 0.85rem;text-align:left;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Captura</th>
+            <th style="padding:0.65rem 0.85rem;text-align:center;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;">Supervisão</th>
+            <th style="padding:0.65rem 0.85rem;text-align:center;font-size:0.65rem;font-weight:800;text-transform:uppercase;color:#6B7280;border-bottom:1.5px solid #E5E7EB;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bopRowsHTML}
         </tbody>
-      </table>`;
+      </table>
+      <div class="bop-mobile-cards">${bopCardsHTML}</div>`;
   }
 
   // Constrói painel de anotação de supervisão
@@ -8215,6 +8298,22 @@ if (!loggedInUser) {
   }
 
   function toggleBopAnnotation(key) {
+    // Detecta se está no modo mobile (card) ou desktop (linha de tabela)
+    const annotRowMobile = document.getElementById(`bop-annot-m-${key}`);
+    const isMobile = window.innerWidth <= 768 && annotRowMobile;
+
+    if (isMobile) {
+      if (annotRowMobile.style.display !== 'none') {
+        annotRowMobile.style.display = 'none';
+      } else {
+        const sup    = _bopSup[key]    || {};
+        const desvio = _bopDesvios[key] || {};
+        annotRowMobile.innerHTML = buildBopAnnotationPanel(key, sup, desvio);
+        annotRowMobile.style.display = 'block';
+      }
+      return;
+    }
+
     const annotRow = document.getElementById(`bop-annot-${key}`);
     if (!annotRow) return;
     if (annotRow.style.display !== 'none') {
