@@ -1651,6 +1651,34 @@
   .an-badge-resolvido{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .9rem;border-radius:20px;font-size:.8rem;font-weight:800;background:#DCFCE7;color:#166534;border:1.5px solid #86EFAC;}
   .an-row-resolvida td{opacity:.65;}
   .an-row-resolvida:hover td{opacity:1;}
+  /* ── Combo colaborador (digitar + selecionar) ── */
+  .an-combo { position: relative; }
+  .an-combo-list {
+    display: none;
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0; right: 0;
+    background: white;
+    border: 1.5px solid #E5E7EB;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    -webkit-overflow-scrolling: touch;
+  }
+  .an-combo-list.open { display: block; }
+  .an-combo-item {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.88rem;
+    color: #374151;
+    cursor: pointer;
+    border-bottom: 1px solid #F3F4F6;
+  }
+  .an-combo-item:last-child { border-bottom: none; }
+  .an-combo-item:hover, .an-combo-item:active { background: #EFF6FF; color: #1D4ED8; }
+  .an-combo-empty { padding: 0.7rem 0.9rem; font-size: 0.82rem; color: #9CA3AF; font-style: italic; }
+
   /* ── FIM ANOMALIAS ──────────────────────────────────────────── */
 
   /* ── Storage Monitor ── */
@@ -2827,11 +2855,19 @@ if (!loggedInUser) {
 
         <div class="an-fg">
           <label>Colaborador 1 *</label>
-          <select id="an-c1" required class="an-inp"><option value="">Selecione o colaborador</option></select>
+          <div class="an-combo" id="an-combo-c1">
+            <input type="text" id="an-c1" required class="an-inp" placeholder="Digite ou selecione..." autocomplete="off"
+              onfocus="anComboOpen('c1')" oninput="anComboFilter('c1')">
+            <div class="an-combo-list" id="an-combo-list-c1"></div>
+          </div>
         </div>
         <div class="an-fg">
           <label>Colaborador 2 <span style="font-weight:400;text-transform:none;font-size:.72rem;color:#9CA3AF">(opcional)</span></label>
-          <select id="an-c2" class="an-inp"><option value="">Selecione o colaborador</option></select>
+          <div class="an-combo" id="an-combo-c2">
+            <input type="text" id="an-c2" class="an-inp" placeholder="Digite ou selecione..." autocomplete="off"
+              onfocus="anComboOpen('c2')" oninput="anComboFilter('c2')">
+            <div class="an-combo-list" id="an-combo-list-c2"></div>
+          </div>
         </div>
 
         <div class="an-fg">
@@ -13421,9 +13457,8 @@ entryLines.join('\n\n') + '\n' +
     fillSelect('an-tipo', tipos, 'Selecione o tipo');
     fillSelect('an-acao', ACOES_DEFAULT, 'Selecione a ação');
 
-    /* colaboradores como select (funciona em desktop e mobile) */
-    fillSelect('an-c1', colabs, 'Selecione o colaborador');
-    fillSelect('an-c2', colabs, 'Selecione o colaborador');
+    /* colaboradores: combo (digitar + selecionar) */
+    _anColabs = colabs.slice();
 
     /* filtros da tabela */
     fillSelectFilter('an-f-sup',  sups,  'Todos');
@@ -13444,12 +13479,74 @@ entryLines.join('\n\n') + '\n' +
     /* Limpa, não tenta adivinhar — usuário escolhe da datalist */
   };
 
+  /* ─── Combo de colaboradores (digitar + selecionar) ─── */
+  var _anColabs = [];
+
+  function anComboRender(which, filtro) {
+    var listEl = document.getElementById('an-combo-list-' + which);
+    if (!listEl) return;
+    var termo = (filtro || '').toLowerCase().trim();
+    var itens = _anColabs.filter(function(n) {
+      return !termo || n.toLowerCase().indexOf(termo) !== -1;
+    });
+    if (!itens.length) {
+      listEl.innerHTML = '<div class="an-combo-empty">' +
+        (_anColabs.length ? 'Nenhum colaborador encontrado' : 'Cadastre colaboradores em Configuração') +
+        '</div>';
+      return;
+    }
+    listEl.innerHTML = itens.map(function(n) {
+      var safe = n.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return '<div class="an-combo-item" onmousedown="anComboPick(\'' + which + '\',\'' + safe + '\')" ' +
+             'ontouchstart="anComboPick(\'' + which + '\',\'' + safe + '\')">' + n + '</div>';
+    }).join('');
+  }
+
+  window.anComboOpen = function(which) {
+    anComboRender(which, '');
+    var listEl = document.getElementById('an-combo-list-' + which);
+    if (listEl) listEl.classList.add('open');
+  };
+
+  window.anComboFilter = function(which) {
+    var inp = document.getElementById('an-' + which);
+    anComboRender(which, inp ? inp.value : '');
+    var listEl = document.getElementById('an-combo-list-' + which);
+    if (listEl) listEl.classList.add('open');
+  };
+
+  window.anComboPick = function(which, nome) {
+    var inp = document.getElementById('an-' + which);
+    if (inp) inp.value = nome.replace(/\\'/g, "'");
+    var listEl = document.getElementById('an-combo-list-' + which);
+    if (listEl) listEl.classList.remove('open');
+  };
+
+  /* fechar combos ao clicar fora */
+  document.addEventListener('click', function(e) {
+    ['c1', 'c2'].forEach(function(w) {
+      var combo = document.getElementById('an-combo-' + w);
+      var listEl = document.getElementById('an-combo-list-' + w);
+      if (combo && listEl && !combo.contains(e.target)) listEl.classList.remove('open');
+    });
+  });
+
   /* ─── Abrir / fechar drawer ─── */
   window.anAbrir = function() {
     document.getElementById('an-drawer').classList.add('open');
     var el = document.getElementById('an-data');
     if (el) el.value = new Date().toISOString().split('T')[0];
     anPopulate();
+    /* Rebuscar config do Firebase para garantir lista atualizada no mobile */
+    fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config/' + CFG_COLAB_KEY + '.json')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (Array.isArray(data) && data.length) {
+          _anColabs = data.slice();
+          try { localStorage.setItem(CFG_COLAB_KEY, JSON.stringify(data)); } catch(e) {}
+        }
+      })
+      .catch(function(){});
   };
 
   window.anFechar = function() {
