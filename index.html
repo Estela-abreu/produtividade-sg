@@ -2811,8 +2811,7 @@ if (!loggedInUser) {
   </div>
   <div class="an-drw-body">
     <!-- datalists para busca digitável (colaboradores) -->
-    <datalist id="dl-c1"></datalist>
-    <datalist id="dl-c2"></datalist>
+    <!-- (colaboradores agora usam select nativo) -->
 
     <form id="an-form" onsubmit="anSalvar(event)">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem;">
@@ -2828,11 +2827,11 @@ if (!loggedInUser) {
 
         <div class="an-fg">
           <label>Colaborador 1 *</label>
-          <input list="dl-c1" id="an-c1" placeholder="Digite ou selecione..." autocomplete="off" required class="an-inp">
+          <select id="an-c1" required class="an-inp"><option value="">Selecione o colaborador</option></select>
         </div>
         <div class="an-fg">
           <label>Colaborador 2 <span style="font-weight:400;text-transform:none;font-size:.72rem;color:#9CA3AF">(opcional)</span></label>
-          <input list="dl-c2" id="an-c2" placeholder="Digite ou selecione..." autocomplete="off" class="an-inp">
+          <select id="an-c2" class="an-inp"><option value="">Selecione o colaborador</option></select>
         </div>
 
         <div class="an-fg">
@@ -13422,9 +13421,9 @@ entryLines.join('\n\n') + '\n' +
     fillSelect('an-tipo', tipos, 'Selecione o tipo');
     fillSelect('an-acao', ACOES_DEFAULT, 'Selecione a ação');
 
-    /* datalists (busca livre para colaboradores) */
-    fillDatalist('dl-c1', colabs);
-    fillDatalist('dl-c2', colabs);
+    /* colaboradores como select (funciona em desktop e mobile) */
+    fillSelect('an-c1', colabs, 'Selecione o colaborador');
+    fillSelect('an-c2', colabs, 'Selecione o colaborador');
 
     /* filtros da tabela */
     fillSelectFilter('an-f-sup',  sups,  'Todos');
