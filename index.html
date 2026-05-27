@@ -5361,12 +5361,23 @@ if (!loggedInUser) {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(value)
-      }).catch(e => console.warn('Config save error:', e));
+      }).then(r => {
+        if (r.ok) {
+          console.log('[CONFIG] Salvo no Firebase:', fbKey);
+          if (typeof showCopyToast === 'function') showCopyToast('✅ Configuração sincronizada');
+        } else {
+          console.warn('[CONFIG] Firebase respondeu erro:', r.status);
+          if (typeof showCopyToast === 'function') showCopyToast('⚠️ Erro ao sincronizar (' + r.status + ')');
+        }
+      }).catch(e => {
+        console.warn('Config save error:', e);
+        if (typeof showCopyToast === 'function') showCopyToast('⚠️ Sem conexão — salvo só localmente');
+      });
     } catch(e) {}
   }
 
   function fetchConfigFromFirebase(isPolling) {
-    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
+    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json?t=` + Date.now())
       .then(r => r.json())
       .then(data => {
         let mudou = false;
@@ -5385,29 +5396,24 @@ if (!loggedInUser) {
           });
         }
         if (!isPolling) initDefaults();
-        // Se algo mudou (ou primeira carga), re-renderiza telas dependentes
         if (mudou || !isPolling) {
-          if (document.getElementById(`configPanel`)?.style.display !== `none`) {
-            try { renderConfigPanel(); } catch(e) {}
-          }
-          try { renderContactChips(); } catch(e) {}
-          try { applyCatLimites(); } catch(e) {}
-          // Atualizar selects de responsável onde estiverem visíveis
-          try { if (typeof refreshRespAcaoSelects === 'function') refreshRespAcaoSelects(); } catch(e) {}
+          // Re-renderiza o painel de Configuração se ele existir no DOM
+          try { if (typeof renderConfigPanel === 'function') renderConfigPanel(); } catch(e) {}
+          try { if (typeof renderContactChips === 'function') renderContactChips(); } catch(e) {}
+          try { if (typeof applyCatLimites === 'function') applyCatLimites(); } catch(e) {}
           // Atualizar filtros e selects do Tempo Real / Anomalias
           try { if (typeof populateBopFilters === 'function') populateBopFilters(); } catch(e) {}
           try { if (typeof anPopulate === 'function') anPopulate(); } catch(e) {}
+          if (isPolling && mudou) console.log('[CONFIG] Atualizado do Firebase');
         }
       }).catch(e => { if (!isPolling) initDefaults(); });
   }
 
   function initConfigSync() {
-    // Load from localStorage first immediately
     initDefaults();
-    // Primeira sincronização completa
     fetchConfigFromFirebase(false);
-    // Polling: rebusca a config a cada 8s para refletir alterações de outros usuários
-    setInterval(function(){ fetchConfigFromFirebase(true); }, 8000);
+    // Polling: rebusca a config a cada 5s para refletir alterações de outros usuários
+    setInterval(function(){ fetchConfigFromFirebase(true); }, 5000);
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
