@@ -5365,32 +5365,49 @@ if (!loggedInUser) {
     } catch(e) {}
   }
 
-  function initConfigSync() {
-    // Load from localStorage first immediately
-    initDefaults();
-
-    fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
+  function fetchConfigFromFirebase(isPolling) {
+    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
       .then(r => r.json())
       .then(data => {
+        let mudou = false;
         if (data) {
           Object.entries(data).forEach(([k, v]) => {
-            // Only overwrite if Firebase value is non-empty array/object
             const isEmpty = Array.isArray(v) ? v.length === 0 : (v === null || v === undefined);
             if (!isEmpty) {
-              _cfgCache[k] = v;
-              try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+              const antigo = JSON.stringify(_cfgCache[k]);
+              const novo = JSON.stringify(v);
+              if (antigo !== novo) {
+                _cfgCache[k] = v;
+                try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+                mudou = true;
+              }
             }
           });
         }
-        // Re-seed after Firebase sync in case it wiped something
-        initDefaults();
-        if (document.getElementById(`configPanel`)?.style.display !== `none`) renderConfigPanel();
-        renderContactChips();
-        applyCatLimites();
-      }).catch(e => {
-        // Aviso silencioso - Firebase pode não estar configurado
-        initDefaults();
-      });
+        if (!isPolling) initDefaults();
+        // Se algo mudou (ou primeira carga), re-renderiza telas dependentes
+        if (mudou || !isPolling) {
+          if (document.getElementById(`configPanel`)?.style.display !== `none`) {
+            try { renderConfigPanel(); } catch(e) {}
+          }
+          try { renderContactChips(); } catch(e) {}
+          try { applyCatLimites(); } catch(e) {}
+          // Atualizar selects de responsável onde estiverem visíveis
+          try { if (typeof refreshRespAcaoSelects === 'function') refreshRespAcaoSelects(); } catch(e) {}
+          // Atualizar filtros e selects do Tempo Real / Anomalias
+          try { if (typeof populateBopFilters === 'function') populateBopFilters(); } catch(e) {}
+          try { if (typeof anPopulate === 'function') anPopulate(); } catch(e) {}
+        }
+      }).catch(e => { if (!isPolling) initDefaults(); });
+  }
+
+  function initConfigSync() {
+    // Load from localStorage first immediately
+    initDefaults();
+    // Primeira sincronização completa
+    fetchConfigFromFirebase(false);
+    // Polling: rebusca a config a cada 8s para refletir alterações de outros usuários
+    setInterval(function(){ fetchConfigFromFirebase(true); }, 8000);
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
