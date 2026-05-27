@@ -5439,7 +5439,14 @@ if (!loggedInUser) {
     // Also save to Firebase if not there
     if (!getCfg(CFG_CAUSAS_KEY, null))    saveCausas([...CAUSAS_INCIDENCIA]);
     if (!getCfg(CFG_EQUIPES_KEY, null))   saveEquipes([...EQUIPES_DEFAULT]);
-    if (!getCfg(CFG_RESP_ACAO_KEY, null)) saveRespAcao([...RESP_ACAO_DEFAULT]);
+    if (!getCfg(CFG_RESP_ACAO_KEY, null)) {
+      saveRespAcao([...RESP_ACAO_DEFAULT]);
+    } else {
+      // Mescla defaults novos (ex: Fábio) com o que já existe, sem perder os manuais
+      const atual = getCfg(CFG_RESP_ACAO_KEY, []);
+      const faltando = RESP_ACAO_DEFAULT.filter(n => !atual.includes(n));
+      if (faltando.length) saveRespAcao([...atual, ...faltando]);
+    }
     if (!getCfg(CFG_RESP_OC_KEY,  null)) saveRespOc([...RESP_OC_DEFAULT]);
     if (!getCfg(CFG_SETORES_KEY,  null)) saveSetores([...SETORES_DEFAULT]);
   }
@@ -12082,12 +12089,15 @@ entryLines.join('\n\n') + '\n' +
 
 
 
-  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
+  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison','Fábio'];
 
   const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
 
   function getRespAcao() {
-    return getCfg(CFG_RESP_ACAO_KEY, [...RESP_ACAO_DEFAULT]);
+    // Mescla a lista salva com os defaults do código (garante nomes novos como Fábio)
+    const salvos = getCfg(CFG_RESP_ACAO_KEY, []);
+    const merged = [...new Set([...salvos, ...RESP_ACAO_DEFAULT])];
+    return merged.length ? merged : [...RESP_ACAO_DEFAULT];
   }
 
   function saveRespAcao(arr) {
