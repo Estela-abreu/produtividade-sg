@@ -13649,6 +13649,13 @@ entryLines.join('\n\n') + '\n' +
     fillSelectFilter('an-f-tipo', tipos, 'Todos');
   }
 
+  // Exporta para window para que o sistema de sincronização de configuração
+  // (applyConfigEverywhere, no escopo externo) possa chamar diretamente,
+  // atualizando selects e filtros de Equipe/Tipo/Supervisor em tempo real
+  // para TODOS os usuários conectados, sem F5 nem troca de aba.
+  window.anPopulate = anPopulate;
+  window.anFetch    = anFetch;
+
   function fillSelectFilter(id, arr, blank) {
     var el = document.getElementById(id);
     if (!el) return;
