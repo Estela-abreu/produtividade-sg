@@ -3,12 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>Análise de Produtividade – Enel Brasil</title>
-<!-- Versão do arquivo (visível no console: window.APP_VERSION) -->
-<script>window.APP_VERSION = '2026-05-27-cfg-sync';</script>
 <!-- Firebase via REST API pura — sem SDK, funciona em qualquer ambiente -->
 <script>
   const FB_URL = 'https://produtividade-sg-default-rtdb.firebaseio.com';
@@ -2554,8 +2549,7 @@ if (!loggedInUser) {
   </div>
   <div class="sidebar-footer">
     © 2026 Enel Brasil<br>
-    Criado por Estela Abreu<br>
-    <span style="font-size:0.62rem;opacity:0.55;">v.<script>document.write(window.APP_VERSION||'—');</script></span>
+    Criado por Estela Abreu
   </div>
 </nav>
 
@@ -3526,20 +3520,6 @@ if (!loggedInUser) {
 </div>
 
 <div id="configPanel" style="display:none;max-width:960px;margin:0 auto;padding:1.5rem 2rem 3rem;">
-
-  <!-- Barra de sincronização: botão e indicador de última atualização -->
-  <div style="background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:10px;padding:0.85rem 1.1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:0.85rem;flex-wrap:wrap;">
-    <span style="font-size:1.1rem;">🔄</span>
-    <div style="flex:1;min-width:200px;">
-      <div style="font-size:0.85rem;font-weight:700;color:#0C4A6E;">Sincronização da Configuração</div>
-      <div style="font-size:0.72rem;color:#0369A1;">
-        <span id="cfg-sync-status">Aguardando primeira sincronização...</span>
-      </div>
-    </div>
-    <button onclick="forcarSyncConfig()" style="font-family:'Barlow',sans-serif;font-size:0.82rem;font-weight:700;padding:7px 16px;border-radius:7px;border:none;background:#0EA5E9;color:white;cursor:pointer;box-shadow:0 2px 6px rgba(14,165,233,0.3);">
-      ⟳ Sincronizar Agora
-    </button>
-  </div>
 
   <!-- Header -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem;">
@@ -5381,23 +5361,12 @@ if (!loggedInUser) {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(value)
-      }).then(r => {
-        if (r.ok) {
-          console.log('[CONFIG] Salvo no Firebase:', fbKey);
-          if (typeof showCopyToast === 'function') showCopyToast('✅ Configuração sincronizada');
-        } else {
-          console.warn('[CONFIG] Firebase respondeu erro:', r.status);
-          if (typeof showCopyToast === 'function') showCopyToast('⚠️ Erro ao sincronizar (' + r.status + ')');
-        }
-      }).catch(e => {
-        console.warn('Config save error:', e);
-        if (typeof showCopyToast === 'function') showCopyToast('⚠️ Sem conexão — salvo só localmente');
-      });
+      }).catch(e => console.warn('Config save error:', e));
     } catch(e) {}
   }
 
   function fetchConfigFromFirebase(isPolling) {
-    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json?t=` + Date.now())
+    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
       .then(r => r.json())
       .then(data => {
         let mudou = false;
@@ -5416,62 +5385,29 @@ if (!loggedInUser) {
           });
         }
         if (!isPolling) initDefaults();
-        // Atualizar status de sincronização visível na Config
-        try {
-          const stEl = document.getElementById('cfg-sync-status');
-          if (stEl) {
-            const agora = new Date().toLocaleTimeString('pt-BR');
-            stEl.textContent = '✅ Última sincronização: ' + agora + (mudou ? ' (atualizado!)' : '');
-          }
-        } catch(e) {}
+        // Se algo mudou (ou primeira carga), re-renderiza telas dependentes
         if (mudou || !isPolling) {
-          try { if (typeof renderConfigPanel === 'function') renderConfigPanel(); } catch(e) {}
-          try { if (typeof renderContactChips === 'function') renderContactChips(); } catch(e) {}
-          try { if (typeof applyCatLimites === 'function') applyCatLimites(); } catch(e) {}
+          if (document.getElementById(`configPanel`)?.style.display !== `none`) {
+            try { renderConfigPanel(); } catch(e) {}
+          }
+          try { renderContactChips(); } catch(e) {}
+          try { applyCatLimites(); } catch(e) {}
+          // Atualizar selects de responsável onde estiverem visíveis
+          try { if (typeof refreshRespAcaoSelects === 'function') refreshRespAcaoSelects(); } catch(e) {}
+          // Atualizar filtros e selects do Tempo Real / Anomalias
           try { if (typeof populateBopFilters === 'function') populateBopFilters(); } catch(e) {}
           try { if (typeof anPopulate === 'function') anPopulate(); } catch(e) {}
-          if (isPolling && mudou) console.log('[CONFIG] Atualizado do Firebase');
         }
-        return mudou;
-      }).catch(e => {
-        try {
-          const stEl = document.getElementById('cfg-sync-status');
-          if (stEl) stEl.textContent = '⚠️ Erro ao sincronizar: ' + (e.message || 'sem conexão');
-        } catch(_) {}
-        if (!isPolling) initDefaults();
-        throw e;
-      });
+      }).catch(e => { if (!isPolling) initDefaults(); });
   }
 
-  // Exposto globalmente para o botão "Sincronizar Agora"
-  window.forcarSyncConfig = function() {
-    const stEl = document.getElementById('cfg-sync-status');
-    if (stEl) stEl.textContent = '⏳ Buscando atualizações do Firebase...';
-    fetchConfigFromFirebase(false).then(function(mudou) {
-      if (typeof showCopyToast === 'function') {
-        showCopyToast(mudou ? '✅ Sincronizado — dados atualizados!' : '✅ Sincronizado — já estava atualizado');
-      }
-    }).catch(function() {
-      if (typeof showCopyToast === 'function') showCopyToast('⚠️ Erro ao sincronizar');
-    });
-  };
-
   function initConfigSync() {
+    // Load from localStorage first immediately
     initDefaults();
+    // Primeira sincronização completa
     fetchConfigFromFirebase(false);
-    // Polling: rebusca a config a cada 5s para refletir alterações de outros usuários
-    setInterval(function(){ fetchConfigFromFirebase(true); }, 5000);
-
-    // Quando o usuário volta para a aba/app, força sincronização imediata
-    // (resolve iOS Safari que pausa setInterval em background)
-    document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible') {
-        fetchConfigFromFirebase(true);
-      }
-    });
-    window.addEventListener('focus', function() {
-      fetchConfigFromFirebase(true);
-    });
+    // Polling: rebusca a config a cada 8s para refletir alterações de outros usuários
+    setInterval(function(){ fetchConfigFromFirebase(true); }, 8000);
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
@@ -5497,14 +5433,7 @@ if (!loggedInUser) {
     // Also save to Firebase if not there
     if (!getCfg(CFG_CAUSAS_KEY, null))    saveCausas([...CAUSAS_INCIDENCIA]);
     if (!getCfg(CFG_EQUIPES_KEY, null))   saveEquipes([...EQUIPES_DEFAULT]);
-    if (!getCfg(CFG_RESP_ACAO_KEY, null)) {
-      saveRespAcao([...RESP_ACAO_DEFAULT]);
-    } else {
-      // Mescla defaults novos (ex: Fábio) com o que já existe, sem perder os manuais
-      const atual = getCfg(CFG_RESP_ACAO_KEY, []);
-      const faltando = RESP_ACAO_DEFAULT.filter(n => !atual.includes(n));
-      if (faltando.length) saveRespAcao([...atual, ...faltando]);
-    }
+    if (!getCfg(CFG_RESP_ACAO_KEY, null)) saveRespAcao([...RESP_ACAO_DEFAULT]);
     if (!getCfg(CFG_RESP_OC_KEY,  null)) saveRespOc([...RESP_OC_DEFAULT]);
     if (!getCfg(CFG_SETORES_KEY,  null)) saveSetores([...SETORES_DEFAULT]);
   }
@@ -6117,7 +6046,22 @@ if (!loggedInUser) {
         }).catch(() => {});
     }, 10000);
 
-    // Sync de config: removido — agora é feito pelo fetchConfigFromFirebase a cada 5s
+    // Sync de config (15s)
+    setInterval(() => {
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json')
+        .then(r => r.json())
+        .then(data => {
+          if (!data) return;
+          Object.entries(data).forEach(([k, v]) => {
+            const isEmpty = Array.isArray(v) ? v.length === 0 : (v === null || v === undefined);
+            if (!isEmpty) {
+              _cfgCache[k] = v;
+              try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+            }
+          });
+          applyCatLimites();
+        }).catch(() => {});
+    }, 15000);
   }
 
     function collectFormData() {
@@ -12132,15 +12076,12 @@ entryLines.join('\n\n') + '\n' +
 
 
 
-  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison','Fábio'];
+  const RESP_ACAO_DEFAULT = ['Bruna','Alexandre','Dalmir','Marcelo','Helio','Adriano','Breno','Darvison'];
 
   const RESP_OC_DEFAULT  = ['Supervisão','COD','Equipe','Coordenação'];
 
   function getRespAcao() {
-    // Mescla a lista salva com os defaults do código (garante nomes novos como Fábio)
-    const salvos = getCfg(CFG_RESP_ACAO_KEY, []);
-    const merged = [...new Set([...salvos, ...RESP_ACAO_DEFAULT])];
-    return merged.length ? merged : [...RESP_ACAO_DEFAULT];
+    return getCfg(CFG_RESP_ACAO_KEY, [...RESP_ACAO_DEFAULT]);
   }
 
   function saveRespAcao(arr) {
