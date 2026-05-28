@@ -5374,7 +5374,10 @@ if (!loggedInUser) {
   }
 
   function fetchConfigFromFirebase(isPolling) {
-    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`)
+    return fetch(`https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      })
       .then(r => r.json())
       .then(data => {
         let mudou = false;
@@ -5497,14 +5500,46 @@ if (!loggedInUser) {
     }
   }
 
+  let _cfgPollTimer = null;
+  let _cfgLastPollAt = 0;
+
   function initConfigSync() {
     // Load from localStorage first immediately
     initDefaults();
     // Primeira sincronização completa
     fetchConfigFromFirebase(false);
-    // Polling: rebusca a config a cada 3s para refletir alterações de outros
-    // usuários em tempo (quase) real, sem necessidade de atualizar a página.
-    setInterval(function(){ fetchConfigFromFirebase(true); }, 3000);
+
+    // Polling a cada 3s para refletir alterações de outros usuários em tempo
+    // (quase) real, sem necessidade de atualizar a página nem trocar de aba.
+    function startCfgPoll() {
+      if (_cfgPollTimer) clearInterval(_cfgPollTimer);
+      _cfgPollTimer = setInterval(function(){
+        _cfgLastPollAt = Date.now();
+        fetchConfigFromFirebase(true);
+      }, 3000);
+    }
+    startCfgPoll();
+
+    // Navegadores desaceleram setInterval em abas em segundo plano (até ~1x/min).
+    // Quando o usuário volta para a aba/janela, sincroniza IMEDIATAMENTE e
+    // reinicia o intervalo, garantindo dados frescos sem F5 nem clique.
+    function resyncNow() {
+      fetchConfigFromFirebase(true);
+      startCfgPoll();
+    }
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') resyncNow();
+    });
+    window.addEventListener('focus', resyncNow);
+    window.addEventListener('online', resyncNow);
+
+    // Auto-cura: se por algum motivo o timer parar de avançar, recria-o.
+    setInterval(function() {
+      if (Date.now() - _cfgLastPollAt > 15000 && document.visibilityState === 'visible') {
+        startCfgPoll();
+        fetchConfigFromFirebase(true);
+      }
+    }, 10000);
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
@@ -6132,7 +6167,7 @@ if (!loggedInUser) {
 
     // Sync de contatos (10s)
     setInterval(() => {
-      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json')
+      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/contacts.json', { cache: 'no-store' })
         .then(r => r.json())
         .then(data => {
           if (!data) return;
@@ -6143,22 +6178,14 @@ if (!loggedInUser) {
         }).catch(() => {});
     }, 10000);
 
-    // Sync de config (15s)
-    setInterval(() => {
-      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json')
-        .then(r => r.json())
-        .then(data => {
-          if (!data) return;
-          Object.entries(data).forEach(([k, v]) => {
-            const isEmpty = Array.isArray(v) ? v.length === 0 : (v === null || v === undefined);
-            if (!isEmpty) {
-              _cfgCache[k] = v;
-              try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-            }
-          });
-          applyCatLimites();
-        }).catch(() => {});
-    }, 15000);
+    // OBS.: A sincronização da CONFIGURAÇÃO (equipes, responsáveis, colaboradores,
+    // tipos de anomalia, supervisores, etc.) é feita EXCLUSIVAMENTE por
+    // initConfigSync()/fetchConfigFromFirebase(), que roda a cada 3s, usa
+    // cache:'no-store' e re-renderiza TODOS os componentes via applyConfigEverywhere().
+    // O antigo polling de config de 15s que existia aqui foi REMOVIDO: ele
+    // atualizava _cfgCache/localStorage silenciosamente (sem re-renderizar os
+    // selects/formulários) e, por correr junto com o de 3s, fazia o de 3s enxergar
+    // "nenhuma mudança" — por isso o backend atualizava mas a tela não.
   }
 
     function collectFormData() {
