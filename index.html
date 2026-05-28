@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Análise de Produtividade – Enel Brasil</title>
+<!-- Versão do arquivo (visível no console: window.APP_VERSION) -->
+<script>window.APP_VERSION = '2026-05-27-cfg-sync';</script>
 <!-- Firebase via REST API pura — sem SDK, funciona em qualquer ambiente -->
 <script>
   const FB_URL = 'https://produtividade-sg-default-rtdb.firebaseio.com';
@@ -2549,7 +2554,8 @@ if (!loggedInUser) {
   </div>
   <div class="sidebar-footer">
     © 2026 Enel Brasil<br>
-    Criado por Estela Abreu
+    Criado por Estela Abreu<br>
+    <span style="font-size:0.62rem;opacity:0.55;">v.<script>document.write(window.APP_VERSION||'—');</script></span>
   </div>
 </nav>
 
@@ -6059,22 +6065,7 @@ if (!loggedInUser) {
         }).catch(() => {});
     }, 10000);
 
-    // Sync de config (15s)
-    setInterval(() => {
-      fetch('https://produtividade-sg-default-rtdb.firebaseio.com/produtividade/config.json')
-        .then(r => r.json())
-        .then(data => {
-          if (!data) return;
-          Object.entries(data).forEach(([k, v]) => {
-            const isEmpty = Array.isArray(v) ? v.length === 0 : (v === null || v === undefined);
-            if (!isEmpty) {
-              _cfgCache[k] = v;
-              try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-            }
-          });
-          applyCatLimites();
-        }).catch(() => {});
-    }, 15000);
+    // Sync de config: removido — agora é feito pelo fetchConfigFromFirebase a cada 5s
   }
 
     function collectFormData() {
