@@ -5345,6 +5345,11 @@ if (!loggedInUser) {
 
   // ── Central config cache (synced from Firebase) ──
   let _cfgCache = {};
+  // Marca o instante da última gravação LOCAL de cada chave de config.
+  // Protege a alteração recém-feita pelo próprio admin de ser sobrescrita
+  // por uma leitura de polling ainda "atrasada" (FB pode não ter recebido o PUT).
+  let _cfgLocalSaveAt = {};
+  const CFG_LOCAL_GUARD_MS = 6000;
 
   function getCfg(key, fallback) {
     if (_cfgCache[key] !== undefined) return _cfgCache[key];
@@ -5354,6 +5359,7 @@ if (!loggedInUser) {
 
   function saveCfg(key, value) {
     _cfgCache[key] = value;
+    _cfgLocalSaveAt[key] = Date.now();
     try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     try {
       const fbKey = key.replace(/[.#$[\]]/g,'_');
@@ -5363,6 +5369,8 @@ if (!loggedInUser) {
         body: JSON.stringify(value)
       }).catch(e => console.warn('Config save error:', e));
     } catch(e) {}
+    // Atualização imediata da própria tela do admin (sem esperar o próximo polling)
+    try { applyConfigEverywhere(); } catch(e) {}
   }
 
   function fetchConfigFromFirebase(isPolling) {
@@ -5370,35 +5378,123 @@ if (!loggedInUser) {
       .then(r => r.json())
       .then(data => {
         let mudou = false;
-        if (data) {
+        // IMPORTANTE: tratamos a config do Firebase como fonte única da verdade.
+        // O Firebase só retorna as chaves que EXISTEM em /produtividade/config,
+        // portanto um array vazio aqui significa que o admin esvaziou a lista de
+        // propósito (ex.: removeu a última equipe) — isso DEVE sincronizar.
+        // Nunca usamos "if (length === 0) return" — exclusões precisam propagar.
+        if (data && typeof data === 'object') {
           Object.entries(data).forEach(([k, v]) => {
-            const isEmpty = Array.isArray(v) ? v.length === 0 : (v === null || v === undefined);
-            if (!isEmpty) {
-              const antigo = JSON.stringify(_cfgCache[k]);
-              const novo = JSON.stringify(v);
-              if (antigo !== novo) {
-                _cfgCache[k] = v;
-                try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-                mudou = true;
-              }
+            if (v === undefined) return;                 // ausente no FB → ignora
+            // Guarda local: se ESTE usuário acabou de salvar esta chave, não deixa
+            // uma leitura de polling atrasada sobrescrever a alteração recém-feita.
+            if (_cfgLocalSaveAt[k] && (Date.now() - _cfgLocalSaveAt[k]) < CFG_LOCAL_GUARD_MS) {
+              return;
+            }
+            const antigo = JSON.stringify(_cfgCache[k]);
+            const novo   = JSON.stringify(v);
+            if (antigo !== novo) {
+              _cfgCache[k] = v;
+              try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+              mudou = true;
             }
           });
         }
         if (!isPolling) initDefaults();
-        // Se algo mudou (ou primeira carga), re-renderiza telas dependentes
+        // Se algo mudou (ou primeira carga), re-renderiza TODAS as telas dependentes
         if (mudou || !isPolling) {
-          if (document.getElementById(`configPanel`)?.style.display !== `none`) {
-            try { renderConfigPanel(); } catch(e) {}
+          try { applyConfigEverywhere(); } catch(e) { console.warn('applyConfigEverywhere:', e); }
+          // Aviso silencioso de atualização vinda de outro usuário (apenas no polling)
+          if (mudou && isPolling) {
+            try {
+              if (typeof showCopyToast === 'function') {
+                showCopyToast('🔄 Configurações atualizadas em tempo real');
+              }
+            } catch(e) {}
           }
-          try { renderContactChips(); } catch(e) {}
-          try { applyCatLimites(); } catch(e) {}
-          // Atualizar selects de responsável onde estiverem visíveis
-          try { if (typeof refreshRespAcaoSelects === 'function') refreshRespAcaoSelects(); } catch(e) {}
-          // Atualizar filtros e selects do Tempo Real / Anomalias
-          try { if (typeof populateBopFilters === 'function') populateBopFilters(); } catch(e) {}
-          try { if (typeof anPopulate === 'function') anPopulate(); } catch(e) {}
         }
       }).catch(e => { if (!isPolling) initDefaults(); });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  SINCRONIZAÇÃO GLOBAL DA CONFIGURAÇÃO
+  //  Re-renderiza TODOS os componentes que dependem da aba Configuração,
+  //  em desktop e mobile, sem recarregar a página, sem limpar formulários
+  //  abertos e preservando os valores/filtros já selecionados.
+  //  Chamada: (1) logo após cada saveCfg (atualização instantânea do próprio
+  //  admin) e (2) a cada polling quando detecta mudança vinda de outro usuário.
+  // ──────────────────────────────────────────────────────────────
+  function applyConfigEverywhere() {
+    // 1) Painel da própria aba Configuração (só se estiver aberta)
+    try {
+      const cfgEl = document.getElementById('configPanel');
+      if (cfgEl && cfgEl.style.display !== 'none' && typeof renderConfigPanel === 'function') {
+        renderConfigPanel();
+      }
+    } catch(e) {}
+    // 2) Contatos de WhatsApp
+    try { if (typeof renderContactChips === 'function') renderContactChips(); } catch(e) {}
+    // 3) Limites por categoria
+    try { if (typeof applyCatLimites === 'function') applyCatLimites(); } catch(e) {}
+    // 4) Filtros e selects do Tempo Real
+    try { if (typeof populateBopFilters === 'function') populateBopFilters(); } catch(e) {}
+    // 5) Formulário/Filtros da aba Anomalias (equipes, supervisores, tipos, colaboradores)
+    try { if (typeof anPopulate === 'function') anPopulate(); } catch(e) {}
+    // 6) Selects de responsável (Ocorrência/Ação) em lançamentos abertos
+    try { refreshRespAcaoSelects(); } catch(e) {}
+    // 7) Filtros de responsável do Dashboard (se a aba estiver visível)
+    try { refreshDashboardRespFilters(); } catch(e) {}
+    // 8) Display de supervisores do formulário principal (conforme turno selecionado)
+    try {
+      const turnoSel = document.getElementById('turno');
+      const turnoVal = turnoSel ? turnoSel.value : '';
+      if (turnoVal && typeof onTurnoChange === 'function') onTurnoChange(turnoVal);
+    } catch(e) {}
+  }
+
+  // Atualiza, preservando a seleção atual, todos os selects de responsável
+  // que já estejam montados em lançamentos de ocorrência abertos.
+  function refreshRespAcaoSelects() {
+    const respOc   = (typeof getRespOc   === 'function') ? getRespOc()   : [];
+    const respAcao = (typeof getRespAcao === 'function') ? getRespAcao() : [];
+
+    // Responsável pela Ocorrência: id = "acao-resp-<id>" (exclui os "acao-resp-acao-sel-*")
+    document.querySelectorAll('select[id^="acao-resp-"]').forEach(function(sel) {
+      if (sel.id.indexOf('acao-resp-acao-sel-') === 0) return; // tratado abaixo
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Selecione —</option>' +
+        respOc.map(function(n) {
+          return '<option value="' + n + '"' + (n === cur ? ' selected' : '') + '>' + n + '</option>';
+        }).join('');
+    });
+
+    // Responsável pela Ação (adicionar): id = "acao-resp-acao-sel-<id>"
+    document.querySelectorAll('select[id^="acao-resp-acao-sel-"]').forEach(function(sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">+ Adicionar responsável...</option>' +
+        respAcao.map(function(n) {
+          return '<option value="' + n + '"' + (n === cur ? ' selected' : '') + '>' + n + '</option>';
+        }).join('');
+    });
+  }
+
+  // Atualiza os filtros de responsável do Dashboard sem re-renderizar a tabela
+  // inteira (preserva a seleção atual e não mexe nos demais filtros).
+  function refreshDashboardRespFilters() {
+    const respAcao = (typeof getRespAcao === 'function') ? getRespAcao() : [];
+    const respOc   = (typeof getRespOc   === 'function') ? getRespOc()   : [];
+    const acSel = document.getElementById('dash-f-resp-ac');
+    if (acSel) {
+      const cur = acSel.value;
+      acSel.innerHTML = '<option value="">Todos</option>' +
+        respAcao.map(function(n){ return '<option value="'+n+'"'+(n===cur?' selected':'')+'>'+n+'</option>'; }).join('');
+    }
+    const ocSel = document.getElementById('dash-f-resp-oc');
+    if (ocSel) {
+      const cur = ocSel.value;
+      ocSel.innerHTML = '<option value="">Todos</option>' +
+        respOc.map(function(n){ return '<option value="'+n+'"'+(n===cur?' selected':'')+'>'+n+'</option>'; }).join('');
+    }
   }
 
   function initConfigSync() {
@@ -5406,8 +5502,9 @@ if (!loggedInUser) {
     initDefaults();
     // Primeira sincronização completa
     fetchConfigFromFirebase(false);
-    // Polling: rebusca a config a cada 8s para refletir alterações de outros usuários
-    setInterval(function(){ fetchConfigFromFirebase(true); }, 8000);
+    // Polling: rebusca a config a cada 3s para refletir alterações de outros
+    // usuários em tempo (quase) real, sem necessidade de atualizar a página.
+    setInterval(function(){ fetchConfigFromFirebase(true); }, 3000);
   }
 
   function getEquipes() { return getCfg(CFG_EQUIPES_KEY, [...EQUIPES_DEFAULT]); }
