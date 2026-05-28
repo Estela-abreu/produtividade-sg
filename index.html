@@ -5428,6 +5428,10 @@ if (!loggedInUser) {
   //  admin) e (2) a cada polling quando detecta mudança vinda de outro usuário.
   // ──────────────────────────────────────────────────────────────
   function applyConfigEverywhere() {
+    // Notifica imediatamente todos os módulos encapsulados em IIFEs via evento —
+    // mecanismo principal de re-render, sem depender de window exports ou typeof.
+    try { document.dispatchEvent(new CustomEvent('cfgUpdated')); } catch(e) {}
+
     // 1) Painel da própria aba Configuração (só se estiver aberta)
     try {
       const cfgEl = document.getElementById('configPanel');
@@ -5441,7 +5445,8 @@ if (!loggedInUser) {
     try { if (typeof applyCatLimites === 'function') applyCatLimites(); } catch(e) {}
     // 4) Filtros e selects do Tempo Real
     try { if (typeof populateBopFilters === 'function') populateBopFilters(); } catch(e) {}
-    // 5) Formulário/Filtros da aba Anomalias (equipes, supervisores, tipos, colaboradores)
+    // 5) Formulário/Filtros da aba Anomalias — chamada direta via window export;
+    //    o CustomEvent acima já chama anPopulate de dentro do IIFE (mais confiável)
     try { if (typeof anPopulate === 'function') anPopulate(); } catch(e) {}
     // 6) Selects de responsável (Ocorrência/Ação) em lançamentos abertos
     try { refreshRespAcaoSelects(); } catch(e) {}
@@ -13656,6 +13661,112 @@ entryLines.join('\n\n') + '\n' +
   window.anPopulate = anPopulate;
   window.anFetch    = anFetch;
 
+  /* ══════════════════════════════════════════════════════════════════
+     SYNC AUTÔNOMO DE CONFIGURAÇÃO — ABA ANOMALIAS
+     Mecanismo INDEPENDENTE de toda cadeia externa (applyConfigEverywhere,
+     fetchConfigFromFirebase, _cfgCache, mudou, etc.).
+
+     Problema diagnosticado: anPopulate é chamada por código externo via
+     typeof/window export, mas a combinação de escopo de IIFE, closures e
+     timing async pode fazer essa cadeia falhar silenciosamente.
+
+     Solução: o próprio módulo de Anomalias busca a config no Firebase
+     a cada 3 s, compara com o estado atual do DOM (não com _cfgCache),
+     e reconstrói os selects diretamente quando detecta mudança.
+     Isso garante sync em até 3 s para TODOS os usuários, em desktop
+     e mobile, com a aba aberta ou não.
+  ══════════════════════════════════════════════════════════════════ */
+  (function () {
+    /* Assinaturas das listas na última atualização aplicada.
+       Comparamos com o JSON que chega do Firebase.                 */
+    var _sigEq    = null;
+    var _sigSup   = null;
+    var _sigTipo  = null;
+    var _sigColab = null;
+
+    /* Chaves no Firebase (mesmo padrão do saveCfg global)         */
+    var FBCFG = FB_URL + '/produtividade/config';
+
+    /* Aplica nova lista de equipes nos selects sem perder seleção  */
+    function setEquipes(eqs) {
+      if (!Array.isArray(eqs)) return;
+      var sig = JSON.stringify(eqs);
+      if (sig === _sigEq) return;
+      _sigEq = sig;
+      /* sincroniza cache global para consistência com o resto do app */
+      try { _cfgCache['enel_cfg_equipes'] = eqs; } catch (e) {}
+      try { localStorage.setItem('enel_cfg_equipes', JSON.stringify(eqs)); } catch (e) {}
+      fillSelect      ('an-eq',   eqs, 'Selecione a equipe');
+      fillSelectFilter('an-f-eq', eqs, 'Todas');
+    }
+
+    function setSup(sups) {
+      if (!Array.isArray(sups)) return;
+      var sig = JSON.stringify(sups);
+      if (sig === _sigSup) return;
+      _sigSup = sig;
+      try { _cfgCache['enel_cfg_resp_acao'] = sups; } catch (e) {}
+      try { localStorage.setItem('enel_cfg_resp_acao', JSON.stringify(sups)); } catch (e) {}
+      fillSelect      ('an-sup',   sups, 'Selecione o supervisor');
+      fillSelectFilter('an-f-sup', sups, 'Todos');
+    }
+
+    function setTipo(tipos) {
+      if (!Array.isArray(tipos)) return;
+      var sig = JSON.stringify(tipos);
+      if (sig === _sigTipo) return;
+      _sigTipo = sig;
+      try { _cfgCache['enel_cfg_tipos_anomalia'] = tipos; } catch (e) {}
+      try { localStorage.setItem('enel_cfg_tipos_anomalia', JSON.stringify(tipos)); } catch (e) {}
+      fillSelect      ('an-tipo',   tipos, 'Selecione o tipo');
+      fillSelectFilter('an-f-tipo', tipos, 'Todos');
+    }
+
+    function setColab(colabs) {
+      if (!Array.isArray(colabs)) return;
+      var sig = JSON.stringify(colabs);
+      if (sig === _sigColab) return;
+      _sigColab = sig;
+      try { _cfgCache['enel_cfg_colaboradores'] = colabs; } catch (e) {}
+      try { localStorage.setItem('enel_cfg_colaboradores', JSON.stringify(colabs)); } catch (e) {}
+      _anColabs = colabs.slice();   /* atualiza o combo de colaboradores */
+    }
+
+    /* Um único fetch do nó /produtividade/config lê tudo de uma vez  */
+    function pollCfgAnomalia() {
+      fetch(FBCFG + '.json', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (cfg) {
+          if (!cfg || typeof cfg !== 'object') return;
+          if (Array.isArray(cfg.enel_cfg_equipes))        setEquipes(cfg.enel_cfg_equipes);
+          if (Array.isArray(cfg.enel_cfg_resp_acao))      setSup    (cfg.enel_cfg_resp_acao);
+          if (Array.isArray(cfg.enel_cfg_tipos_anomalia)) setTipo   (cfg.enel_cfg_tipos_anomalia);
+          if (Array.isArray(cfg.enel_cfg_colaboradores))  setColab  (cfg.enel_cfg_colaboradores);
+        })
+        .catch(function () { /* silencioso — próximo tick tenta novamente */ });
+    }
+
+    /* Inicia imediatamente e repete a cada 3 s                      */
+    pollCfgAnomalia();
+    var _anCfgTimer = setInterval(pollCfgAnomalia, 3000);
+
+    /* Resincroniza ao retornar ao primeiro plano (tabs em background
+       têm timers desacelerados pelos navegadores modernos)           */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        pollCfgAnomalia();
+        clearInterval(_anCfgTimer);
+        _anCfgTimer = setInterval(pollCfgAnomalia, 3000);
+      }
+    });
+    window.addEventListener('focus', function () {
+      pollCfgAnomalia();
+      clearInterval(_anCfgTimer);
+      _anCfgTimer = setInterval(pollCfgAnomalia, 3000);
+    });
+  })();
+  /* ══ FIM SYNC AUTÔNOMO ════════════════════════════════════════ */
+
   function fillSelectFilter(id, arr, blank) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -14277,6 +14388,40 @@ entryLines.join('\n\n') + '\n' +
       obs.observe(ls, { attributes: true, attributeFilter: ['style','class'] });
     }
   });
+
+  // ─── SINCRONIZAÇÃO DE CONFIG EM TEMPO REAL (Anomalias) ────────────────────
+  //
+  // MECANISMO 1 – CustomEvent (resposta instantânea):
+  // O applyConfigEverywhere() dispara 'cfgUpdated' sempre que detecta uma
+  // mudança no Firebase. Dentro deste IIFE, anPopulate() é chamado DIRETAMENTE
+  // — sem typeof checks, sem window exports, sem barreiras de escopo — e
+  // atualiza os selects de Equipe, Tipo e Supervisor imediatamente.
+  document.addEventListener('cfgUpdated', function() {
+    anPopulate();
+  });
+
+  // MECANISMO 2 – Polling próprio (fallback absoluto):
+  // Independe do sistema de eventos. A cada 3s compara a "assinatura" atual
+  // das listas de config com a última conhecida. Se qualquer lista mudou
+  // (equipes, tipos, colaboradores, responsáveis), reconstrói os selects.
+  // Lê diretamente do getCfg/_cfgCache que já foi atualizado pelo Firebase
+  // poll — zero dependência de escopo externo.
+  var _anSig = '';
+  setInterval(function() {
+    try {
+      var sig = [
+        (typeof getEquipes  === 'function') ? getEquipes().join('|')  : '',
+        getColabs().join('|'),
+        getTiposAnom().join('|'),
+        (typeof getRespAcao === 'function') ? getRespAcao().join('|') : ''
+      ].join('§');
+      if (sig !== _anSig) {
+        _anSig = sig;
+        anPopulate();
+      }
+    } catch(e) {}
+  }, 3000);
+  // ─────────────────────────────────────────────────────────────────────────
 
 })();
 // ── FIM ANOMALIAS ──────────────────────────────────────────────────
