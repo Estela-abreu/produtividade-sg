@@ -1930,6 +1930,20 @@
     .topbar-title { font-size: 0.75rem; }
   }
 
+  /* ── M300 ── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .5; transform: scale(.8); }
+  }
+  /* Área de importação e botão Fechar: visíveis apenas para admins */
+  #m300AdminPanel     { display: none; }
+  .m300-admin-only    { display: none !important; }
+  html[data-role="admin"] #m300AdminPanel  { display: block; }
+  html[data-role="admin"] .m300-admin-only { display: inline-block !important; }
+  @media (max-width: 640px) {
+    #m300Frame { height: calc(100vh - 260px) !important; min-height: 320px !important; }
+  }
+
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -2538,6 +2552,10 @@ if (!loggedInUser) {
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
       Configuração
     </button>
+    <button class="sidebar-item" id="tabBtnM300" onclick="switchTab('m300')" style="color:rgba(251,191,36,0.9);" title="M300 — Carregar Sistema">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      M300
+    </button>
   </div>
 
   <div class="sidebar-mobile-user" id="sidebarMobileUser">
@@ -2549,7 +2567,8 @@ if (!loggedInUser) {
   </div>
   <div class="sidebar-footer">
     © 2026 Enel Brasil<br>
-    Criado por Estela Abreu
+    Criado por Estela Abreu<br>
+    e Michel De Farias Albuquerque
   </div>
 </nav>
 
@@ -3736,6 +3755,89 @@ if (!loggedInUser) {
 
 </div><!-- /tabConfig -->
 
+<!-- ══════════════════════════════════════════════════════════
+     ABA M300 — Carregar Sistema Externo
+     ══════════════════════════════════════════════════════════ -->
+<div id="tabM300" style="display:none; padding:1.5rem; min-height:100vh; box-sizing:border-box;">
+  <div style="max-width:980px; margin:0 auto;">
+
+    <!-- Cabeçalho -->
+    <div style="margin-bottom:1.2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+      <h2 style="font-size:1.35rem;font-weight:800;color:#1F2937;margin:0;display:flex;align-items:center;gap:0.5rem;">
+        <span>📋</span> M300
+      </h2>
+      <!-- Status pill (visível quando iframe carregado) -->
+      <div id="m300StatusPill" style="display:none; align-items:center; gap:0.6rem; padding:0.35rem 0.85rem; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:20px; font-size:0.8rem; color:#166534;">
+        <span style="width:7px;height:7px;background:#22C55E;border-radius:50%;display:inline-block;animation:pulse 2s infinite;flex-shrink:0;"></span>
+        <span id="m300FileName" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+        <button onclick="m300Reload()" title="Recarregar"
+                style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:0;color:#166534;line-height:1;"
+                title="Recarregar sistema">🔄</button>
+        <button onclick="m300Reset()" title="Fechar sistema" class="m300-admin-only"
+                style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:0;color:#DC2626;line-height:1;">✕</button>
+      </div>
+    </div>
+
+    <!-- ══ PAINEL DE IMPORTAÇÃO (admin apenas — CSS controla) ══ -->
+    <div id="m300AdminPanel" style="margin-bottom:1rem;">
+
+      <!-- Zona drag & drop -->
+      <div id="m300DropZone"
+           onclick="document.getElementById('m300FileInput').click()"
+           ondragover="event.preventDefault();this.style.background='#EFF6FF';this.style.borderColor='#3B82F6';"
+           ondragleave="this.style.background='#FAFAFA';this.style.borderColor='#D1D5DB';"
+           ondrop="m300HandleDrop(event)"
+           style="border:2px dashed #D1D5DB;border-radius:10px;padding:1.8rem 2rem;text-align:center;cursor:pointer;background:#FAFAFA;transition:background .2s,border-color .2s;user-select:none;">
+        <div style="font-size:2.4rem;margin-bottom:0.4rem;line-height:1;">📂</div>
+        <div style="font-weight:700;color:#1F2937;font-size:0.92rem;margin-bottom:0.2rem;">Clique ou arraste o arquivo <code>.html</code></div>
+        <div style="color:#9CA3AF;font-size:0.78rem;">Um novo arquivo substitui automaticamente o anterior</div>
+      </div>
+      <input type="file" id="m300FileInput" accept=".html,.htm" style="display:none" onchange="m300LoadFile(this.files[0])">
+
+      <!-- Divisor -->
+      <div style="display:flex;align-items:center;gap:0.75rem;margin:0.85rem 0;">
+        <div style="flex:1;height:1px;background:#E5E7EB;"></div>
+        <span style="color:#9CA3AF;font-size:0.75rem;white-space:nowrap;">ou via URL (persiste para todos)</span>
+        <div style="flex:1;height:1px;background:#E5E7EB;"></div>
+      </div>
+
+      <!-- Campo URL -->
+      <div style="display:flex;gap:0.5rem;">
+        <input type="url" id="m300UrlInput"
+               placeholder="https://exemplo.com/sistema/index.html"
+               style="flex:1;padding:0.65rem 0.9rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:0.88rem;outline:none;transition:border-color .2s;"
+               onfocus="this.style.borderColor='#3B82F6'"
+               onblur="this.style.borderColor='#E5E7EB'"
+               onkeydown="if(event.key==='Enter') m300LoadUrl()">
+        <button onclick="m300LoadUrl()"
+                style="padding:0.65rem 1.2rem;background:linear-gradient(135deg,#1E3A5F,#2563EB);color:white;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(37,99,235,.22);transition:opacity .15s;"
+                onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+          ▶ Carregar
+        </button>
+      </div>
+    </div><!-- /m300AdminPanel -->
+
+    <!-- ══ MENSAGEM PARA USUÁRIO SEM CONTEÚDO CARREGADO ══ -->
+    <div id="m300EmptyUserMsg"
+         style="display:none; padding:3rem 2rem; text-align:center; background:#F9FAFB; border-radius:12px; border:1.5px dashed #E5E7EB;">
+      <div style="font-size:3rem; margin-bottom:0.75rem;">📋</div>
+      <div style="font-weight:700; color:#374151; margin-bottom:0.3rem;">Nenhum sistema carregado</div>
+      <div style="color:#9CA3AF; font-size:0.84rem;">O administrador ainda não configurou o sistema M300.</div>
+    </div>
+
+    <!-- ══ IFRAME ══ -->
+    <div id="m300IframeArea" style="display:none;">
+      <iframe id="m300Frame"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
+              allow="clipboard-read; clipboard-write"
+              style="width:100%;height:calc(100vh - 200px);min-height:480px;border:none;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.09);display:block;background:#F9FAFB;"
+              src="about:blank">
+      </iframe>
+    </div>
+
+  </div>
+</div><!-- /tabM300 -->
+
 <!-- ── MODAL RESUMO ── -->
 <div id="resumoModal" class="resumo-overlay" style="display:none;" onclick="closeResumoOnBg(event)">
   <div class="resumo-modal" onclick="event.stopPropagation()">
@@ -3966,7 +4068,7 @@ if (!loggedInUser) {
 </div>
 
 <footer style="text-align:center;font-size:0.72rem;color:var(--gray-400);padding:1.5rem 1rem;margin-top:auto;border-top:1px solid var(--gray-100);">
-  © 2026 Enel Brasil · Sistema de Análise de Produtividade · Uso interno · Criado por Estela Abreu
+  © 2026 Enel Brasil · Sistema de Análise de Produtividade · Uso interno · Criado por Estela Abreu e Michel De Farias Albuquerque
 </footer>
 
 </div><!-- /main-content -->
@@ -7545,7 +7647,8 @@ if (!loggedInUser) {
     reuniao:     'Painel de Reunião',
     acao:        'Módulo de Ação',
     dashboard:   'Dashboard de Gestão',
-    config:      'Configuração'
+    config:      'Configuração',
+    m300:        'M300'
   };
 
   let _currentTab = 'inicio';
@@ -8783,7 +8886,9 @@ if (!loggedInUser) {
       dashTab.style.display = tab === 'dashboard' ? 'block' : 'none';
     }
     document.getElementById('tabConfig').style.display      = tab === 'config'    ? 'block' : 'none';
-    ['Inicio','TempoReal','Form','Notify','Acao','Dashboard','Config'].forEach(t => {
+    const m300Tab = document.getElementById('tabM300');
+    if (m300Tab) m300Tab.style.display = tab === 'm300' ? 'block' : 'none';
+    ['Inicio','TempoReal','Form','Notify','Acao','Dashboard','Config','M300'].forEach(t => {
       document.getElementById('tabBtn' + t)?.classList.toggle('active', tab === t.toLowerCase());
     });
     const titleEl = document.getElementById('topbarTitle');
@@ -8817,7 +8922,132 @@ if (!loggedInUser) {
     if (tab === 'notify')    { renderNotifyTab(); window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'config')    { window.scrollTo({ top:0, behavior:'smooth' }); }
     if (tab === 'form')      { window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (tab === 'm300')      { m300Init(); window.scrollTo({ top:0, behavior:'smooth' }); }
   }
+
+  /* ─────────────────────────────────────────────────────────────
+     M300 — Funções para carregar sistema externo via iframe
+     Comportamento:
+       • Admin: painel de importação sempre visível (CSS); novo arquivo
+         substitui o anterior automaticamente, sem precisar fechar.
+         URL carregada é salva em localStorage e auto-carregada.
+       • Usuário comum: vê apenas o iframe (ou mensagem vazia).
+     ───────────────────────────────────────────────────────────── */
+
+  const _M300_URL_KEY = 'm300_last_url';   // chave de persistência
+  let   _m300LastSrc  = '';               // src ativo no iframe
+
+  /* Drag & drop */
+  function m300HandleDrop(e) {
+    e.preventDefault();
+    const zone = document.getElementById('m300DropZone');
+    if (zone) { zone.style.background = '#FAFAFA'; zone.style.borderColor = '#D1D5DB'; }
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) m300LoadFile(file);
+  }
+
+  /* Carrega arquivo local via FileReader → blob URL */
+  function m300LoadFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const blob = new Blob([ev.target.result], { type: 'text/html' });
+      const url  = URL.createObjectURL(blob);
+      // Blob URLs são desta sessão apenas; não salva em localStorage
+      m300Show(url, file.name, false);
+    };
+    reader.readAsText(file, 'UTF-8');
+    // Reseta o input para permitir recarregar o mesmo arquivo depois
+    const fi = document.getElementById('m300FileInput');
+    if (fi) fi.value = '';
+  }
+
+  /* Carrega URL remota */
+  function m300LoadUrl() {
+    const input = document.getElementById('m300UrlInput');
+    if (!input) return;
+    const url = input.value.trim();
+    if (!url) { input.focus(); return; }
+    // URL persiste em localStorage para outros usuários e próximas sessões
+    try { localStorage.setItem(_M300_URL_KEY, url); } catch(e) {}
+    m300Show(url, url, true);
+  }
+
+  /* Exibe o iframe com src + nome; persist = true quando veio de URL salva */
+  function m300Show(src, name, persist) {
+    // Libera blob URL anterior se existir (evita memory leak)
+    if (_m300LastSrc && _m300LastSrc.startsWith('blob:') && _m300LastSrc !== src) {
+      try { URL.revokeObjectURL(_m300LastSrc); } catch(e) {}
+    }
+    _m300LastSrc = src;
+
+    const frame      = document.getElementById('m300Frame');
+    const nameEl     = document.getElementById('m300FileName');
+    const statusPill = document.getElementById('m300StatusPill');
+    const iframeArea = document.getElementById('m300IframeArea');
+    const emptyMsg   = document.getElementById('m300EmptyUserMsg');
+
+    if (frame)      frame.src            = src;
+    if (nameEl)     nameEl.textContent   = name;
+    if (statusPill) statusPill.style.display = 'flex';
+    if (iframeArea) iframeArea.style.display = 'block';
+    if (emptyMsg)   emptyMsg.style.display   = 'none';
+  }
+
+  /* Recarrega o sistema atual (útil se o iframe travar) */
+  function m300Reload() {
+    const frame = document.getElementById('m300Frame');
+    if (!frame || !_m300LastSrc) return;
+    frame.src = 'about:blank';
+    setTimeout(function() { if (frame) frame.src = _m300LastSrc; }, 150);
+  }
+
+  /* Fecha/reseta — apenas admin pode acionar (botão ✕ oculto via CSS) */
+  function m300Reset() {
+    // Remove URL salva
+    try { localStorage.removeItem(_M300_URL_KEY); } catch(e) {}
+    // Libera blob URL
+    if (_m300LastSrc && _m300LastSrc.startsWith('blob:')) {
+      try { URL.revokeObjectURL(_m300LastSrc); } catch(e) {}
+    }
+    _m300LastSrc = '';
+
+    const frame      = document.getElementById('m300Frame');
+    const statusPill = document.getElementById('m300StatusPill');
+    const iframeArea = document.getElementById('m300IframeArea');
+    const urlInp     = document.getElementById('m300UrlInput');
+
+    if (frame)      frame.src            = 'about:blank';
+    if (statusPill) statusPill.style.display = 'none';
+    if (iframeArea) iframeArea.style.display = 'none';
+    if (urlInp)     urlInp.value         = '';
+
+    // Para não-admins: mostra mensagem de vazio; admin não precisa (tem painel)
+    if (!isAdmin()) {
+      const emptyMsg = document.getElementById('m300EmptyUserMsg');
+      if (emptyMsg) emptyMsg.style.display = 'block';
+    }
+  }
+
+  /* Chamado ao entrar na aba M300: auto-carrega URL salva se ainda não carregada */
+  function m300Init() {
+    if (_m300LastSrc) return;   // já tem algo no iframe — não recarrega
+    try {
+      const saved = localStorage.getItem(_M300_URL_KEY);
+      if (saved) {
+        const urlInp = document.getElementById('m300UrlInput');
+        if (urlInp) urlInp.value = saved;
+        m300Show(saved, saved, true);
+        return;
+      }
+    } catch(e) {}
+    // Nada salvo — mostra estado vazio para usuários; admin já tem painel visível
+    if (!isAdmin()) {
+      const emptyMsg = document.getElementById('m300EmptyUserMsg');
+      if (emptyMsg) emptyMsg.style.display = 'block';
+    }
+  }
+  /* ─── FIM M300 ──────────────────────────────────────────────── */
 
   function saveDraft() {
     try {
