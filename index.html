@@ -8927,42 +8927,51 @@ if (!loggedInUser) {
 
   /* ═══════════════════════════════════════════════════════════════
      M300 — Sistema Externo via iframe com Sincronização em Tempo Real
-     ───────────────────────────────────────────────────────────────
-     Tanto o arquivo HTML importado quanto uma URL são gravados no
-     Firebase (/produtividade/m300/config). Todos os usuários
-     conectados fazem polling a cada 4 s e atualizam o iframe
-     automaticamente — sem F5, sem clicar em nada.
      ═══════════════════════════════════════════════════════════════ */
 
-  const _M300_FB_PATH  = FB_URL + '/produtividade/m300/config.json';
-  let   _m300LastSrc   = '';   // src ou assinatura ativo no iframe
-  let   _m300LastSig   = '';   // assinatura do último valor Firebase
-  let   _m300PollTimer = null;
+  const _M300_FB_PATH   = FB_URL + '/produtividade/m300/config.json';
+  let   _m300LastSig    = '';     // assinatura do último estado Firebase
+  let   _m300LastSrc    = '';     // src ativo (para blob cleanup e reload)
+  let   _m300SrcdocMode = false;  // true = iframe usa srcdoc (arquivo), false = src (URL)
+  let   _m300PollTimer  = null;
 
-  /* ── Grava no Firebase ── */
+  /* ── Salva no Firebase ── */
   function _m300SaveFB(payload) {
     return fetch(_M300_FB_PATH, {
-      method : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify(payload)
-    }).catch(function(e) { console.warn('[M300] save error:', e); });
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    }).catch(function(e){ console.warn('[M300]', e); });
   }
 
-  /* ── Apaga no Firebase ── */
+  /* ── Limpa no Firebase ── */
   function _m300ClearFB() {
     return fetch(_M300_FB_PATH, {
-      method : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body   : 'null'
-    }).catch(function() {});
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:'null'
+    }).catch(function(){});
   }
 
-  /* ── Exibe o iframe localmente ── */
+  /* ── Estado: sem conteúdo ── */
+  function _m300ShowEmpty() {
+    var iframeArea = document.getElementById('m300IframeArea');
+    var statusPill = document.getElementById('m300StatusPill');
+    var emptyMsg   = document.getElementById('m300EmptyUserMsg');
+    var frame      = document.getElementById('m300Frame');
+    if (frame)      { frame.removeAttribute('srcdoc'); frame.src = 'about:blank'; }
+    if (statusPill) statusPill.style.display = 'none';
+    if (iframeArea) iframeArea.style.display = 'none';
+    // Mensagem de vazio visível para todos (admin tem painel acima; usuário, só isso)
+    if (emptyMsg)   emptyMsg.style.display   = 'block';
+    _m300LastSrc    = '';
+    _m300SrcdocMode = false;
+  }
+
+  /* ── Estado: com conteúdo (src = URL) ── */
   function m300Show(src, name) {
     if (_m300LastSrc && _m300LastSrc.startsWith('blob:') && _m300LastSrc !== src) {
       try { URL.revokeObjectURL(_m300LastSrc); } catch(e) {}
     }
-    _m300LastSrc = src;
+    _m300LastSrc    = src;
+    _m300SrcdocMode = false;
 
     var frame      = document.getElementById('m300Frame');
     var nameEl     = document.getElementById('m300FileName');
@@ -8970,7 +8979,27 @@ if (!loggedInUser) {
     var iframeArea = document.getElementById('m300IframeArea');
     var emptyMsg   = document.getElementById('m300EmptyUserMsg');
 
-    if (frame)      frame.src                = src;
+    if (frame)      { frame.removeAttribute('srcdoc'); frame.src = src; }
+    if (nameEl)     nameEl.textContent       = name;
+    if (statusPill) statusPill.style.display = 'flex';
+    if (iframeArea) iframeArea.style.display = 'block';
+    if (emptyMsg)   emptyMsg.style.display   = 'none';
+  }
+
+  /* ── Estado: com conteúdo (srcdoc = conteúdo HTML direto para arquivos) ──
+     srcdoc renderiza o HTML sem precisar de blob URL — funciona mesmo
+     com arquivos que têm recursos inline.                              */
+  function _m300ShowSrcdoc(htmlContent, name) {
+    _m300LastSrc    = '';   // srcdoc não tem src para cleanup
+    _m300SrcdocMode = true;
+
+    var frame      = document.getElementById('m300Frame');
+    var nameEl     = document.getElementById('m300FileName');
+    var statusPill = document.getElementById('m300StatusPill');
+    var iframeArea = document.getElementById('m300IframeArea');
+    var emptyMsg   = document.getElementById('m300EmptyUserMsg');
+
+    if (frame)      { frame.removeAttribute('src'); frame.setAttribute('srcdoc', htmlContent); }
     if (nameEl)     nameEl.textContent       = name;
     if (statusPill) statusPill.style.display = 'flex';
     if (iframeArea) iframeArea.style.display = 'block';
@@ -8981,183 +9010,132 @@ if (!loggedInUser) {
   function m300HandleDrop(e) {
     e.preventDefault();
     var zone = document.getElementById('m300DropZone');
-    if (zone) { zone.style.background = '#FAFAFA'; zone.style.borderColor = '#D1D5DB'; }
+    if (zone) { zone.style.background='#FAFAFA'; zone.style.borderColor='#D1D5DB'; }
     var file = e.dataTransfer && e.dataTransfer.files[0];
     if (file) m300LoadFile(file);
   }
 
-  /* ── Carrega arquivo HTML → grava conteúdo no Firebase ── */
+  /* ── Carrega arquivo HTML → srcdoc local + Firebase para todos ── */
   function m300LoadFile(file) {
     if (!file) return;
-
-    /* Feedback visual de carregamento */
     var dropZone = document.getElementById('m300DropZone');
-    if (dropZone) dropZone.innerHTML = '<div style="font-size:1.5rem;margin-bottom:.4rem;">⏳</div><div style="font-weight:700;color:#374151;">Enviando para o Firebase...</div>';
+    if (dropZone) dropZone.innerHTML =
+      '<div style="font-size:1.5rem;margin-bottom:.4rem;">⏳</div>' +
+      '<div style="font-weight:700;color:#374151;">Enviando para o Firebase...</div>';
 
     var reader = new FileReader();
     reader.onload = function(ev) {
-      var htmlContent = ev.target.result;
-
-      /* Tamanho estimado em MB */
-      var sizeMB = (new Blob([htmlContent]).size / 1024 / 1024).toFixed(2);
+      var html   = ev.target.result;
+      var sizeMB = (new Blob([html]).size / 1048576).toFixed(2);
       if (parseFloat(sizeMB) > 9) {
         if (typeof showCopyToast === 'function')
           showCopyToast('❌ Arquivo muito grande (' + sizeMB + ' MB). Máximo: 9 MB.');
         _m300RestoreDropZone();
         return;
       }
+      // Exibe imediatamente para o admin via srcdoc
+      _m300ShowSrcdoc(html, file.name);
 
-      /* Cria blob URL local para exibição imediata */
-      var blob    = new Blob([htmlContent], { type: 'text/html' });
-      var blobUrl = URL.createObjectURL(blob);
-      m300Show(blobUrl, file.name);
-
-      /* Grava no Firebase → sincroniza para todos */
-      _m300SaveFB({ type: 'file', name: file.name, content: htmlContent, ts: Date.now() })
+      // Grava no Firebase → outros usuários recebem em até 4 s
+      _m300SaveFB({ type:'file', name:file.name, content:html, ts:Date.now() })
         .then(function() {
-          _m300LastSig = file.name + '_' + htmlContent.length;
+          _m300LastSig = 'file_' + file.name + '_' + html.length;
           if (typeof showCopyToast === 'function')
             showCopyToast('✅ Sistema M300 carregado para todos os usuários!');
-          _m300RestoreDropZone();
-        })
-        .catch(function() {
-          if (typeof showCopyToast === 'function')
-            showCopyToast('⚠️ Erro ao enviar para o Firebase. Verifique a conexão.');
           _m300RestoreDropZone();
         });
     };
     reader.readAsText(file, 'UTF-8');
-
     var fi = document.getElementById('m300FileInput');
     if (fi) fi.value = '';
   }
 
   function _m300RestoreDropZone() {
-    var dropZone = document.getElementById('m300DropZone');
-    if (dropZone) dropZone.innerHTML =
+    var dz = document.getElementById('m300DropZone');
+    if (dz) dz.innerHTML =
       '<div style="font-size:2.4rem;margin-bottom:.4rem;line-height:1;">📂</div>' +
       '<div style="font-weight:700;color:#1F2937;font-size:.92rem;margin-bottom:.2rem;">Clique ou arraste o arquivo <code>.html</code></div>' +
       '<div style="color:#9CA3AF;font-size:.78rem;">Um novo arquivo substitui automaticamente o anterior</div>';
   }
 
-  /* ── Carrega URL → grava no Firebase → sincroniza para todos ── */
+  /* ── Carrega URL → Firebase → todos ── */
   function m300LoadUrl() {
     var input = document.getElementById('m300UrlInput');
     if (!input) return;
     var url = input.value.trim();
     if (!url) { input.focus(); return; }
-
     m300Show(url, url);
-    _m300SaveFB({ type: 'url', url: url, name: url, ts: Date.now() })
+    _m300SaveFB({ type:'url', url:url, name:url, ts:Date.now() })
       .then(function() {
-        _m300LastSig = JSON.stringify({ type: 'url', url: url });
+        _m300LastSig = 'url_' + url;
         if (typeof showCopyToast === 'function')
           showCopyToast('✅ Sistema M300 atualizado para todos os usuários!');
       });
   }
 
-  /* ── Recarrega iframe ── */
+  /* ── Recarrega o iframe atual ── */
   function m300Reload() {
     var frame = document.getElementById('m300Frame');
-    if (!frame || !_m300LastSrc) return;
-    frame.src = 'about:blank';
-    setTimeout(function() { if (frame) frame.src = _m300LastSrc; }, 150);
+    if (!frame) return;
+    if (_m300SrcdocMode) {
+      // Para srcdoc: repõe o atributo (força re-render)
+      var doc = frame.getAttribute('srcdoc') || '';
+      frame.removeAttribute('srcdoc');
+      setTimeout(function(){ frame.setAttribute('srcdoc', doc); }, 100);
+    } else if (_m300LastSrc) {
+      frame.src = 'about:blank';
+      setTimeout(function(){ frame.src = _m300LastSrc; }, 150);
+    }
   }
 
-  /* ── Fecha / reseta (admin apenas; CSS oculta botão para usuários) ── */
+  /* ── Fecha/reseta (admin apenas; CSS oculta botão para usuários) ── */
   function m300Reset() {
-    if (_m300LastSrc && _m300LastSrc.startsWith('blob:')) {
-      try { URL.revokeObjectURL(_m300LastSrc); } catch(e) {}
-    }
-    _m300LastSrc = '';
     _m300LastSig = 'null';
-
-    var frame      = document.getElementById('m300Frame');
-    var statusPill = document.getElementById('m300StatusPill');
-    var iframeArea = document.getElementById('m300IframeArea');
-    var urlInp     = document.getElementById('m300UrlInput');
-
-    if (frame)      frame.src                = 'about:blank';
-    if (statusPill) statusPill.style.display = 'none';
-    if (iframeArea) iframeArea.style.display = 'none';
-    if (urlInp)     urlInp.value             = '';
-
     _m300ClearFB();
     _m300RestoreDropZone();
-
-    if (!isAdmin()) {
-      var emptyMsg = document.getElementById('m300EmptyUserMsg');
-      if (emptyMsg) emptyMsg.style.display = 'block';
-    }
+    _m300ShowEmpty();
   }
 
-  /* ── Polling: busca config do Firebase a cada 4 s ── */
+  /* ── Polling: busca Firebase a cada 4 s ── */
   function _m300Poll() {
-    fetch(_M300_FB_PATH, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
-      .then(function(r) { return r.ok ? r.json() : null; })
+    fetch(_M300_FB_PATH, { cache:'no-store', headers:{'Cache-Control':'no-cache'} })
+      .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(cfg) {
+        /* ── Sem conteúdo ── */
         if (!cfg) {
-          /* Sistema removido */
-          var sig = 'null';
-          if (sig === _m300LastSig) return;
-          _m300LastSig = sig;
-          if (_m300LastSrc && !_m300LastSrc.startsWith('blob:')) {
-            _m300LastSrc = '';
-            var frame      = document.getElementById('m300Frame');
-            var statusPill = document.getElementById('m300StatusPill');
-            var iframeArea = document.getElementById('m300IframeArea');
-            if (frame)      frame.src                = 'about:blank';
-            if (statusPill) statusPill.style.display = 'none';
-            if (iframeArea) iframeArea.style.display = 'none';
-            if (!isAdmin()) {
-              var em = document.getElementById('m300EmptyUserMsg');
-              if (em) em.style.display = 'block';
-            }
-          }
+          if (_m300LastSig === 'null') return;  // já em estado vazio
+          _m300LastSig = 'null';
+          _m300ShowEmpty();
           return;
         }
 
-        /* Calcula assinatura para detectar mudança */
+        /* ── Calcula assinatura ── */
         var sig = cfg.type === 'file'
-          ? (cfg.name + '_' + (cfg.content || '').length)
-          : JSON.stringify({ type: cfg.type, url: cfg.url });
+          ? ('file_' + cfg.name + '_' + (cfg.content || '').length)
+          : ('url_'  + cfg.url);
 
-        if (sig === _m300LastSig) return;  // sem mudança
+        if (sig === _m300LastSig) return;   // sem mudança
         _m300LastSig = sig;
 
-        if (cfg.type === 'url') {
-          /* URL remota */
-          if (cfg.url !== _m300LastSrc) {
-            m300Show(cfg.url, cfg.name || cfg.url);
-            var urlInp = document.getElementById('m300UrlInput');
-            if (urlInp && isAdmin()) urlInp.value = cfg.url;
-          }
+        /* ── Aplica conteúdo ── */
+        if (cfg.type === 'url' && cfg.url) {
+          m300Show(cfg.url, cfg.name || cfg.url);
+          var urlInp = document.getElementById('m300UrlInput');
+          if (urlInp) { try { if (isAdmin()) urlInp.value = cfg.url; } catch(e){} }
+
         } else if (cfg.type === 'file' && cfg.content) {
-          /* Arquivo HTML recebido do Firebase → cria blob local */
-          var blob    = new Blob([cfg.content], { type: 'text/html' });
-          var blobUrl = URL.createObjectURL(blob);
-          m300Show(blobUrl, cfg.name || 'sistema.html');
+          _m300ShowSrcdoc(cfg.content, cfg.name || 'sistema.html');
         }
       })
-      .catch(function() { /* sem conexão — tenta no próximo ciclo */ });
+      .catch(function() { /* conexão falhou — tenta no próximo ciclo */ });
   }
 
-  /* ── Init: mostra estado inicial + inicia polling ── */
+  /* ── Init: inicia polling (chamado no carregamento da página) ── */
   function m300Init() {
-    // Para usuário comum: mostra "Nenhum sistema carregado" enquanto o
-    // primeiro poll ainda está em andamento.  m300Show() ou _m300Poll()
-    // ocultam esta mensagem automaticamente se houver conteúdo no Firebase.
-    if (!isAdmin()) {
-      var em = document.getElementById('m300EmptyUserMsg');
-      if (em) em.style.display = 'block';
-    }
-
-    // Poll imediato + intervalo de 4 s
-    _m300Poll();
+    _m300Poll();   // primeiro poll imediato
     if (_m300PollTimer) clearInterval(_m300PollTimer);
     _m300PollTimer = setInterval(_m300Poll, 4000);
-
-    // Resincroniza ao retornar ao primeiro plano
+    // Resincroniza ao voltar ao primeiro plano (tabs em background desaceleram timers)
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'visible') _m300Poll();
     });
